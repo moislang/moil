@@ -131,7 +131,16 @@ the fixture's expected stdout and exit status.
    methods; `IntArray` reaches its cells through rule 4. Add a dedicated
    fixture `libraryIntArray` (today `IntArray` is only covered through
    `libraryBinaryHeap`), including out-of-range `at`/`put` and
-   `removeLast` on an empty array.
+   `removeLast` on an empty array. API shape (probed with `snl check`,
+   `snl build`, `snl run-snbc` and the Snova executor): `IntCell(value)`
+   with instance `read()`/`assign(newValue)`; `IntArray(cells, 0)` keeps its
+   instance methods and reaches cells through the private siblings
+   `readCell(cell: IntCell)` and `assignCell(cell: IntCell, newValue)`.
+   `IntMap` still uses static `MapEntry` accessors (slice 5), but its bucket
+   heads move to the same pattern (`readHead`/`assignHead`) because
+   `IntCell` no longer has static methods. `count`, `isEmpty`, `at`, `put`,
+   `append`, `removeLast`, `swap` and `values` are not intercepted as array
+   builtins by `snl build` v0.3.0.
 4. **`BinaryHeap`**: remove the `let store = storage` calls (rule 3);
    fixture `libraryBinaryHeap` with a positional constructor.
 5. **`TreeNode`/`BinaryTree` and `MapEntry`/`IntMap`**: accessors become
