@@ -1,0 +1,2 @@
+# Expected fixture output is byte-exact data (for example, trailing spaces).
+bootstrap/fixtures/expected/* -whitespace
