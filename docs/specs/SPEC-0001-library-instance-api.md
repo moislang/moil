@@ -1,7 +1,8 @@
 # SPEC-0001 — Instance-based library API
 
-- **Status:** Proposed; linking and first-stage visibility decided; slice 1 is in review as
-  [snl#3](https://github.com/snovalang/snl/pull/3) (draft)
+- **Status:** Proposed; linking and first-stage visibility decided; slice 1 merged as
+  [snl#3](https://github.com/snovalang/snl/pull/3) and slice 2 merged as
+  [snl#10](https://github.com/snovalang/snl/pull/10)
 - **Date:** 2026-11-21
 - **Phase:** P4, incremental growth
 - **Related:** [ADR-0007](../decisions/ADR-0007-object-model.md) (object
@@ -80,8 +81,11 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    first stage therefore builds from a staging directory generated under
    `build/`, holding `bootstrap/src/*.snl` plus an explicit list of the
    library modules already migrated. The list grows one slice at a time and
-   keeps the same order as `ownSource()` in `sourceJoin.snl`; if the two
-   lists diverge, the fixed point fails. In the probe, the staging directory
+   keeps the same order as `ownSource()` in `sourceJoin.snl`. Until slice 6
+  the compiler does not call the library, so no gate (neither the fixed point
+  nor `bootstrap-library-root`) detects a divergence between the two lists;
+  review keeps them in the same order. Slice 6 must add that guarantee, through
+  fixed-point coverage or an explicit check. In the probe, the staging directory
    with the two instance searches of snl#3 built, and the self-compilation
    image stayed `8cb80e98…f730ad`, equal to the baseline. Alternatives
    rejected for now: a symbolic link (exposes the whole library, unreliable
