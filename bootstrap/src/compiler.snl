@@ -74,6 +74,16 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 4 {
+        Console.print("error[SNV4001]: annotation type does not match initializer at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
@@ -118,7 +128,7 @@ func compileSource(src: int[], image: int[]): int {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
         owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
-        phase: 0, error_phase: 0, error_token: -1, error_line: 1, line: 1
+        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, line: 1
     }
     lexAll(src, bg, cx)
     if cx.failed != 0 {

@@ -95,6 +95,7 @@ struct compilerContext {
     public var phase: int
     public var error_phase: int
     public var error_token: int
+    public var error_start: int
     public var error_line: int
     public var line: int
 }

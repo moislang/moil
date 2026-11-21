@@ -137,13 +137,28 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         return
     }
     if k == 21 {
+        let declaredType = bg.nd[nd]
         if bg.nc[nd] >= 0 {
             emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
         } else {
             code.push(5)
             cx.expr_ty = 0
         }
-        let ty = cx.expr_ty
+        let inferredType = cx.expr_ty
+        if declaredType != 0 && inferredType != 0 && declaredType != inferredType {
+            cx.failed = 1
+            cx.error_phase = 4
+            cx.error_start = bg.na[nd]
+            cx.error_line = 1
+            var byteIndex = 0
+            while byteIndex < bg.na[nd] {
+                if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+                byteIndex = byteIndex + 1
+            }
+            return
+        }
+        var ty = inferredType
+        if declaredType != 0 { ty = declaredType }
         let slot = addLocal(bg, cx, bg.na[nd], bg.nb[nd], ty)
         code.push(9)
         pushU32(code, slot)

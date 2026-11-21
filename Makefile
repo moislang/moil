@@ -43,6 +43,10 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 8, function #0" $(BUILD_DIR)/runtime-arity-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidStaticCall.snl $(BUILD_DIR)/invalidStaticCall.snbc > $(BUILD_DIR)/static-call-error.txt; then echo "expected static call failure"; exit 1; fi
 	grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 15, function #1" $(BUILD_DIR)/static-call-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/typedLet.snl $(BUILD_DIR)/typedLet.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/typedLet.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidTypedLet.snl $(BUILD_DIR)/invalidTypedLet.snbc > $(BUILD_DIR)/typed-let-error.txt; then echo "expected typed let mismatch"; exit 1; fi
+	grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 4, span 54..55" $(BUILD_DIR)/typed-let-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt
 	printf 'warning[SNW0001]: comparison between different types at line 10\nwarning[SNW0001]: comparison between different types at line 13\n' | cmp - $(BUILD_DIR)/warn-mismatch.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt

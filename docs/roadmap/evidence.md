@@ -130,3 +130,10 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-fixed-point`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: lexical failures report `SNV1001` with a byte span, parser failures report `SNV2001` with the failing token span (including zero-width EOF spans), and lowering failures report `SNV3001` with line and function index. Positive warning fixtures remained unchanged. Diagnostic fixtures assert the complete output strings.
 - Limitations: lowering span is not yet exact and the function index is not a stable symbol identity; semantic analysis still lacks structured diagnostics. Byte offsets are within the single input buffer, not mapped through source files because general import loading is not implemented.
+
+## 2026-11-21 — local binding type annotations
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
+- Observed result: the parser retains declared primitive or known struct types on `let`/`var` bindings. When both annotation and initializer types are known, a mismatch fails with `SNV4001` and the binding identifier span. The positive `typedLet` fixture returns 42; `invalidTypedLet` is rejected at byte span 54..55. Existing warning, SnBC fixed-point and native compiler fixed-point gates pass.
+- Limitations: unknown expression types are not inferred or rejected; array annotations still map to the unknown type; assignment compatibility and function return types remain outside this slice.

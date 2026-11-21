@@ -1,0 +1,6 @@
+package bootstrap.fixture
+
+func main(): int {
+    let answer: int = 42
+    return answer
+}

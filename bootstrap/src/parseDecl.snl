@@ -10,9 +10,10 @@ func parseBinding(src: int[], bg: compilerState, cx: compilerContext): int {
     let ns = bg.ts[cx.pos]
     let nl = bg.tn[cx.pos]
     bump(cx)
+    var declaredType = 0
     if atTok(bg, cx, 23) {
         bump(cx)
-        parseType(src, bg, cx)
+        declaredType = parseType(src, bg, cx)
     }
     var init = -1
     if atTok(bg, cx, 27) {
@@ -20,7 +21,7 @@ func parseBinding(src: int[], bg: compilerState, cx: compilerContext): int {
         init = parseExpr(src, bg, cx, 1)
     }
     acceptTok(bg, cx, 24)
-    return node(bg, 21, ns, nl, init, -1)
+    return node(bg, 21, ns, nl, init, declaredType)
 }
 
 func parseReturn(src: int[], bg: compilerState, cx: compilerContext): int {
