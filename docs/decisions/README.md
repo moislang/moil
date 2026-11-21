@@ -10,3 +10,4 @@ ADRs record decisions, context, consequences and the conditions for reopening a 
 - [ADR-0006: native runtime in Snova with ownership and a libSystem boundary](ADR-0006-native-runtime.md)
 - [ADR-0007: object model for the compiler and the native runtime](ADR-0007-object-model.md)
 - [ADR-0008: multi-target native backend rollout](ADR-0008-multi-target-backend.md)
+- [ADR-0009: committed SnBC seed for the first bootstrap stage (proposed)](ADR-0009-committed-snbc-seed.md)

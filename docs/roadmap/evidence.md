@@ -158,3 +158,16 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-native`, `make bootstrap-vm-self bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: `ARRAY_POP` removes and returns the final element in both the Snova SnBC executor and the native backend. Integer and string fixtures pass; both backends report `runtime error: pop from empty array` with status 70. Native ownership reporting confirms zero live blocks at exit for successful pop fixtures.
 - Limitations: the native backend supports the existing array layout and ownership model; this change does not add static array element typing or bounds/index assignment.
+
+## 2026-11-21 — own root slice 1: committed SnBC seed (ADR-0009, proposed)
+
+- Repository revision: branch `mike/seed-snbc-stage1` on top of `2fba2df`; `bootstrap/src/` unchanged.
+- Host and OS: Linux 6.12, `x86_64-unknown-linux-gnu`.
+- Reference: `snl v0.3.0` from the official `snovac-linux-x86_64.tar.gz` release (archive SHA-256 `f7d39f967407cdedc522b6bb1d21c199b188789dc27b00ba9e7100bc419ed8f8`), not on `PATH`, passed as `SNL=`.
+- Commands: `make bootstrap-seed-refresh`; `make bootstrap-fixed-point bootstrap-seed-fixed-point` from an empty `build/`; `make bootstrap-seed-stage` with an `SNL` wrapper that exits with an error for `check` and `build`; `make bootstrap-seed-stage` with one byte of the seed altered; `sh scripts/hooks/validate-planning-docs.sh`; `git diff --check`.
+- Observed result: the seed run by `snl run-snbc` compiled the sources into `seed-stage1.snbc`, which compiled them into an identical `seed-stage2.snbc`; `seed-stage1.snbc` was byte-for-byte equal to `stage1.snbc` from the `snl build` path, and `stage1.snbc` equalled `stage2.snbc`. The seed chain passed with the wrapper that forbids `snl check`/`snl build` (the same wrapper made `bootstrap-build` fail, so the wrapper works). An altered seed was rejected by the hash check before execution. Documentation validation and `git diff --check` passed.
+- Probe: an image produced from `HEAD~5` of `2fba2df` (SHA-256 `b974d15434a9d01a1dd56f50b5650913b50025a5f3dd80cddf1bd4f758306ec9`), run by `snl run-snbc`, compiled the current sources into the current fixed-point image in one generation.
+- Probe: the native backend, run on this host, emitted the compiler's aarch64-apple-darwin assembly (4350137 bytes, SHA-256 `a6a547e492ccae162b979e00a32a0684581e6fe1c118ff37f8f60d8fe38ee985`) identically twice. It was not assembled or run.
+- Artifacts/hash: seed, `seed-stage1`, `seed-stage2`, `stage1` and `stage2` SHA-256 `8cb80e985dbf2f5d087098fa02960e184d38ac540ffc39d936201404c5f730ad` (142693 bytes).
+- Also passed on this host: `bootstrap-smoke`, `bootstrap-diagnostics`, `bootstrap-image-check`, `bootstrap-vm`. Not run: `bootstrap-vm-self`; native and library gates (they need the aarch64-apple-darwin toolchain).
+- Limitations: the seed chain still runs on the `snl` C VM (`run-snbc`), so this is not an own root and not DDC. The `snova-bootstrap` CLI still comes from `snl build`. Equality of the seed with the image produced on `aarch64-apple-darwin` has not been checked. This is not a clean-environment reproducibility claim.
