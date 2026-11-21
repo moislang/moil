@@ -104,6 +104,24 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 7 {
+        reportNonExhaustive(src, bg, cx)
+        return
+    }
+    if cx.error_phase == 9 {
+        reportArity(cx)
+        return
+    }
+    if cx.error_phase == 8 {
+        Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
@@ -129,7 +147,7 @@ func compileSource(src: int[], image: int[]): int {
     var bg = compilerState {
         tk: [], ts: [], tn: [], tv: [], tl: [],
         nk: [], na: [], nb: [], nc: [], nd: [],
-        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [],
+        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [], loc_mut: [], nline: [], parse_line: 0,
         fd_st: [], fd_ns: [], fd_nl: [], fd_ty: [],
         st_ns: [], st_nl: [],
         fn_ns: [], fn_nl: [], fn_ar: [], fn_body: [],
@@ -148,7 +166,7 @@ func compileSource(src: int[], image: int[]): int {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
         owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
-        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, line: 1
+        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, error_expected: 0, error_found: 0, line: 1
     }
     lexAll(src, bg, cx)
     if cx.failed != 0 {

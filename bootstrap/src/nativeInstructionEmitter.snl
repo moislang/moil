@@ -258,6 +258,10 @@ class NativeInstructionEmitter {    public var functionIndex: int
             pushConstant(output, stack, 0, 6)
         } else if opcode == 3 {
             values.constantString(output, stack, image.u32(operandAt))
+        } else if opcode == 42 && image.u32(operandAt + 4) == 0 {
+            values.variant(output, stack, image.u32(operandAt))
+        } else if opcode == 43 {
+            values.isVariant(output, stack, image.u32(operandAt))
         } else if opcode == 6 {
             stack.dropTop(output)
         } else if opcode == 7 {

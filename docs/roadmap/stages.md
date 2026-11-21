@@ -30,6 +30,13 @@ uses `snl build`; assembly and linking still use the host `as`/`ld`. This is
 not a portable release and does not replace `snovac`. The multi-target
 sequence is recorded in ADR-0008; Linux/x86-64 is its first expansion target.
 
+Own root (P8), proposed in ADR-0009: slice 1 commits the compiler's SnBC
+fixed-point image as a seed. `make bootstrap-seed-fixed-point` runs it with
+`snl run-snbc`, without `snl check` or `snl build`, and requires the same
+stage-1 image as the `snl build` path. The seed chain still runs on the `snl`
+C VM, so this is not an own root or DDC yet. Slice 2 (a native assembly seed
+for `aarch64-apple-darwin`) is pending.
+
 This closes a restricted initial cycle; it does not close compatibility or
 replace `snovac`. The expansion sequence and the limits are in
 [`subset.md`](subset.md), and the reproducible commands are in the `Makefile`.
