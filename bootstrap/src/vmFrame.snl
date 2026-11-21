@@ -151,6 +151,10 @@ func vmOther(vm: vmState, opcode: int, operand: int, secondOperand: int, functio
         vm.halted = 1
     } else if opcode == 52 {
         vmFail(vm, 5, functionIndex)
+    } else if opcode == 42 {
+        vmVariant(vm, operand, secondOperand)
+    } else if opcode == 43 {
+        vmIsVariant(vm, operand)
     } else if opcode != 0 {
         vmFail(vm, 4, opcode)
     }

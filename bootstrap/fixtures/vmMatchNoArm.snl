@@ -1,0 +1,18 @@
+package bootstrap.fixture
+
+// A match expression with no matching arm traps (opcode 52): runtime error
+// "bodyless routine trapped" with status 70.
+enum Mode {
+    Fast,
+    Slow
+}
+
+func pick(mode: Mode): int {
+    return match mode {
+        Mode.Fast -> 1
+    }
+}
+
+func main(): int {
+    return pick(Mode.Slow)
+}

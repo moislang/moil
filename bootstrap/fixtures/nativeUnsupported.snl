@@ -1,14 +1,13 @@
 package bootstrap.fixture
 
-// Enum variants lower to SnBC opcode 42, which the native backend does not
-// support yet; the compiler must fail with a diagnostic instead of emitting
-// partial assembly.
-enum Direction {
-    North
-    South
+// Pulsar launches lower to SnBC opcode 54 (SPAWN), which the native backend
+// does not support; the compiler must fail with a diagnostic instead of
+// emitting partial assembly. (Unit enum variants, opcode 42, are supported
+// since the native enum/match slice.)
+func work(): unit {
 }
 
 func main(): int {
-    let heading = Direction.North
+    pulsar work()
     return 0
 }
