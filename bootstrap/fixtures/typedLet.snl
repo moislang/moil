@@ -1,6 +1,7 @@
 package bootstrap.fixture
 
 func main(): int {
-    let answer: int = 42
+    var answer: int = 41
+    answer = 42
     return answer
 }

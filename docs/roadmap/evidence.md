@@ -137,3 +137,10 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: the parser retains declared primitive or known struct types on `let`/`var` bindings. When both annotation and initializer types are known, a mismatch fails with `SNV4001` and the binding identifier span. The positive `typedLet` fixture returns 42; `invalidTypedLet` is rejected at byte span 54..55. Existing warning, SnBC fixed-point and native compiler fixed-point gates pass.
 - Limitations: unknown expression types are not inferred or rejected; array annotations still map to the unknown type; assignment compatibility and function return types remain outside this slice.
+
+## 2026-11-21 — local assignment type compatibility
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
+- Observed result: assignment to a local with known type now rejects a known incompatible right-hand type using `SNV4002` and reports the binding identifier's byte span. Assignments where either side has unknown type retain the current subset behavior. Existing valid typed binding and earlier diagnostics remain gated.
+- Limitations: assignment checks cover local variables only; fields, arrays, parameters, function returns and full subtype/nullable compatibility are not implemented.

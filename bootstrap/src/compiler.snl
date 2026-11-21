@@ -84,6 +84,16 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 5 {
+        Console.print("error[SNV4002]: assignment type does not match local binding at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")

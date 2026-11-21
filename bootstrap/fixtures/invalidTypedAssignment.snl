@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    var answer = 42
+    answer = "wrong"
+    return 0
+}
