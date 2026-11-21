@@ -1,6 +1,6 @@
 # SPEC-0001 — Instance-based library API
 
-- **Status:** Proposed; slice 1 is in review as
+- **Status:** Proposed; linking decided; slice 1 is in review as
   [snl#3](https://github.com/snovalang/snl/pull/3) (draft)
 - **Date:** 2026-11-21
 - **Phase:** P4, incremental growth
@@ -52,6 +52,18 @@ executor and natively.
   `BinaryHeap { storage: IntArray { ... } }`), and the root rejects method
   calls on literal-created objects (ADR-0007).
 
+## Decisions
+
+Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
+
+1. **Linking the library into the compiler.** The compiler gets the library
+   through `bootstrap/src/sourceJoin.snl`, the path it already uses to
+   assemble its own sources: `ownSource()` appends each library file with
+   `appendFile`, in dependency order (the seed resolves a field type only
+   when its class was declared earlier, as noted in the `Makefile`). The
+   compiler does not use a package import for the library, because general
+   import resolution in the seed has no owner in the backlog.
+
 ## Proposed surface
 
 The API follows ADR-0007, decision 3. For every library type:
@@ -100,8 +112,10 @@ the fixture's expected stdout and exit status.
 5. **`TreeNode`/`BinaryTree` and `MapEntry`/`IntMap`**: accessors become
    instance methods reached through rule 4; constructors are positional;
    fixtures `libraryBinaryTree` and `libraryIntMap`.
-6. **First compiler use**: one compiler module uses a migrated type, and the
-   static API is gone (`LIBRARY_ROOT_*` equals `LIBRARY_*`).
+6. **First compiler use**: the migrated library files are added to
+   `ownSource()` in `sourceJoin.snl` (decision 1), one compiler module uses a
+   migrated type, and the static API is gone (`LIBRARY_ROOT_*` equals
+   `LIBRARY_*`).
 
 ## Acceptance criteria
 
@@ -157,9 +171,11 @@ executor is the independent side of the differential there.
 1. **Stateful collaborators (slice 4):** should `BinaryHeap` own
    `cells`/`size` directly or receive an `IntArray` parameter per call? The
    first keeps the API small; the second keeps `IntArray` reusable.
-2. **How the compiler links the library (slice 6):** a package import
-   resolved by `snl build --project`, or an entry in the internal assembly
-   (`sourceJoin.snl`)? The seed does not resolve general imports yet.
+2. **How the root sees the library (slice 6):** decision 1 covers the
+   seed's self-compilation. The first stage still runs
+   `snl build --project bootstrap/src`, which does not include
+   `bootstrap/library/`. Does the root build need the project path widened,
+   or another mechanism? Needs a probe before slice 6.
 3. **Which compiler module is the first user** (for example, a map in name
    resolution), and does it need a non-int key type, which the library does
    not offer?
