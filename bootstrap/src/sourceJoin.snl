@@ -65,6 +65,8 @@ public func ownSource(): int[] {
     output.push(10)
     output.push(10)
     appendFile(output, "bootstrap/src/unit.snl", 1)
+    appendFile(output, "bootstrap/src/doubleBits.snl", 0)
+    appendFile(output, "bootstrap/src/vmDouble.snl", 0)
     appendFile(output, "bootstrap/src/lex.snl", 0)
     appendFile(output, "bootstrap/src/parse.snl", 0)
     appendFile(output, "bootstrap/src/parseDecl.snl", 0)
@@ -97,6 +99,7 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/scopeParse.snl", 0)
     appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
     appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
+    appendFile(output, "bootstrap/src/constDecl.snl", 0)
     return output
 }
 

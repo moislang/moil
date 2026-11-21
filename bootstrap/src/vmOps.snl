@@ -46,6 +46,10 @@ func vmEqualDeep(vm: vmState, leftTag: int, leftValue: int, rightTag: int, right
     if leftTag != rightTag { return false }
     if leftTag == 0 || leftTag == 6 { return true }
     if leftTag == 1 || leftTag == 2 { return leftValue == rightValue }
+    if leftTag == 8 {
+        let soft = SoftDouble(0, 0, 0)
+        return soft.compare(leftValue, rightValue) == 0
+    }
     if leftTag == 3 {
         return vmStringsEqual(vm, leftValue, rightValue)
     }
@@ -106,6 +110,10 @@ func vmBinary(vm: vmState, op: int): unit {
         vmPush(vm, 3, vmConcatStrings(vm, leftValue, rightValue))
         return
     }
+    if leftTag == 8 && rightTag == 8 && op != 16 {
+        vmDoubleBinary(vm, op, leftValue, rightValue)
+        return
+    }
     if leftTag != 1 && leftTag != 2 || rightTag != 1 && rightTag != 2 {
         vmFail(vm, 2, op)
         return
@@ -121,6 +129,11 @@ func vmUnary(vm: vmState, op: int): unit {
     let tag = vmTopTag(vm)
     let value = vmPop(vm)
     if vm.failed != 0 { return }
+    if op == 17 && tag == 8 {
+        let soft = SoftDouble(0, 0, 0)
+        vmPush(vm, 8, soft.negate(value))
+        return
+    }
     if op == 17 {
         if tag != 1 {
             vmFail(vm, 2, op)
@@ -141,9 +154,102 @@ func vmPrintValue(vm: vmState, tag: int, value: int, newline: int): unit {
         Console.print(vm.strings[value])
     } else if tag == 6 {
         Console.print("null")
+    } else if tag == 8 {
+        vmPrintDouble(value)
     } else if tag != 0 {
         vmFail(vm, 2, 45)
         return
     }
     if newline != 0 { Console.printline("") }
+}
+
+// Double ADD, SUB, MUL, DIV and comparisons (MOD is a type error).
+func vmDoubleBinary(vm: vmState, op: int, left: int, right: int): unit {
+    let soft = SoftDouble(0, 0, 0)
+    if op == 12 { vmPush(vm, 8, soft.add(left, right)) }
+    if op == 13 { vmPush(vm, 8, soft.subtract(left, right)) }
+    if op == 14 { vmPush(vm, 8, soft.multiply(left, right)) }
+    if op == 15 { vmPush(vm, 8, soft.divide(left, right)) }
+    if op >= 19 && op <= 23 { vmFail(vm, 2, op) }
+    if op >= 26 && op <= 29 {
+        let order = soft.compare(left, right)
+        var result = 0
+        if op == 26 && order == -1 { result = 1 }
+        if op == 27 && (order == -1 || order == 0) { result = 1 }
+        if op == 28 && order == 1 { result = 1 }
+        if op == 29 && (order == 1 || order == 0) { result = 1 }
+        vmPush(vm, 2, result)
+    }
+}
+
+// PRINT of a double: printf("%g"), six significant digits.
+func vmPrintDouble(bits: int): unit {
+    let converter = DoubleBits(0)
+    let parts = DoubleParts(0, 0, 0, 0)
+    converter.decompose(bits, parts)
+    if parts.negative == 1 && parts.kind != 3 { Console.print("-") }
+    if parts.kind == 0 {
+        Console.print(0)
+        return
+    }
+    if parts.kind == 2 {
+        Console.print("inf")
+        return
+    }
+    if parts.kind == 3 {
+        Console.print("nan")
+        return
+    }
+    let significant = vmDecimalDigits(parts.digits)
+    var length = 6
+    while length > 1 && significant[6 - length] == 0 { length = length - 1 }
+    let exponent = parts.exponent
+    if exponent < -4 || exponent >= 6 {
+        Console.print(significant[5])
+        if length > 1 { Console.print(".") }
+        var index = 1
+        while index < length {
+            Console.print(significant[5 - index])
+            index = index + 1
+        }
+        if exponent < 0 { Console.print("e-") } else { Console.print("e+") }
+        var magnitude = exponent
+        if magnitude < 0 { magnitude = 0 - magnitude }
+        if magnitude < 10 { Console.print(0) }
+        Console.print(magnitude)
+        return
+    }
+    if exponent < 0 {
+        Console.print("0.")
+        var zeros = 0 - exponent - 1
+        while zeros > 0 {
+            Console.print(0)
+            zeros = zeros - 1
+        }
+        var index = 0
+        while index < length {
+            Console.print(significant[5 - index])
+            index = index + 1
+        }
+        return
+    }
+    var index = 0
+    while index <= exponent || index < length {
+        if index == exponent + 1 { Console.print(".") }
+        Console.print(significant[5 - index])
+        index = index + 1
+    }
+}
+
+// The six decimal digits of value, least significant first.
+func vmDecimalDigits(value: int): int[] {
+    var digits: int[] = []
+    var rest = value
+    var count = 0
+    while count < 6 {
+        digits.push(rest % 10)
+        rest = rest / 10
+        count = count + 1
+    }
+    return digits
 }

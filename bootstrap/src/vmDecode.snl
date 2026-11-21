@@ -5,7 +5,7 @@ package snova.compiler.runtime
 // index of the target instruction. The execution loop neither decodes bytes
 // nor computes widths.
 func vmDecodeOperand(data: int[], operandAt: int, opcode: int): int {
-    if opcode == 1 { return vmConstInt(data, operandAt) }
+    if opcode == 1 || opcode == 2 { return vmConstInt(data, operandAt) }
     if opcode == 4 || opcode == 45 { return data[operandAt] }
     if opcodeWidth(opcode) >= 4 { return codeU32(data, operandAt) }
     return 0
@@ -34,7 +34,7 @@ func vmDecodeFunction(vm: vmState, codeStart: int, codeLength: int): unit {
         let nextOffset = offset + 1 + width
         var first = vmDecodeOperand(vm.data, codeStart + offset + 1, opcode)
         var second = 0
-        if width == 8 && opcode != 1 { second = codeU32(vm.data, codeStart + offset + 5) }
+        if width == 8 && opcode != 1 && opcode != 2 { second = codeU32(vm.data, codeStart + offset + 5) }
         if opcode == 30 || opcode == 31 || opcode == 32 {
             first = instructionAt[nextOffset + vmSigned32(first)]
         }

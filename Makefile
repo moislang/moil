@@ -159,7 +159,7 @@ bootstrap-native: bootstrap-build
 # native assembly, then use the generated executable for two further builds.
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
-NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch
+NATIVE_COMPILER_SOURCES := unit doubleBits vmDouble lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch constDecl
 NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native

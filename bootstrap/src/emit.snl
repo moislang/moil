@@ -296,6 +296,11 @@ func emitDefault(bg: compilerState, code: int[], ty: int): unit {
         code.push(0)
         return
     }
+    if ty == -4 {
+        code.push(2)
+        pushI64(code, 0)
+        return
+    }
     if ty == -3 {
         var empty: int[] = []
         let si = internBytes(empty, bg)

@@ -75,6 +75,10 @@ struct compilerState {
     public var cont_lv: int[]
     public var warningCodes: int[]
     public var warningLines: int[]
+    // top-level constants: name span and literal node
+    public var cn_ns: int[]
+    public var cn_nl: int[]
+    public var cn_node: int[]
 }
 
 struct compilerContext {

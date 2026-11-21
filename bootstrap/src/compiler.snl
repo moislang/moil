@@ -104,6 +104,26 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 7 {
+        Console.print("error[SNV4004]: operands of a double operation must both be double at line ")
+        Console.print(bg.tl[cx.error_token])
+        Console.print(", span ")
+        Console.print(bg.ts[cx.error_token])
+        Console.print("..")
+        Console.print(bg.ts[cx.error_token] + bg.tn[cx.error_token])
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 8 {
+        Console.print("error[SNV4005]: cannot assign to constant at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
@@ -142,7 +162,8 @@ func compileSource(src: int[], image: int[]): int {
         va_ns: [], va_nl: [], va_en: [],
         lp_id: [], lp_known: [], lp_pos: [],
         brk_at: [], brk_lv: [], cont_at: [], cont_lv: [],
-        warningCodes: [], warningLines: []
+        warningCodes: [], warningLines: [],
+        cn_ns: [], cn_nl: [], cn_node: []
     }
     var cx = compilerContext {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,

@@ -21,6 +21,12 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         cx.expr_ty = -2
         return
     }
+    if k == 35 {
+        code.push(2)
+        pushI64(code, bg.na[nd])
+        cx.expr_ty = -4
+        return
+    }
     if k == 3 {
         var tmp: int[] = []
         decodeString(src, bg.na[nd], bg.nb[nd], tmp)
@@ -38,6 +44,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
             cx.expr_ty = localTypeOf(bg, cx, slot)
             return
         }
+        if emitConstUse(src, bg, cx, code, fat, fb, nd) != 0 { return }
         let fn = findFunc(src, bg, bg.na[nd], bg.nb[nd])
         if fn >= 0 {
             code.push(1)
@@ -81,6 +88,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
                 bg.warningLines.push(bg.tl[bg.nd[nd]])
             }
         }
+        if rejectMixedDouble(bg, cx, bg.na[nd], leftType, rightType, bg.nd[nd]) != 0 { return }
         let op = binOp(bg.na[nd])
         if op < 0 {
             fail(cx)
@@ -88,6 +96,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         }
         code.push(op)
         cx.expr_ty = 0
+        if leftType == -4 && rightType == -4 && op >= 12 && op <= 16 { cx.expr_ty = -4 }
         return
     }
     if k == 7 {

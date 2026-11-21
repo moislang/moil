@@ -182,6 +182,7 @@ func emitAssign(src: int[], bg: compilerState, cx: compilerContext, code: int[],
     if bg.nk[lhs] == 4 {
         let slot = findLocal(src, bg, cx, bg.na[lhs], bg.nb[lhs])
         if slot < 0 {
+            if rejectConstAssign(src, bg, cx, lhs) != 0 { return }
             fail(cx)
             return
         }

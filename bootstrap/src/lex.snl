@@ -63,33 +63,79 @@ func lexString(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCurs
     }
 }
 
+// Integer literals (at most 18 digits) and double literals: digits with a
+// fraction `.digits` and/or an exponent `e[+-]digits`. A double literal
+// becomes token 66 whose value is its IEEE 754 binary64 bit pattern; one
+// that rounds outside the normal range is a lexical error.
 func lexNumber(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCursor): unit {
     let start = lx.i
     let line = lx.line
-    var v = 0
-    var digits = 0
-    var go = 1
-    while go == 1 {
-        if lx.i >= src.len() {
-            go = 0
-        } else {
-            if isDigit(src[lx.i]) {
-                if digits == 18 {
-                    fail(cx)
-                    go = 0
-                } else {
-                    v = v * 10 + (src[lx.i] - 48)
-                    lx.i = lx.i + 1
-                    digits = digits + 1
-                }
-            } else {
-                go = 0
-            }
+    var digits: int[] = []
+    while lx.i < src.len() && isDigit(src[lx.i]) {
+        digits.push(src[lx.i] - 48)
+        lx.i = lx.i + 1
+    }
+    var isDouble = 0
+    var exponent10 = 0
+    if lx.i + 1 < src.len() && src[lx.i] == 46 && isDigit(src[lx.i + 1]) {
+        isDouble = 1
+        lx.i = lx.i + 1
+        while lx.i < src.len() && isDigit(src[lx.i]) {
+            digits.push(src[lx.i] - 48)
+            exponent10 = exponent10 - 1
+            lx.i = lx.i + 1
         }
     }
-    if cx.failed == 0 {
-        pushTok(bg, 2, start, lx.i - start, v, line)
+    if lexExponentStart(src, lx.i) == 1 {
+        isDouble = 1
+        lx.i = lx.i + 1
+        var negative = 0
+        if src[lx.i] == 45 { negative = 1 }
+        if src[lx.i] == 45 || src[lx.i] == 43 { lx.i = lx.i + 1 }
+        var written = 0
+        var exponentDigits = 0
+        while lx.i < src.len() && isDigit(src[lx.i]) {
+            written = written * 10 + (src[lx.i] - 48)
+            exponentDigits = exponentDigits + 1
+            lx.i = lx.i + 1
+        }
+        if exponentDigits > 4 { fail(cx) }
+        if negative == 1 { written = 0 - written }
+        exponent10 = exponent10 + written
     }
+    if isDouble == 0 {
+        if digits.len() > 18 {
+            fail(cx)
+            return
+        }
+        var value = 0
+        var index = 0
+        while index < digits.len() {
+            value = value * 10 + digits[index]
+            index = index + 1
+        }
+        pushTok(bg, 2, start, lx.i - start, value, line)
+        return
+    }
+    if digits.len() > 40 { fail(cx) }
+    if cx.failed != 0 { return }
+    let converter = DoubleBits(0)
+    let bits = converter.parse(digits, exponent10)
+    if converter.failed != 0 {
+        fail(cx)
+        return
+    }
+    pushTok(bg, 66, start, lx.i - start, bits, line)
+}
+
+// `e` or `E`, an optional sign, then a digit.
+func lexExponentStart(src: int[], at: int): int {
+    if at >= src.len() { return 0 }
+    if src[at] != 101 && src[at] != 69 { return 0 }
+    var next = at + 1
+    if next < src.len() && (src[next] == 43 || src[next] == 45) { next = next + 1 }
+    if next < src.len() && isDigit(src[next]) { return 1 }
+    return 0
 }
 
 func lexIdent(src: int[], bg: compilerState, lx: lexerCursor): unit {

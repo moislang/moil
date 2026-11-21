@@ -1,0 +1,223 @@
+package snova.compiler.runtime
+
+// Binary64 arithmetic of the SnBC executor on 64-bit patterns, with integer
+// operations only (see DoubleBits): round to nearest, ties to even, as the
+// hardware does for the native backend. Division by zero gives +0.0, as in
+// the SnBC runtime of `snl`. Flags are ints because the transitional root
+// misevaluates some bool comparisons on linux-x86_64 (evidence.md).
+class SoftDouble {
+    public var sign: int
+    public var mantissa: int
+    public var exponent: int
+
+    public method signBit(bits: int): int {
+        if bits < 0 { return 1 }
+        return 0
+    }
+
+    public method magnitude(bits: int): int {
+        if bits < 0 { return bits + (1 << 62) + (1 << 62) }
+        return bits
+    }
+
+    public method withSign(negative: int, magnitudeBits: int): int {
+        if negative == 1 { return magnitudeBits - (1 << 62) - (1 << 62) }
+        return magnitudeBits
+    }
+
+    public method infinityBits(): int { return 2047 * (1 << 52) }
+
+    public method nanBits(): int { return 2047 * (1 << 52) + (1 << 51) }
+
+    public method isNan(bits: int): int {
+        if magnitude(bits) > infinityBits() { return 1 }
+        return 0
+    }
+
+    public method isInfinite(bits: int): int {
+        if magnitude(bits) == infinityBits() { return 1 }
+        return 0
+    }
+
+    public method isZero(bits: int): int {
+        if magnitude(bits) == 0 { return 1 }
+        return 0
+    }
+
+    public method negate(bits: int): int {
+        return withSign(1 - signBit(bits), magnitude(bits))
+    }
+
+    // Splits a finite nonzero pattern into sign, mantissa in [2^52, 2^53)
+    // and exponent, value = mantissa * 2^exponent.
+    public method unpack(bits: int): unit {
+        sign = signBit(bits)
+        let value = magnitude(bits)
+        let biased = value / (1 << 52)
+        mantissa = value % (1 << 52)
+        exponent = -1074
+        if biased > 0 {
+            mantissa = mantissa + (1 << 52)
+            exponent = biased - 1075
+        }
+        while mantissa < (1 << 52) {
+            mantissa = mantissa * 2
+            exponent = exponent - 1
+        }
+    }
+
+    // value >> count, keeping lost bits as a sticky low bit.
+    public method shiftSticky(value: int, count: int): int {
+        if count <= 0 { return value }
+        if count > 61 {
+            if value != 0 { return 1 }
+            return 0
+        }
+        let low = value % (1 << count)
+        var result = value / (1 << count)
+        if low != 0 { result = result | 1 }
+        return result
+    }
+
+    // Rounds negative?, value * 2^power (value > 0, below 2^62) to binary64.
+    public method round(negative: int, value: int, power: int): int {
+        var bits = value
+        var scale = power
+        while bits >= (1 << 56) {
+            bits = shiftSticky(bits, 1)
+            scale = scale + 1
+        }
+        while bits < (1 << 55) {
+            bits = bits * 2
+            scale = scale - 1
+        }
+        // bits = 53-bit mantissa followed by guard, round and sticky bits.
+        var biased = scale + 1078
+        if biased <= 0 {
+            bits = shiftSticky(bits, 1 - biased)
+            biased = 0
+        }
+        let low = bits % 8
+        var result = bits / 8
+        if low > 4 || low == 4 && result % 2 == 1 { result = result + 1 }
+        if biased == 0 {
+            if result >= (1 << 52) { biased = 1 }
+            return withSign(negative, biased * (1 << 52) + result % (1 << 52))
+        }
+        if result == (1 << 53) {
+            result = result / 2
+            biased = biased + 1
+        }
+        if biased >= 2047 { return withSign(negative, infinityBits()) }
+        return withSign(negative, biased * (1 << 52) + result - (1 << 52))
+    }
+
+    public method add(left: int, right: int): int {
+        if isNan(left) == 1 || isNan(right) == 1 { return nanBits() }
+        if isInfinite(left) == 1 {
+            if isInfinite(right) == 1 && signBit(left) != signBit(right) { return nanBits() }
+            return left
+        }
+        if isInfinite(right) == 1 { return right }
+        if isZero(left) == 1 {
+            if isZero(right) == 1 { return withSign(signBit(left) * signBit(right), 0) }
+            return right
+        }
+        if isZero(right) == 1 { return left }
+        unpack(left)
+        var bigSign = sign
+        var bigMantissa = mantissa * 8
+        var bigExponent = exponent
+        unpack(right)
+        var smallSign = sign
+        var smallMantissa = mantissa * 8
+        var smallExponent = exponent
+        if smallExponent > bigExponent || smallExponent == bigExponent && smallMantissa > bigMantissa {
+            let swapSign = bigSign
+            let swapMantissa = bigMantissa
+            let swapExponent = bigExponent
+            bigSign = smallSign
+            bigMantissa = smallMantissa
+            bigExponent = smallExponent
+            smallSign = swapSign
+            smallMantissa = swapMantissa
+            smallExponent = swapExponent
+        }
+        smallMantissa = shiftSticky(smallMantissa, bigExponent - smallExponent)
+        if bigSign == smallSign {
+            return round(bigSign, bigMantissa + smallMantissa, bigExponent - 3)
+        }
+        let difference = bigMantissa - smallMantissa
+        if difference == 0 { return 0 }
+        return round(bigSign, difference, bigExponent - 3)
+    }
+
+    public method subtract(left: int, right: int): int {
+        return add(left, negate(right))
+    }
+
+    public method multiply(left: int, right: int): int {
+        if isNan(left) == 1 || isNan(right) == 1 { return nanBits() }
+        let negative = (signBit(left) + signBit(right)) % 2
+        if isInfinite(left) == 1 || isInfinite(right) == 1 {
+            if isZero(left) == 1 || isZero(right) == 1 { return nanBits() }
+            return withSign(negative, infinityBits())
+        }
+        if isZero(left) == 1 || isZero(right) == 1 { return withSign(negative, 0) }
+        unpack(left)
+        let leftMantissa = mantissa
+        let leftExponent = exponent
+        unpack(right)
+        // 53 x 53 bits through 26-bit halves; keep the top bits and a sticky bit.
+        let leftHigh = leftMantissa / (1 << 26)
+        let leftLow = leftMantissa % (1 << 26)
+        let rightHigh = mantissa / (1 << 26)
+        let rightLow = mantissa % (1 << 26)
+        let middle = leftHigh * rightLow + leftLow * rightHigh
+        let low = (middle % (1 << 24)) * (1 << 26) + leftLow * rightLow
+        var product = leftHigh * rightHigh * 4 + middle / (1 << 24) + low / (1 << 50)
+        if low % (1 << 50) != 0 { product = product | 1 }
+        return round(negative, product, leftExponent + exponent + 50)
+    }
+
+    public method divide(left: int, right: int): int {
+        if isZero(right) == 1 { return 0 }
+        if isNan(left) == 1 || isNan(right) == 1 { return nanBits() }
+        let negative = (signBit(left) + signBit(right)) % 2
+        if isInfinite(left) == 1 {
+            if isInfinite(right) == 1 { return nanBits() }
+            return withSign(negative, infinityBits())
+        }
+        if isInfinite(right) == 1 || isZero(left) == 1 { return withSign(negative, 0) }
+        unpack(left)
+        let leftMantissa = mantissa
+        let leftExponent = exponent
+        unpack(right)
+        var rest = leftMantissa
+        var quotient = 0
+        var step = 0
+        while step < 57 {
+            quotient = quotient * 2
+            if rest >= mantissa {
+                rest = rest - mantissa
+                quotient = quotient + 1
+            }
+            rest = rest * 2
+            step = step + 1
+        }
+        if rest != 0 { quotient = quotient | 1 }
+        return round(negative, quotient, leftExponent - exponent - 56)
+    }
+
+    // -2 unordered (NaN), otherwise -1, 0 or 1; +0 and -0 are equal.
+    public method compare(left: int, right: int): int {
+        if isNan(left) == 1 || isNan(right) == 1 { return -2 }
+        var leftKey = magnitude(left)
+        var rightKey = magnitude(right)
+        if signBit(left) == 1 { leftKey = 0 - leftKey }
+        if signBit(right) == 1 { rightKey = 0 - rightKey }
+        if leftKey < rightKey { return -1 }
+        if leftKey > rightKey { return 1 }
+        return 0
+    }
+}

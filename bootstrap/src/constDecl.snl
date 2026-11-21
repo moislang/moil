@@ -1,0 +1,109 @@
+package snova.compiler
+
+// Top-level constants: `const name (: type)? = literal`, where literal is an
+// int, double, string or bool literal, or `-` before a numeric literal.
+// `snl check` v0.3.0 accepts top-level `const` and rejects reassignment, but
+// `snl run`/`snl build` do not lower it and the reference defines no global
+// storage (ADR-0009). The seed therefore substitutes the literal at each use;
+// SnBC GET_GLOBAL/SET_GLOBAL stay unused. Token 65 is `const`, token 66 a
+// double literal, node 35 a double literal.
+
+func literalType(bg: compilerState, nd: int): int {
+    let k = bg.nk[nd]
+    if k == 1 { return -1 }
+    if k == 2 { return -2 }
+    if k == 3 { return -3 }
+    if k == 35 { return -4 }
+    if k == 5 && bg.na[nd] == 35 {
+        let inner = bg.nb[nd]
+        if inner >= 0 && (bg.nk[inner] == 1 || bg.nk[inner] == 35) { return literalType(bg, inner) }
+    }
+    return 0
+}
+
+func findConst(src: int[], bg: compilerState, s: int, n: int): int {
+    var i = 0
+    while i < bg.cn_ns.len() {
+        if spanEq(src, bg.cn_ns[i], bg.cn_nl[i], s, n) { return i }
+        i = i + 1
+    }
+    return -1
+}
+
+func parseConst(src: int[], bg: compilerState, cx: compilerContext): unit {
+    bump(cx)
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return
+    }
+    let nameToken = cx.pos
+    let s = bg.ts[cx.pos]
+    let n = bg.tn[cx.pos]
+    if findConst(src, bg, s, n) >= 0 {
+        fail(cx)
+        return
+    }
+    bump(cx)
+    var declared = 0
+    if atTok(bg, cx, 23) {
+        bump(cx)
+        declared = parseType(src, bg, cx)
+    }
+    expectTok(bg, cx, 27)
+    let valueToken = cx.pos
+    let value = parsePrimary(src, bg, cx)
+    if cx.failed != 0 { return }
+    let valueType = literalType(bg, value)
+    if valueType == 0 {
+        cx.pos = valueToken
+        fail(cx)
+        return
+    }
+    if declared != 0 && declared != valueType {
+        cx.failed = 1
+        cx.error_phase = 4
+        cx.error_start = s
+        cx.error_line = bg.tl[nameToken]
+        return
+    }
+    acceptTok(bg, cx, 24)
+    bg.cn_ns.push(s)
+    bg.cn_nl.push(n)
+    bg.cn_node.push(value)
+}
+
+// Name use: the constant's literal, with its static type.
+func emitConstUse(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
+    let index = findConst(src, bg, bg.na[nd], bg.nb[nd])
+    if index < 0 { return 0 }
+    emitExpr(src, bg, cx, code, fat, fb, bg.cn_node[index])
+    cx.expr_ty = literalType(bg, bg.cn_node[index])
+    return 1
+}
+
+// SNV4005: assignment to a constant.
+func rejectConstAssign(src: int[], bg: compilerState, cx: compilerContext, lhs: int): int {
+    if findConst(src, bg, bg.na[lhs], bg.nb[lhs]) < 0 { return 0 }
+    cx.failed = 1
+    cx.error_phase = 8
+    cx.error_start = bg.na[lhs]
+    cx.error_line = 1
+    var byteIndex = 0
+    while byteIndex < bg.na[lhs] {
+        if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+        byteIndex = byteIndex + 1
+    }
+    return 1
+}
+
+// SNV4004: arithmetic or ordering between a double and another known type
+// (the language has no implicit numeric promotion).
+func rejectMixedDouble(bg: compilerState, cx: compilerContext, op: int, leftType: int, rightType: int, opToken: int): int {
+    if op < 30 || op > 38 { return 0 }
+    if leftType == 0 || rightType == 0 || leftType == rightType { return 0 }
+    if leftType != -4 && rightType != -4 { return 0 }
+    cx.failed = 1
+    cx.error_phase = 7
+    cx.error_token = opToken
+    return 1
+}
