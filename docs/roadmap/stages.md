@@ -23,12 +23,12 @@ of the source by the seed; equality of two SnBC images; and execution of the
 compiler image by the SnBC executor written in Snova, reproducing the same
 image.
 
-The native backend (ADR-0005) has slices N1 (numeric) and N2 (Snova runtime
-with ownership-based memory release, ADR-0006) implemented. Native
-executables are aarch64 machine code linked only against `libSystem`; they
-free every block before exit and keep constant memory in loops. The next
-slice was N3: compile the compiler itself natively. The current N3 gate and
-its limits are recorded in `docs/roadmap/evidence.md` and ADR-0005.
+The native backend (ADR-0005) has slices N1 (numeric), N2 (Snova runtime
+with ownership-based memory release, ADR-0006), and N3 (native compiler
+fixed point) implemented for `aarch64-apple-darwin`. The first stage still
+uses `snl build`; assembly and linking still use the host `as`/`ld`. This is
+not a portable release and does not replace `snovac`. The multi-target
+sequence is recorded in ADR-0008; Linux/x86-64 is its first expansion target.
 
 This closes a restricted initial cycle; it does not close compatibility or
 replace `snovac`. The expansion sequence and the limits are in

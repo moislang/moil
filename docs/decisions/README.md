@@ -6,6 +6,7 @@ ADRs record decisions, context, consequences and the conditions for reopening a 
 - [ADR-0002: self-hosting and fixed-point evidence](ADR-0002-evidence-and-fixed-point.md)
 - [ADR-0003: Snovalang as the main language and assembly at the boundaries](ADR-0003-language-boundaries.md)
 - [ADR-0004: iterative SnBC executor in Snova and value equality](ADR-0004-snova-snbc-executor.md)
-- [ADR-0005: native aarch64-apple-darwin backend in Snova (N1 and N2 implemented)](ADR-0005-native-backend.md)
+- [ADR-0005: native aarch64-apple-darwin backend in Snova (N1–N3 implemented)](ADR-0005-native-backend.md)
 - [ADR-0006: native runtime in Snova with ownership and a libSystem boundary](ADR-0006-native-runtime.md)
 - [ADR-0007: object model for the compiler and the native runtime](ADR-0007-object-model.md)
+- [ADR-0008: multi-target native backend rollout](ADR-0008-multi-target-backend.md)
