@@ -263,3 +263,13 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-smoke bootstrap-image-check bootstrap-fixed-point bootstrap-vm` (pass), `make bootstrap-vm-self` (pass), the Linux part of `bootstrap-library` and native emission of six native fixtures (pass), `sh scripts/hooks/validate-planning-docs.sh`, `git diff --check`.
 - Not verified: macOS native gates.
 - Limitations: calls through `Runtime.*` keep their own `SNV3001` check. Whether the reference requires every field in a positional constructor is not probed, so the seed only rejects extra arguments.
+
+## 2026-11-21 — seed refresh after the semantic checks (ADR-0009 update flow)
+
+- Repository revision: branch `inhegas/seed-refresh` on top of `600ed17` (`master` after snl#4, #7, #8 and #9); only `bootstrap/seed/` and this log change.
+- Host and OS: Linux, `x86_64-unknown-linux-gnu` (shared box); `snl v0.3.0` from the official Linux release.
+- Reason: from snl#4 on, `make bootstrap-seed-fixed-point` failed. The seed `8cb80e985dbf2f5d087098fa02960e184d38ac540ffc39d936201404c5f730ad` stopped with `error[SNV3001]: unsupported construct or invalid lowering` while compiling the current sources, because its own source list (`ownSource()` in `sourceJoin.snl`) predates `matchCheck.snl`. This is the refresh case of step 2 in `bootstrap/seed/README.md`.
+- Commands: `make bootstrap-seed-refresh` from an empty `build/`; `make bootstrap-seed-fixed-point`; `SNL_OUTPUT=build/bootstrap/vm-seed.snbc build/bootstrap/snova-bootstrap bootstrap/seed/compiler.snbc run`; `python3 scripts/validate-planning-docs.py`; `git diff --check`.
+- Observed result: the new seed (148729 bytes, SHA-256 `cf64d0d31cb50b124af68b7f2dc78b9788f011a149528d36bef7ee4430397706`) passed its hash check; `seed-stage1.snbc` equalled `seed-stage2.snbc` and `stage1.snbc` from the `snl build` path. The seed run by the Snova executor exited with 0 and produced `vm-seed.snbc` with the same SHA-256, as ADR-0009 requires on this host because of the `snl` C VM boolean comparison defect.
+- Not verified: equality with an image produced on `aarch64-apple-darwin`; native and library gates (they need macOS).
+- Limitations: same as the first seed entry: the seed chain runs on the `snl` C VM, so this is not an own root and not DDC.
