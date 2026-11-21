@@ -1,6 +1,6 @@
 # ADR-0005 — Native aarch64-apple-darwin backend in Snova
 
-- **Status:** Proposed; slices N1 and N2 implemented (see "State")
+- **Status:** Accepted; slices N1, N2 and N3 implemented (see "State")
 - **Date:** 2026-11-21
 
 ## Context
@@ -48,8 +48,11 @@ against `libSystem`. Vertical slices, each with its own gate:
 
 ## State
 
-N1 and N2 are implemented in `bootstrap/src/native*.snl` and
-`bootstrap/runtime/*.snl`. The entry point is
+N1, N2 and N3 are implemented in `bootstrap/src/native*.snl` and
+`bootstrap/runtime/*.snl`. `make bootstrap-native-self` builds the compiler's
+ordered source modules with the transitional seed, links a native compiler,
+and requires two further native compiler generations to emit identical
+assembly. The entry point is
 `snova-bootstrap <input.snl> <output.s> native`: the compiler appends the Snova
 runtime to the program, generates the SnBC image in memory, validates it and
 translates it to assembly. The gate is `make bootstrap-native`.
@@ -68,8 +71,10 @@ translates it to assembly. The gate is `make bootstrap-native`.
 
 ## Consequences
 
-- Until N3, `snl build` remains the transitional root, and the documents call
-  its binaries "executable bundled with the C VM", not "native".
+- `snl build` remains the transitional root for the first native compiler;
+  its bootstrap executable is still SnBC bundled with the C VM, not native.
+  N3 demonstrates native self-compilation and an assembly fixed point, not an
+  independent root or DDC.
 - The Snova SnBC executor (ADR-0004) becomes the backend's differential
   oracle, not the distribution path.
 - The seed subset does not run processes. Until it has that primitive,

@@ -115,3 +115,11 @@ This file started with no technical results. Entries must record observed facts,
 - Observed result (boundary): `nm -u` lists only `_close`, `_exit`, `_mmap`, `_munmap`, `_open`, `_read` and `_write`; `otool -L` lists only `libSystem.B.dylib`. The assembly of `vmHostText` does not mention `/tmp`. Two emissions of `nativeMemory.s` were identical (SHA-256 `eedc162d8e1fddc5135ac12f294877ce5c601b98f9fc04603ef57127d5b0ce11`).
 - Observed result (self-compilation): with the N2 modules in the sources, `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched byte for byte. SHA-256: `532917fb7347cbd90374d79b801b921eebae3e7cd4eeca1baee2d395683ce215`. `bootstrap-vm-self` took 4 min 54 s (290.9 s of CPU).
 - Limitations: the compiler itself is still built by `snl build` and is not compiled natively (N3). Ownership is analyzed in the backend over SnBC stack slots; the frontend does not yet reject use-after-move or aliasing errors. Programs that end with a runtime error exit without the memory report. Byte copies and the release of locals go through runtime calls (slow paths). Cyclic data is rejected instead of supported (no weak references). Assembling and linking still use the system `as`/`ld`.
+
+## 2026-11-21 — native compiler fixed point N3
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`, macOS SDK 26.5; Command Line Tools `as`/`ld`.
+- Command: `make bootstrap-native-self`.
+- Observed result: the transitional `snl` seed emitted assembly for the ordered compiler modules plus the Snova native runtime. The linked native compiler compiled the same source, and the next linked native compiler repeated the build. Both assembly comparisons passed byte-for-byte.
+- SHA-256 of the fixed-point compiler assembly: `796443bb0543c3f0b19b12f2b82bb80b9fd7347b90833929bcb43575a0c6cf82` (same hash for all three emissions in the direct run).
+- Scope: native self-compilation and an assembly fixed point are demonstrated for this source order and host. Mach-O UUID/signature normalization, clean-environment reproducibility, independent DDC, general import resolution, and replacement of `snovac` are not demonstrated. The bootstrap still uses `snl` for its first compiler and `as`/`ld` to link every native stage.

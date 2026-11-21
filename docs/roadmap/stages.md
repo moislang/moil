@@ -27,7 +27,8 @@ The native backend (ADR-0005) has slices N1 (numeric) and N2 (Snova runtime
 with ownership-based memory release, ADR-0006) implemented. Native
 executables are aarch64 machine code linked only against `libSystem`; they
 free every block before exit and keep constant memory in loops. The next
-slice is N3: compile the compiler itself natively.
+slice was N3: compile the compiler itself natively. The current N3 gate and
+its limits are recorded in `docs/roadmap/evidence.md` and ADR-0005.
 
 This closes a restricted initial cycle; it does not close compatibility or
 replace `snovac`. The expansion sequence and the limits are in

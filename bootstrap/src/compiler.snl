@@ -114,6 +114,21 @@ func compileSource(src: int[], image: int[]): int {
     cx.phase = 3
     emitUnit(src, bg, cx)
     if cx.failed != 0 {
+        Console.print("lowering failed in function #")
+        Console.print(cx.error_token)
+        if cx.error_token >= 0 && cx.error_token < bg.fn_ns.len() {
+            Console.print(" at line ")
+            var token = 0
+            while token < bg.ts.len() {
+                if bg.ts[token] == bg.fn_ns[cx.error_token] {
+                    Console.print(bg.tl[token])
+                    token = bg.ts.len()
+                } else {
+                    token = token + 1
+                }
+            }
+        }
+        Console.printline("")
         reportFailure(bg, cx)
         return 1
     }

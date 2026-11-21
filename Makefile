@@ -14,7 +14,7 @@ STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-library
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -133,6 +133,29 @@ bootstrap-native: bootstrap-build
 		echo "native cycle rejected: $$fixture"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/nativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
 	grep -Fqx "unsupported opcode for native backend: 42" $(BUILD_DIR)/native-error.txt
+
+# N3: assemble the compiler's ordered source modules, compile that source to
+# native assembly, then use the generated executable for two further builds.
+# The assembly is the fixed-point artifact; Mach-O UUID/signature are not
+# compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
+NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch
+NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
+NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
+NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native
+
+bootstrap-native-self: bootstrap-build
+	mkdir -p $(BUILD_DIR)
+	printf 'package snova.compiler\n\n' > $(NATIVE_COMPILER_SOURCE)
+	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_COMPILER_SOURCE); done
+	$(COMPILER_BUNDLE) $(NATIVE_COMPILER_SOURCE) $(NATIVE_COMPILER_ASSEMBLY) native
+	as -arch arm64 $(NATIVE_COMPILER_ASSEMBLY) -o $(BUILD_DIR)/compiler-native.o
+	ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(BUILD_DIR)/compiler-native.o -o $(NATIVE_COMPILER_BINARY)
+	$(NATIVE_COMPILER_BINARY) $(NATIVE_COMPILER_SOURCE) $(BUILD_DIR)/compiler-native-stage2.s native
+	cmp $(NATIVE_COMPILER_ASSEMBLY) $(BUILD_DIR)/compiler-native-stage2.s
+	as -arch arm64 $(BUILD_DIR)/compiler-native-stage2.s -o $(BUILD_DIR)/compiler-native-stage2.o
+	ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(BUILD_DIR)/compiler-native-stage2.o -o $(BUILD_DIR)/compiler-native-stage2
+	$(BUILD_DIR)/compiler-native-stage2 $(NATIVE_COMPILER_SOURCE) $(BUILD_DIR)/compiler-native-stage3.s native
+	cmp $(BUILD_DIR)/compiler-native-stage2.s $(BUILD_DIR)/compiler-native-stage3.s
 
 # Snova data-structure library (bootstrap/library): each fixture is joined
 # with the library in dependency order (the seed resolves a field type only
