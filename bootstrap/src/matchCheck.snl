@@ -62,3 +62,41 @@ func reportNonExhaustive(src: int[], bg: compilerState, cx: compilerContext): un
     Console.print(bg.ts[cx.error_token] + bg.tn[cx.error_token])
     Console.printline("")
 }
+
+// SNV4006: a call's argument count differs from the callee's parameter count
+// (snl check SNOVA0131). `passed` counts the receiver of an instance method,
+// as fn_ar does; `receiver` is 1 then, so messages show source counts.
+// `nameStart` is the byte offset of the called name.
+func arityMismatch(src: int[], bg: compilerState, cx: compilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
+    if cx.failed != 0 || bg.fn_ar[fn] == passed { return 0 }
+    arityFail(src, cx, bg.fn_ar[fn] - receiver, passed - receiver, nameStart)
+    return 1
+}
+
+func arityFail(src: int[], cx: compilerContext, expected: int, found: int, nameStart: int): unit {
+    cx.failed = 1
+    cx.error_phase = 9
+    cx.error_expected = expected
+    cx.error_found = found
+    cx.error_start = nameStart
+    cx.error_line = 1
+    var byteIndex = 0
+    while byteIndex < nameStart {
+        if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+        byteIndex = byteIndex + 1
+    }
+}
+
+func reportArity(cx: compilerContext): unit {
+    Console.print("error[SNV4006]: expected ")
+    Console.print(cx.error_expected)
+    Console.print(" argument(s), found ")
+    Console.print(cx.error_found)
+    Console.print(" at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}

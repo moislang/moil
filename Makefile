@@ -99,6 +99,12 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 4, span 60..61" $(BUILD_DIR)/immutable-param-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidImmutableFor.snl $(BUILD_DIR)/invalidImmutableFor.snbc > $(BUILD_DIR)/immutable-for-error.txt; then echo "expected immutable for binding failure"; exit 1; fi
 	grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 6, span 97..98" $(BUILD_DIR)/immutable-for-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidCallArity.snl $(BUILD_DIR)/invalidCallArity.snbc > $(BUILD_DIR)/call-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	grep -Fqx "error[SNV4006]: expected 2 argument(s), found 1 at line 8, span 123..124" $(BUILD_DIR)/call-arity-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMethodArity.snl $(BUILD_DIR)/invalidMethodArity.snbc > $(BUILD_DIR)/method-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	grep -Fqx "error[SNV4006]: expected 1 argument(s), found 2 at line 13, span 232..233" $(BUILD_DIR)/method-arity-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidConstructorArity.snl $(BUILD_DIR)/invalidConstructorArity.snbc > $(BUILD_DIR)/constructor-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	grep -Fqx "error[SNV4006]: expected 2 argument(s), found 3 at line 9, span 109..110" $(BUILD_DIR)/constructor-arity-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc

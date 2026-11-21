@@ -24,6 +24,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4003` | Assignment type does not match field | `SNOVA0132` | Field name | `invalidFieldAssignment` |
 | `SNV4004` | Non-exhaustive `match` on an enum | `SNOVA0205` | `match` keyword | `invalidMatchExpression`, `invalidMatchStatement` |
 | `SNV4005` | Assignment to an immutable binding (`let`, parameter, `for` or `match` binding) | `SNOVA0047` | Binding name in the assignment | `invalidImmutableLet`, `invalidImmutableParam`, `invalidImmutableFor` |
+| `SNV4006` | Call argument count differs from the parameter count (function, static or instance method, `defer`/`pulsar` call), or a constructor receives more arguments than the class has fields | `SNOVA0131` | Called name | `invalidCallArity`, `invalidMethodArity`, `invalidConstructorArity` |
 | `SNW0001` | `==`/`!=` between known, different types (warning) | No warning; `SNOVA0133` rejects mismatched operators | Line | `warnMismatch` |
 
 Known divergences, all recorded in [evidence.md](evidence.md):
@@ -43,8 +44,8 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 
 | Case | Reference | Seed now | Gap | Priority |
 |---|---|---|---|---|
-| Call with too few arguments | `SNOVA0131` | Emits an invalid image (`invalid generated SnBC image`) | Wrong code reaches the validator | 1 |
-| Constructor with extra argument | `SNOVA0131` | Accepted | Missing check | 1 |
+| Call with the wrong argument count | `SNOVA0131` | `SNV4006` (it used to emit an invalid image) | Closed | — |
+| Constructor with extra argument | `SNOVA0131` | `SNV4006` (it used to be accepted) | Closed | — |
 | Argument of known wrong type (function, constructor, `push`) | `SNOVA0132` | Accepted | Parameter types are known; check not wired | 2 |
 | `if`/`while` condition of known non-`bool` type | `SNOVA0135` | Accepted | Missing check | 2 |
 | Unary `-` on `string`, `!` on `int` | `SNOVA0134` | Accepted, fails at run time | Missing check | 2 |

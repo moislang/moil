@@ -104,6 +104,9 @@ struct compilerContext {
     public var error_token: int
     public var error_start: int
     public var error_line: int
+    // SNV4006: expected and found argument counts
+    public var error_expected: int
+    public var error_found: int
     public var line: int
 }
 

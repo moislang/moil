@@ -230,6 +230,7 @@ func scopeEmitDefer(src: int[], bg: compilerState, cx: compilerContext, code: in
         fail(cx)
         return
     }
+    if arityMismatch(src, bg, cx, fn, consCount(bg, bg.nc[call]), 0, bg.na[callee]) != 0 { return }
     emitForward(src, bg, cx, code, fat, fb, bg.nc[call], 0)
     code.push(53)
     pushU32(code, fn)
@@ -242,6 +243,7 @@ func scopeEmitPulsar(src: int[], bg: compilerState, cx: compilerContext, code: i
         if callee >= 0 && bg.nk[callee] == 4 {
             let fn = findFunc(src, bg, bg.na[callee], bg.nb[callee])
             if fn >= 0 {
+                if arityMismatch(src, bg, cx, fn, consCount(bg, bg.nc[call]), 0, bg.na[callee]) != 0 { return }
                 emitForward(src, bg, cx, code, fat, fb, bg.nc[call], 0)
                 code.push(54)
                 pushU32(code, fn)
