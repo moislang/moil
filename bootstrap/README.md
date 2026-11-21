@@ -12,6 +12,11 @@ sources, then asks the generated compiler to do the same. Both SnBC images must
 match byte for byte. The compiler's `sourceJoin.snl` handles this internal
 bootstrap operation; there is no separate joiner executable.
 
+`seed/compiler.snbc` is a committed SnBC seed (ADR-0009, proposed). `make
+bootstrap-seed-fixed-point` runs it with `snl run-snbc` only, checks that the
+next two images match, and compares the first one with the `snl build` path.
+See `seed/README.md` for provenance and the update flow.
+
 Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
 invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
 own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument

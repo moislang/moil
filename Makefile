@@ -13,8 +13,15 @@ SDK_VERSION = $(shell xcrun --show-sdk-version)
 STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
+# Committed SnBC seed (ADR-0009): the first stage runs it with `snl run-snbc`
+# instead of `snl check`/`snl build`.
+SEED_IMAGE := bootstrap/seed/compiler.snbc
+SEED_HASH_FILE := bootstrap/seed/compiler.snbc.sha256
+SEED_STAGE1_IMAGE := $(BUILD_DIR)/seed-stage1.snbc
+SEED_STAGE2_IMAGE := $(BUILD_DIR)/seed-stage2.snbc
+SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256')
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -29,6 +36,31 @@ bootstrap-self-host: bootstrap-build
 bootstrap-fixed-point: bootstrap-self-host
 	SNL_OUTPUT=$(STAGE2_IMAGE) $(SNL) run-snbc $(STAGE1_IMAGE)
 	cmp $(STAGE1_IMAGE) $(STAGE2_IMAGE)
+
+# ADR-0009 slice 1: the committed seed image, run by `snl run-snbc` only,
+# compiles the current sources (stage 1); stage 1 compiles them again
+# (stage 2). Neither `snl check` nor `snl build` is involved in this chain.
+bootstrap-seed-stage:
+	mkdir -p $(BUILD_DIR)
+	$(SHA256) -c $(SEED_HASH_FILE)
+	SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(SNL) run-snbc $(SEED_IMAGE)
+	SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(SNL) run-snbc $(SEED_STAGE1_IMAGE)
+
+# Fixed point of the seed chain, plus a differential against the transitional
+# `snl build` path: both roots must produce the same stage-1 image.
+bootstrap-seed-fixed-point: bootstrap-seed-stage bootstrap-self-host
+	cmp $(SEED_STAGE1_IMAGE) $(SEED_STAGE2_IMAGE)
+	cmp $(SEED_STAGE1_IMAGE) $(STAGE1_IMAGE)
+	@echo "seed fixed point ok: $$($(SHA256) $(SEED_STAGE1_IMAGE))"
+
+# Replace the seed with the fixed-point image of the transitional `snl build`
+# path and record its hash. Needed only when the current seed can no longer
+# compile the sources (growth rule, ADR-0001); record the refresh in
+# docs/roadmap/evidence.md and bootstrap/seed/README.md.
+bootstrap-seed-refresh: bootstrap-fixed-point
+	cp $(STAGE1_IMAGE) $(SEED_IMAGE)
+	$(SHA256) $(SEED_IMAGE) > $(SEED_HASH_FILE)
+	cat $(SEED_HASH_FILE)
 
 bootstrap-smoke: bootstrap-build
 	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $(BUILD_DIR)/hello.snbc
