@@ -1,9 +1,11 @@
 package snova.library
 
-// Searches over int arrays sorted in ascending order.
+// Searches over int arrays sorted in ascending order. Stateless instance
+// API (ADR-0007): create it with `BinarySearch()`, so code built by
+// `snl build` v0.3.0 can use it.
 class BinarySearch {
     // First index whose value is >= target; values.len() when none is.
-    public static method lowerBound(values: int[], target: int): int {
+    public method lowerBound(values: int[], target: int): int {
         var low = 0
         var high = values.len()
         while low < high {
@@ -18,7 +20,7 @@ class BinarySearch {
     }
 
     // First index whose value is > target; values.len() when none is.
-    public static method upperBound(values: int[], target: int): int {
+    public method upperBound(values: int[], target: int): int {
         var low = 0
         var high = values.len()
         while low < high {
@@ -33,13 +35,13 @@ class BinarySearch {
     }
 
     // Index of target, or -1 when it is absent.
-    public static method indexOf(values: int[], target: int): int {
-        let index = BinarySearch.lowerBound(values, target)
+    public method indexOf(values: int[], target: int): int {
+        let index = lowerBound(values, target)
         if index < values.len() && values[index] == target { return index }
         return -1
     }
 
-    public static method contains(values: int[], target: int): bool {
-        return BinarySearch.indexOf(values, target) >= 0
+    public method contains(values: int[], target: int): bool {
+        return indexOf(values, target) >= 0
     }
 }
