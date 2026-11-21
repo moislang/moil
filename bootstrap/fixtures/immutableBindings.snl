@@ -1,0 +1,21 @@
+package bootstrap.fixture
+
+struct box {
+    public var value: int
+}
+
+func grow(start: int): int {
+    var current = start
+    current = current + 10
+    return current
+}
+
+func main(): int {
+    let items: int[] = []
+    items.push(5)
+    let holder = box { value: 1 }
+    holder.value = holder.value + 6
+    var total = grow(items.len())
+    total = total + holder.value + 5
+    return total + 19
+}

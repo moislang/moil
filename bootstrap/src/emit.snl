@@ -166,13 +166,27 @@ func setLocalTy(bg: compilerState, cx: compilerContext, slot: int, ty: int): uni
             bg.loc_ns.push(bg.loc_ns[i])
             bg.loc_nl.push(bg.loc_nl[i])
             bg.loc_ty.push(ty)
+            bg.loc_mut.push(bg.loc_mut[i])
             return
         }
         i = i - 1
     }
 }
 
+func localMutable(bg: compilerState, cx: compilerContext, slot: int): int {
+    var i = bg.loc_slot.len() - 1
+    while i >= cx.loc_base {
+        if bg.loc_slot[i] == slot { return bg.loc_mut[i] }
+        i = i - 1
+    }
+    return 1
+}
+
 func addLocal(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int): int {
+    return addLocalWith(bg, cx, ns, nl, ty, 1)
+}
+
+func addLocalWith(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int, mutable: int): int {
     if cx.locals >= 256 {
         fail(cx)
         return 0
@@ -186,6 +200,7 @@ func addLocal(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int)
     bg.loc_ns.push(ns)
     bg.loc_nl.push(nl)
     bg.loc_ty.push(ty)
+    bg.loc_mut.push(mutable)
     return slot
 }
 

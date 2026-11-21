@@ -12,6 +12,11 @@ sources, then asks the generated compiler to do the same. Both SnBC images must
 match byte for byte. The compiler's `sourceJoin.snl` handles this internal
 bootstrap operation; there is no separate joiner executable.
 
+`seed/compiler.snbc` is a committed SnBC seed (ADR-0009, proposed). `make
+bootstrap-seed-fixed-point` runs it with `snl run-snbc` only, checks that the
+next two images match, and compares the first one with the `snl build` path.
+See `seed/README.md` for provenance and the update flow.
+
 Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
 invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
 own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument
@@ -46,6 +51,11 @@ and the rejection of strong cycles. Unsupported opcodes fail with
 `library/` holds data structures and algorithms in Snova (searches,
 sorting, `BinaryHeap`, `BinaryTree`, `IntMap`). `make bootstrap-library`
 runs each fixture on `snl run-snbc`, on the Snova executor and natively.
+`BinarySearch` and `LinearSearch` expose an instance API (ADR-0007), so
+`make bootstrap-library-root` also builds their fixture with `snl build` and
+compares that executable with `snl run-snbc`, the Snova executor and the
+expected output in `fixtures/expected/` (stdout and exit status captured
+before the migration); it needs no native toolchain.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.

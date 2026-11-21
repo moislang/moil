@@ -1,5 +1,7 @@
 package snova.compiler.runtime
 
+import builtin.io.console
+
 // Table of one-byte strings used to turn the SnBC pool (ASCII bytes) into
 // host strings. The seed subset has no bytes -> string conversion.
 func vmTextTable(table: string[]): unit {
@@ -116,4 +118,18 @@ func vmTextTable(table: string[]): unit {
 func vmTextByte(byte: int): bool {
     if byte == 9 || byte == 10 || byte == 13 { return true }
     return byte >= 32 && byte <= 126
+}
+
+// Prints source bytes start..start+length (ASCII) for diagnostics.
+public func printSourceSpan(source: int[], start: int, length: int): unit {
+    var table: string[] = []
+    vmTextTable(table)
+    var text = ""
+    var index = 0
+    while index < length {
+        let byte = source[start + index]
+        if vmTextByte(byte) { text = text + table[byte] }
+        index = index + 1
+    }
+    Console.print(text)
 }

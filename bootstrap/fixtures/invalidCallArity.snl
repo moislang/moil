@@ -1,0 +1,9 @@
+package bootstrap.fixture
+
+func add(left: int, right: int): int {
+    return left + right
+}
+
+func main(): int {
+    return add(40)
+}

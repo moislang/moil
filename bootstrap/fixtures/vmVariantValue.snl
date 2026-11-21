@@ -1,0 +1,27 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// Variant values compare by name and print their name, as `snl run` does.
+// `snl run-snbc` v0.3.0 compares them by identity and prints an empty line,
+// so this fixture has a fixed expected output (see evidence.md).
+enum Light {
+    Red,
+    Amber,
+    Off
+}
+
+struct lamp {
+    public var state: Light
+}
+
+func main(): int {
+    let first = Light.Red
+    let unit = lamp { state: Light.Amber }
+    Console.printline(first == Light.Red)
+    Console.printline(first == unit.state)
+    Console.printline(first != Light.Off)
+    Console.printline(first)
+    Console.printline(unit.state)
+    return 3
+}
