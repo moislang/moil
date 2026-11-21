@@ -212,8 +212,10 @@ bootstrap-library: bootstrap-build
 # Library modules with an instance API (ADR-0007), which `snl build` v0.3.0,
 # the current root, can build. Each fixture is joined with these modules only.
 # The `snl build` executable, `snl run-snbc` and the Snova executor must agree
-# on stdout and exit status for the image compiled by the Snova compiler.
-# Needs no native toolchain, so it runs on every host with `snl`.
+# on stdout and exit status for the image compiled by the Snova compiler, and
+# match bootstrap/fixtures/expected/<fixture>.stdout and .status, captured from
+# the fixture before its migration (SPEC-0001). Needs no native toolchain, so
+# it runs on every host with `snl`.
 LIBRARY_ROOT_SOURCES := binarySearch linearSearch
 LIBRARY_ROOT_FIXTURES := librarySearch
 
@@ -231,5 +233,7 @@ bootstrap-library-root: bootstrap-build
 		test "$$rootExit" -eq "$$referenceExit" -a "$$rootExit" -eq "$$vmExit" || { echo "$$fixture: root $$rootExit ref $$referenceExit vm $$vmExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.ref.txt || exit 1; \
 		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.vm.txt || exit 1; \
-		echo "library root ok: $$fixture (exit $$rootExit)"; \
+		test "$$rootExit" -eq "$$(cat bootstrap/fixtures/expected/$$fixture.status)" || { echo "$$fixture: exit $$rootExit != expected $$(cat bootstrap/fixtures/expected/$$fixture.status)"; exit 1; }; \
+		cmp bootstrap/fixtures/expected/$$fixture.stdout $(BUILD_DIR)/$$fixture.root.txt || { echo "$$fixture: stdout differs from expected"; exit 1; }; \
+		echo "library root ok: $$fixture (exit $$rootExit, matches expected)"; \
 	done

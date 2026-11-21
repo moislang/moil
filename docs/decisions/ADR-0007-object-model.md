@@ -77,7 +77,8 @@ not support `static` or annotations.
   stateless types become fieldless classes created with `Type()` whose
   methods are instance methods; sibling calls drop the type qualifier.
   `BinarySearch` and `LinearSearch` are migrated, and
-  `make bootstrap-library-root` builds their fixture with `snl build`.
+  `make bootstrap-library-root` builds their fixture with `snl build`. The
+  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/snovalang/snl/pull/5)).
 - Once the native backend builds the compiler (N3), the root's restrictions
   stop applying, and the rules can be relaxed through a new ADR.
 
