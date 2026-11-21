@@ -1,8 +1,8 @@
-# Regras para documentação
+# Documentation rules
 
-- Mantenha documentação em português claro; nomes técnicos e interfaces podem permanecer em inglês.
-- Separe decisão proposta, implementação e evidência observada. Use status explícito nos ADRs.
-- Mermaid de arquitetura tem fonte `.mmd` em `docs/diagrams/`; referencie-a em Markdown quando necessário.
-- Toda afirmação sobre a versão instalada ou comportamento do `snl` deve apontar para uma sonda reproduzível e uma entrada de `evidence.md`.
-- Atualize README, roadmap, matriz do subset e diagramas junto com uma decisão estrutural.
-- Não escreva cronogramas ou percentuais sem medições e marcos concluídos.
+- Write all documentation in clear English: Markdown, ADRs, diagrams, evidence entries and source code comments.
+- Separate proposed decision, implementation and observed evidence. Use an explicit status in ADRs.
+- Architecture Mermaid diagrams have a `.mmd` source in `docs/diagrams/`; reference it from Markdown when needed.
+- Every claim about the installed `snl` version or behavior must point to a reproducible probe and an entry in `evidence.md`.
+- Update README, roadmap, subset matrix and diagrams together with a structural decision.
+- Do not write schedules or percentages without measurements and completed milestones.

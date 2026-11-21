@@ -1,0 +1,14 @@
+package bootstrap.fixture
+
+// Enum variants lower to SnBC opcode 42, which the native backend does not
+// support yet; the compiler must fail with a diagnostic instead of emitting
+// partial assembly.
+enum Direction {
+    North
+    South
+}
+
+func main(): int {
+    let heading = Direction.North
+    return 0
+}

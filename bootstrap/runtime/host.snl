@@ -1,0 +1,147 @@
+package snova.runtime
+
+import builtin.text.text.values
+
+// Files, arguments and environment of the native runtime. System calls go
+// through System; loops, buffers and the environment lookup are Snova.
+// File, text and host-call operands are borrowed; results are new owners.
+class Host {
+    private static method openPath(path: int, flags: int, mode: int): int {
+        let cPath = Text.toC(path)
+        let descriptor = System.open(cPath, flags, mode)
+        Heap.free(cPath)
+        return descriptor
+    }
+
+    // Reads the whole file into a runtime string; 0 when it cannot be opened.
+    public static method readFile(path: int): int {
+        let descriptor = Host.openPath(path, 0, 0)
+        if descriptor < 0 { return 0 }
+        var capacity = 65536
+        var buffer = Text.create(capacity)
+        var length = 0
+        var reading = true
+        while reading {
+            if length == capacity {
+                let grown = Text.create(2 * capacity)
+                Heap.copyBytes(grown + 8, buffer + 8, length)
+                Heap.free(buffer)
+                buffer = grown
+                capacity = 2 * capacity
+            }
+            let count = System.read(descriptor, buffer + 8 + length, capacity - length)
+            if count <= 0 {
+                reading = false
+            } else {
+                length = length + count
+            }
+        }
+        System.close(descriptor)
+        let text = Text.create(length)
+        Heap.copyBytes(text + 8, buffer + 8, length)
+        Heap.free(buffer)
+        return text
+    }
+
+    // Darwin O_WRONLY | O_CREAT | O_TRUNC, mode 0644.
+    private static method writeFile(path: int, address: int, length: int): bool {
+        let descriptor = Host.openPath(path, 1537, 420)
+        if descriptor < 0 { return false }
+        let written = Runtime.output(descriptor, address, length)
+        System.close(descriptor)
+        return written
+    }
+
+    // READ_BYTES (47): array of integers 0..255; empty when the file cannot
+    // be opened.
+    public static method readBytes(pathTag: int, path: int): int {
+        if pathTag != 3 { Runtime.fail(2, 47) }
+        let text = Host.readFile(path)
+        if text == 0 { return Primitive.tagged(4, Container.newArray(0)) }
+        let length = Text.byteCount(text)
+        let array = Container.newArray(length)
+        var index = 0
+        while index < length {
+            Container.append(array, 1, Primitive.loadByte(text + 8 + index))
+            index = index + 1
+        }
+        Heap.free(text)
+        return Primitive.tagged(4, array)
+    }
+
+    // WRITE_BYTES (48): every element must be an int; writes the low byte.
+    public static method writeBytes(pathTag: int, path: int, bytesTag: int, bytes: int): unit {
+        if pathTag != 3 || bytesTag != 4 { Runtime.fail(2, 48) }
+        let length = Container.arrayLength(bytes)
+        let buffer = Heap.allocate(length + 1)
+        var index = 0
+        while index < length {
+            let slot = Container.slot(bytes, index)
+            if Primitive.load(slot + 8) != 1 { Runtime.fail(2, 48) }
+            Primitive.storeByte(buffer + index, Primitive.load(slot))
+            index = index + 1
+        }
+        Host.writeFile(path, buffer, length)
+        Heap.free(buffer)
+    }
+
+    // Runtime.writeText (call 4).
+    public static method writeText(pathTag: int, path: int, textTag: int, text: int): bool {
+        if pathTag != 3 || textTag != 3 { Runtime.fail(2, 57) }
+        return Host.writeFile(path, text + 8, Text.byteCount(text))
+    }
+
+    // Runtime.argumentCount (call 6): arguments after the program name.
+    public static method argumentCount(): int {
+        return Primitive.load(Primitive.state()) - 1
+    }
+
+    public static method argument(index: int): int {
+        if index < 0 || index >= Host.argumentCount() { return Text.empty() }
+        let vector = Primitive.load(Primitive.state() + 8)
+        return Text.fromC(Primitive.load(vector + 8 * (index + 1)), 0)
+    }
+
+    // Looks up "NAME=" in envp; empty string when the variable is missing.
+    public static method environment(name: int): int {
+        let nameLength = Text.byteCount(name)
+        var entryAt = Primitive.load(Primitive.state() + 16)
+        while Primitive.load(entryAt) != 0 {
+            let entry = Primitive.load(entryAt)
+            var index = 0
+            while index < nameLength && Primitive.loadByte(entry + index) == Primitive.loadByte(name + 8 + index) {
+                index = index + 1
+            }
+            if index == nameLength && Primitive.loadByte(entry + index) == 61 {
+                return Text.fromC(entry, nameLength + 1)
+            }
+            entryAt = entryAt + 8
+        }
+        return Text.empty()
+    }
+
+    public static method fileExists(path: int): bool {
+        let descriptor = Host.openPath(path, 0, 0)
+        if descriptor < 0 { return false }
+        System.close(descriptor)
+        return true
+    }
+
+    // One-argument RUNTIME_CALL (57): 2 fileExists, 3 readText,
+    // 5 environment, 7 argument. Wrong types fail as in the SnBC executor.
+    public static method call(callId: int, tag: int, payload: int): int {
+        if callId == 5 && tag == 3 { return Primitive.tagged(3, Host.environment(payload)) }
+        if callId == 7 && tag == 1 { return Primitive.tagged(3, Host.argument(payload)) }
+        if callId == 2 && tag == 3 {
+            if Host.fileExists(payload) { return Primitive.tagged(2, 1) }
+            return Primitive.tagged(2, 0)
+        }
+        if callId == 3 && tag == 3 {
+            var text = Host.readFile(payload)
+            if text == 0 { text = Text.empty() }
+            return Primitive.tagged(3, text)
+        }
+        Runtime.fail(2, 57)
+        return 0
+    }
+}

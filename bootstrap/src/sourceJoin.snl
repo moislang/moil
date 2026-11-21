@@ -83,9 +83,15 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/vmFast.snl", 0)
     appendFile(output, "bootstrap/src/vmFrame.snl", 0)
     appendFile(output, "bootstrap/src/vmLoad.snl", 0)
-    appendFile(output, "bootstrap/src/nativeText.snl", 0)
-    appendFile(output, "bootstrap/src/nativeEmit.snl", 0)
-    appendFile(output, "bootstrap/src/nativeFunction.snl", 0)
+    appendFile(output, "bootstrap/src/nativeImage.snl", 0)
+    appendFile(output, "bootstrap/src/nativeRoles.snl", 0)
+    appendFile(output, "bootstrap/src/nativeAssembly.snl", 0)
+    appendFile(output, "bootstrap/src/nativeSlot.snl", 0)
+    appendFile(output, "bootstrap/src/nativeOwnership.snl", 0)
+    appendFile(output, "bootstrap/src/nativeValueEmitter.snl", 0)
+    appendFile(output, "bootstrap/src/nativeInstructionEmitter.snl", 0)
+    appendFile(output, "bootstrap/src/nativeBoundary.snl", 0)
+    appendFile(output, "bootstrap/src/nativeBackend.snl", 0)
     appendFile(output, "bootstrap/src/sourceJoin.snl", 0)
     appendFile(output, "bootstrap/src/compiler.snl", 0)
     appendFile(output, "bootstrap/src/api.snl", 0)
@@ -94,4 +100,20 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
     appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
     return output
+}
+
+// Native mode (ADR-0006): the Snova runtime is appended to the program
+// source and compiled with it, so the backend sees one image. Paths are
+// relative to the repository root, like ownSource.
+public func appendNativeRuntime(source: int[]): unit {
+    source.push(10)
+    appendFile(source, "bootstrap/runtime/primitive.snl", 0)
+    appendFile(source, "bootstrap/runtime/system.snl", 0)
+    appendFile(source, "bootstrap/runtime/heap.snl", 0)
+    appendFile(source, "bootstrap/runtime/runtime.snl", 0)
+    appendFile(source, "bootstrap/runtime/text.snl", 0)
+    appendFile(source, "bootstrap/runtime/container.snl", 0)
+    appendFile(source, "bootstrap/runtime/ownership.snl", 0)
+    appendFile(source, "bootstrap/runtime/value.snl", 0)
+    appendFile(source, "bootstrap/runtime/host.snl", 0)
 }

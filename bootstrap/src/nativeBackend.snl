@@ -1,0 +1,76 @@
+package snova.compiler.backend
+
+import builtin.runtime
+
+// Native backend driver (ADR-0005, ADR-0006): builds the collaborating
+// objects, classifies the functions of a validated image (program plus
+// Snova runtime), translates every function and writes the assembly.
+//
+// Object model rules while `snl build` v0.3.0 is the transitional root
+// (probes in docs/roadmap/evidence.md): objects are created with
+// constructors, methods are called only on locals, parameters or siblings
+// (never on a field), and there are no static methods.
+class NativeBackend {
+    // Returns 0 on success, the first unsupported opcode, or -1 when the
+    // native runtime is missing from the image.
+    public method emit(bytes: int[], outputPath: string): int {
+        var roleFunction: int[] = []
+        var functionRole: int[] = []
+        var runtimeFunction: int[] = []
+        var lines: string[] = []
+        var slots: NativeSlot[] = []
+        var targets: int[] = []
+        let image = NativeImage(bytes)
+        let roles = NativeRoles(roleFunction, functionRole, runtimeFunction)
+        let output = NativeAssembly(lines, 0, roleFunction)
+        let stack = NativeOwnership(slots, 0, 0, 1, targets, targets, targets)
+        let values = NativeValueEmitter()
+        let boundary = NativeBoundary()
+        if roles.resolve(image) == false { return -1 }
+        let failed = translate(image, roles, output, stack, values, boundary)
+        if failed != 0 { return failed }
+        Runtime.writeText(outputPath, output.text())
+        return 0
+    }
+
+    private method translate(image: NativeImage, roles: NativeRoles, output: NativeAssembly, stack: NativeOwnership, values: NativeValueEmitter, boundary: NativeBoundary): int {
+        boundary.entry(output, image.mainFunction())
+        var offset = image.functionTable()
+        let functionCount = image.u32(offset)
+        offset = offset + 4
+        var functionIndex = 0
+        while functionIndex < functionCount {
+            offset = offset + 4 + image.u32(offset)
+            let arity = image.u32(offset)
+            let localCount = image.u32(offset + 4)
+            let codeLength = image.u32(offset + 8)
+            let codeStart = offset + 12
+            let role = roles.roleOf(functionIndex)
+            if role >= 0 && role <= roles.lastNative() {
+                boundary.nativeStub(output, functionIndex, role)
+            } else {
+                let instructions = NativeInstructionEmitter(functionIndex, localCount, roles.isRuntime(functionIndex))
+                let failed = translateFunction(image, output, stack, values, instructions, arity, codeStart, codeLength)
+                if failed != 0 { return failed }
+            }
+            offset = codeStart + codeLength
+            functionIndex = functionIndex + 1
+        }
+        boundary.data(output, image)
+        return 0
+    }
+
+    // Translates one function body; returns 0 or the first unsupported
+    // opcode.
+    private method translateFunction(image: NativeImage, output: NativeAssembly, stack: NativeOwnership, values: NativeValueEmitter, instructions: NativeInstructionEmitter, arity: int, codeStart: int, codeLength: int): int {
+        stack.begin(instructions.runtimeCode == false)
+        stack.collectTargets(image, codeStart, codeLength)
+        instructions.prologue(output, stack, arity)
+        var codeOffset = 0
+        while codeOffset < codeLength {
+            codeOffset = instructions.emit(output, stack, values, image, codeStart, codeOffset)
+            if codeOffset < 0 { return 0 - codeOffset }
+        }
+        return 0
+    }
+}

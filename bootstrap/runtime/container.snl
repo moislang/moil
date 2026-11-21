@@ -1,0 +1,99 @@
+package snova.runtime
+
+// Arrays and objects of the native runtime.
+// Array: header [0 length][8 capacity][16 element block]; element i takes
+// 16 bytes at elements + 16 * i (payload, tag).
+// Object: [0 field count][8 + 16 * i field i (payload, tag)].
+// The backend reads these layouts directly in GET_INDEX, ARRAY_LEN,
+// GET_FIELD and SET_FIELD; changing a layout requires changing
+// nativeValue.snl too (ADR-0006).
+class Container {
+    public static method newArray(capacity: int): int {
+        var reserved = capacity
+        if reserved < 4 { reserved = 4 }
+        let array = Heap.allocate(24)
+        Primitive.store(array, 0)
+        Primitive.store(array + 8, reserved)
+        Primitive.store(array + 16, Heap.allocate(16 * reserved))
+        return array
+    }
+
+    public static method arrayLength(array: int): int {
+        return Primitive.load(array)
+    }
+
+    public static method slot(array: int, index: int): int {
+        return Primitive.load(array + 16) + 16 * index
+    }
+
+    // Appends a value and returns the new length; doubles the capacity when
+    // full and frees the previous element block.
+    public static method append(array: int, tag: int, payload: int): int {
+        let length = Primitive.load(array)
+        let capacity = Primitive.load(array + 8)
+        if length == capacity {
+            let elements = Heap.allocate(32 * capacity)
+            let previous = Primitive.load(array + 16)
+            Heap.copyWords(elements, previous, 2 * length)
+            Heap.free(previous)
+            Primitive.store(array + 16, elements)
+            Primitive.store(array + 8, 2 * capacity)
+        }
+        let slot = Container.slot(array, length)
+        Primitive.store(slot, payload)
+        Primitive.store(slot + 8, tag)
+        Primitive.store(array, length + 1)
+        return length + 1
+    }
+
+    // Frees an array whose elements own nothing (runtime scratch arrays).
+    public static method freeArray(array: int): unit {
+        Heap.free(Primitive.load(array + 16))
+        Heap.free(array)
+    }
+
+    // ARRAY_PUSH (50): the element moves into the array (the backend already
+    // made it an owner); the array is borrowed. Pushing an array or object
+    // that reaches the target array would create a strong cycle.
+    public static method pushValue(arrayTag: int, array: int, tag: int, payload: int): int {
+        if arrayTag != 4 { Runtime.fail(2, 50) }
+        if Ownership.reaches(tag, payload, array) { Runtime.fail(10, 50) }
+        return Container.append(array, tag, payload)
+    }
+
+    // NEW_ARRAY (39): top is the address of the top slot of the caller's
+    // operand stack; the first element is the deepest one. Elements move
+    // into the array: the backend drops their slots without releasing them.
+    public static method arrayFromStack(top: int, count: int): int {
+        let array = Container.newArray(count)
+        var index = 0
+        while index < count {
+            let slot = top + 16 * (count - 1 - index)
+            Container.append(array, Primitive.load(slot + 8), Primitive.load(slot))
+            index = index + 1
+        }
+        return Primitive.tagged(4, array)
+    }
+
+    // NEW_OBJECT (36): same stack arrangement and ownership as NEW_ARRAY.
+    public static method objectFromStack(top: int, count: int): int {
+        let object = Heap.allocate(8 + 16 * count)
+        Primitive.store(object, count)
+        var index = 0
+        while index < count {
+            let slot = top + 16 * (count - 1 - index)
+            Primitive.store(object + 8 + 16 * index, Primitive.load(slot))
+            Primitive.store(object + 16 + 16 * index, Primitive.load(slot + 8))
+            index = index + 1
+        }
+        return Primitive.tagged(5, object)
+    }
+
+    public static method fieldCount(object: int): int {
+        return Primitive.load(object)
+    }
+
+    public static method fieldSlot(object: int, field: int): int {
+        return object + 8 + 16 * field
+    }
+}

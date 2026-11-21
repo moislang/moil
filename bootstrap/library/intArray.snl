@@ -1,0 +1,63 @@
+package snova.library
+
+// Growable integer array with random-access writes and removal at the end.
+// The logical size is a field; cells past the size are kept and reused, so
+// removing and appending again does not allocate.
+class IntArray {
+    public var cells: IntCell[]
+    public var size: int
+
+    public method count(): int {
+        return size
+    }
+
+    public method isEmpty(): bool {
+        return size == 0
+    }
+
+    // Value at index; missing when the index is out of range.
+    public method at(index: int, missing: int): int {
+        if index < 0 || index >= size { return missing }
+        return IntCell.read(cells[index])
+    }
+
+    // Writes value at index; returns false when the index is out of range.
+    public method put(index: int, newValue: int): bool {
+        if index < 0 || index >= size { return false }
+        IntCell.assign(cells[index], newValue)
+        return true
+    }
+
+    public method append(newValue: int): unit {
+        if size < cells.len() {
+            IntCell.assign(cells[size], newValue)
+        } else {
+            cells.push(IntCell { value: newValue })
+        }
+        size = size + 1
+    }
+
+    // Removes and returns the last value; missing when empty.
+    public method removeLast(missing: int): int {
+        if size == 0 { return missing }
+        size = size - 1
+        return IntCell.read(cells[size])
+    }
+
+    public method swap(first: int, second: int): unit {
+        let firstValue = IntCell.read(cells[first])
+        IntCell.assign(cells[first], IntCell.read(cells[second]))
+        IntCell.assign(cells[second], firstValue)
+    }
+
+    // Copies the logical contents into a new plain array.
+    public method values(): int[] {
+        var result: int[] = []
+        var index = 0
+        while index < size {
+            result.push(IntCell.read(cells[index]))
+            index = index + 1
+        }
+        return result
+    }
+}

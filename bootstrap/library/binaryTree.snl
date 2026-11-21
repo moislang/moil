@@ -1,0 +1,126 @@
+package snova.library
+
+// Binary search tree from int keys to int payloads over a node arena.
+// Operations are O(height); the tree is not rebalanced, so sorted
+// insertions degrade to a list. Keys are unique: inserting an existing key
+// replaces its payload. Construct with
+// `BinaryTree { nodes: emptyNodes, rootIndex: -1 }`.
+class BinaryTree {
+    public var nodes: TreeNode[]
+    public var rootIndex: int
+
+    public method count(): int {
+        return nodes.len()
+    }
+
+    public method isEmpty(): bool {
+        return nodes.len() == 0
+    }
+
+    private method addNode(key: int, payload: int): int {
+        nodes.push(TreeNode { key: key, payload: payload, left: -1, right: -1 })
+        return nodes.len() - 1
+    }
+
+    // Arena index of key, or -1 when absent.
+    public method indexOf(key: int): int {
+        var index = rootIndex
+        while index >= 0 {
+            let nodeKey = TreeNode.keyOf(nodes[index])
+            if key == nodeKey { return index }
+            if key < nodeKey {
+                index = TreeNode.leftOf(nodes[index])
+            } else {
+                index = TreeNode.rightOf(nodes[index])
+            }
+        }
+        return -1
+    }
+
+    // Returns true when the key was not present before.
+    public method insert(key: int, payload: int): bool {
+        if rootIndex < 0 {
+            rootIndex = addNode(key, payload)
+            return true
+        }
+        var index = rootIndex
+        while true {
+            let nodeKey = TreeNode.keyOf(nodes[index])
+            if key == nodeKey {
+                TreeNode.replacePayload(nodes[index], payload)
+                return false
+            }
+            if key < nodeKey {
+                let child = TreeNode.leftOf(nodes[index])
+                if child < 0 {
+                    TreeNode.linkLeft(nodes[index], addNode(key, payload))
+                    return true
+                }
+                index = child
+            } else {
+                let child = TreeNode.rightOf(nodes[index])
+                if child < 0 {
+                    TreeNode.linkRight(nodes[index], addNode(key, payload))
+                    return true
+                }
+                index = child
+            }
+        }
+        return false
+    }
+
+    // Payload of key, or missing when absent.
+    public method find(key: int, missing: int): int {
+        let index = indexOf(key)
+        if index < 0 { return missing }
+        return TreeNode.payloadOf(nodes[index])
+    }
+
+    public method contains(key: int): bool {
+        return indexOf(key) >= 0
+    }
+
+    public method minimumKey(missing: int): int {
+        if rootIndex < 0 { return missing }
+        var index = rootIndex
+        while TreeNode.leftOf(nodes[index]) >= 0 {
+            index = TreeNode.leftOf(nodes[index])
+        }
+        return TreeNode.keyOf(nodes[index])
+    }
+
+    public method maximumKey(missing: int): int {
+        if rootIndex < 0 { return missing }
+        var index = rootIndex
+        while TreeNode.rightOf(nodes[index]) >= 0 {
+            index = TreeNode.rightOf(nodes[index])
+        }
+        return TreeNode.keyOf(nodes[index])
+    }
+
+    private method heightAt(index: int): int {
+        if index < 0 { return 0 }
+        let leftHeight = heightAt(TreeNode.leftOf(nodes[index]))
+        let rightHeight = heightAt(TreeNode.rightOf(nodes[index]))
+        if leftHeight > rightHeight { return leftHeight + 1 }
+        return rightHeight + 1
+    }
+
+    public method height(): int {
+        return heightAt(rootIndex)
+    }
+
+    private method collectFrom(index: int, result: int[]): unit {
+        if index < 0 { return }
+        collectFrom(TreeNode.leftOf(nodes[index]), result)
+        result.push(TreeNode.keyOf(nodes[index]))
+        collectFrom(TreeNode.rightOf(nodes[index]), result)
+    }
+
+    // Keys in ascending order.
+    public method keys(): int[] {
+        var result: int[] = []
+        collectFrom(rootIndex, result)
+        return result
+    }
+}

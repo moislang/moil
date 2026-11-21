@@ -1,29 +1,29 @@
-# Subset do compilador
+# Compiler subset
 
-Esta matriz separa capacidade implementada de compatibilidade com `snovac`.
-Uma linha só avança depois de fonte Snova do compilador usar o recurso e de um
-estágio anterior conseguir compilá-la.
+This matrix separates implemented capability from compatibility with
+`snovac`. A row only advances after compiler Snova source uses the feature and
+a previous stage can compile it.
 
-| Área | Seed atual | Próximo gate |
+| Area | Current seed | Next gate |
 |---|---|---|
-| Fontes do compilador | Módulos `.snl` camelCase; build de projeto; montagem interna das próprias fontes | Resolver imports e compilar projetos gerais diretamente no compilador Snova |
-| Frontend | Lexer/parser do subset com diagnóstico de fase e linha | Diagnósticos estáveis com span e diferencial versionado com referência |
-| Semântica | Resolução local necessária ao subset; tipos estáticos de literais, locais, parâmetros e campos; warning `SNW0001` para `==`/`!=` entre tipos conhecidos e diferentes (não interrompe a compilação) | Tipos e diagnósticos compatíveis por marcos; spans completos; comparação de endereço `&T == &E` quando referências entrarem no subset |
-| IR e backend | Lowering para SnBC; o binário de `snl build` é SnBC + VM C empacotada; backend nativo N1 em Snova: SnBC numérico → assembly aarch64 (`native`), montado por `as`/`ld` | N2: runtime em Snova (strings, arrays, structs, I/O) no backend nativo; N3: compilador nativo (ADR-0005) |
-| Runtime | Fachada Snova para argumentos, ambiente e I/O; `Runtime.writeText`, `fileExists` e `readText` aceitos pelo seed; validador SnBC; executor SnBC iterativo em Snova (valores tipados, chamadas, arrays, objetos, strings por bytes, I/O e runtime API) que roda a imagem do compilador; operações de OS ainda fornecidas pelo runtime anterior | Primitiva string→bytes e stderr como fronteira (ADR-0004); runtime nativo (ADR-0005) |
-| CLI | Caminhos de entrada e saída por argumentos; modo interno de bootstrap por `SNL_OUTPUT` | Flags, diagnósticos e projeto compatíveis com `snovac` |
-| Self-compilation | Seed Snova compila seu source para SnBC; imagem seguinte coincide | Repetir o ciclo após cada extensão e registrar os hashes |
-| Compatibilidade total | Não demonstrada | Corpus `snovac` com resultados diferenciais e lacunas explicitadas |
+| Compiler sources | camelCase `.snl` modules; project build; internal assembly of its own sources | Resolve imports and compile general projects directly in the Snova compiler |
+| Frontend | Subset lexer/parser with phase and line diagnostics | Stable diagnostics with spans and a versioned differential against the reference |
+| Semantics | Local resolution needed by the subset; static types of literals, locals, parameters and fields; warning `SNW0001` for `==`/`!=` between known, different types (does not stop compilation) | Compatible types and diagnostics by milestones; full spans; address comparison `&T == &E` once references enter the subset |
+| IR and backend | Lowering to SnBC; the `snl build` binary is SnBC + bundled C VM; native backend in Snova (`native`): SnBC → aarch64 assembly, assembled by `as`/`ld`. N1 covers the numeric subset; N2 covers strings, arrays, structs, printing, files, arguments and environment through the Snova runtime | N3: compile the compiler natively and repeat the compilation (ADR-0005); enum variants, match and async remain unsupported natively |
+| Runtime | Snova facade for arguments, environment and I/O; SnBC validator; iterative SnBC executor in Snova that runs the compiler image; **native runtime in Snova** (`bootstrap/runtime/`): bump allocator over `mmap`, byte strings, arrays, objects, value equality, printing, files, arguments and environment; assembly only in primitive stubs and `_write`/`_read`/`_open`/`_close`/`_mmap`/`_exit` (ADR-0006) | Memory reclamation and faster copies for N3; stderr; the SnBC executor still uses the `/tmp` scratch file while it runs on the `snl` C VM (ADR-0004) |
+| CLI | Input and output paths as arguments; internal bootstrap mode through `SNL_OUTPUT` | Flags, diagnostics and projects compatible with `snovac` |
+| Self-compilation | The Snova seed compiles its source to SnBC; the next image matches | Repeat the cycle after each extension and record the hashes |
+| Full compatibility | Not demonstrated | `snovac` corpus with differential results and explicit gaps |
 
-## Regra de implementação
+## Implementation rule
 
-Todo novo código do compilador, runtime e ferramentas de desenvolvimento deve
-ser escrito em Snova. C/C++ não é uma implementação alternativa. O seed
-instalado `snl` é apenas a raiz transitória para obter o primeiro artefato; a
-cadeia avança quando o compilador Snova gerado puder compilar sua própria
-revisão e produzir o mesmo artefato. Chamadas indispensáveis ao sistema ficam
-atrás de contratos pequenos de ABI, sem lógica do compilador fora de Snova.
+All new compiler, runtime and development tool code must be written in Snova.
+C/C++ is not an alternative implementation. The installed `snl` seed is only
+the transitional root used to obtain the first artifact; the chain advances
+when the generated Snova compiler can compile its own revision and produce the
+same artifact. Indispensable system calls stay behind small ABI contracts,
+with no compiler logic outside Snova.
 
-O compilador é a única peça de produto/publicação deste projeto. Scripts de
-build e documentação são suporte de desenvolvimento e não componentes públicos
-da toolchain.
+The compiler is the only product/publication piece of this project. Build
+scripts and documentation are development support, not public toolchain
+components.

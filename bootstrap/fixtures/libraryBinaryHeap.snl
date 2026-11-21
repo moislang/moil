@@ -1,0 +1,34 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// BinaryHeap as a priority queue: values come out in ascending order, and
+// an empty heap returns the sentinel.
+func main(): int {
+    var cells: IntCell[] = []
+    var heap = BinaryHeap { storage: IntArray { cells: cells, size: 0 } }
+    Console.printline(heap.removeMinimum(-1))
+    Console.printline(heap.isEmpty())
+    let input = [42, 7, 19, 3, 25, 7, 100, 1]
+    var index = 0
+    while index < input.len() {
+        heap.insert(input[index])
+        index = index + 1
+    }
+    Console.printline(heap.count())
+    Console.printline(heap.peekMinimum(-1))
+    var checksum = 0
+    var previous = -1
+    var ordered = true
+    while heap.count() > 0 {
+        let value = heap.removeMinimum(-1)
+        if value < previous { ordered = false }
+        previous = value
+        checksum = checksum + value
+        Console.printline(value)
+    }
+    Console.printline(ordered)
+    heap.insert(5)
+    Console.printline(heap.peekMinimum(-1))
+    return checksum % 256
+}

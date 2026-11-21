@@ -1,0 +1,39 @@
+package snova.runtime
+
+// Memory primitives of the native runtime (ADR-0006). Each method is native:
+// it has no body, and the backend emits an aarch64 stub instead of the TRAP.
+//
+// Calling convention (the same as every native function): argument i of a
+// call with n arguments is in slot [sp + 16 * (n - 1 - i)] on entry, payload
+// in the first word and tag in the second; the result comes back in x0
+// (payload) and x1 (tag).
+//
+// State block (256 zeroed bytes in __DATA):
+//   0 argc, 8 argv, 16 envp (stored by _main), 24 chunk cursor,
+//   32 chunk limit, 40 program call depth, 48 live blocks, 56 live bytes,
+//   64..95 digit buffer, 96 single scratch byte for output,
+//   104 peak live bytes, 128..223 free-list heads of the 12 size classes.
+class Primitive {
+    // Address of the state block.
+    @Native
+    public static method state(): int
+
+    // Load and store 64-bit words and bytes at absolute addresses.
+    @Native
+    public static method load(address: int): int
+
+    @Native
+    public static method store(address: int, value: int): unit
+
+    @Native
+    public static method loadByte(address: int): int
+
+    @Native
+    public static method storeByte(address: int, value: int): unit
+
+    // Returns payload with the given tag (0 unit, 1 int, 2 bool, 3 string,
+    // 4 array, 5 object, 6 null). This is how the runtime hands strings,
+    // arrays and objects to the program.
+    @Native
+    public static method tagged(tag: int, payload: int): int
+}

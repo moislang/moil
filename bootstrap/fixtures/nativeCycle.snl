@@ -1,0 +1,24 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+struct node {
+    public var label: string
+    public var children: node[]
+}
+
+func attach(parent: node, child: node): unit {
+    parent.children.push(child)
+}
+
+// A strong cycle could never reach zero owners, so the native runtime
+// rejects the store that would create it (snovac memory-safety policy).
+func main(): int {
+    var root = node { label: "root", children: [] }
+    var leaf = node { label: "leaf", children: [] }
+    attach(root, leaf)
+    Console.printline("tree ok")
+    attach(leaf, root)
+    Console.printline("unreachable")
+    return 0
+}

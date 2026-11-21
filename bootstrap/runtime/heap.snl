@@ -1,0 +1,132 @@
+package snova.runtime
+
+// Native runtime heap (ADR-0006). Every block has a 16-byte header before
+// the payload: [owner count][size class]. Memory is returned as soon as the
+// last owner releases a block:
+// - small blocks (header included, up to 64 KiB) use 12 power-of-two size
+//   classes (32 B .. 64 KiB); a freed block goes to its class free list and
+//   is reused by the next allocation of that class;
+// - large blocks get their own mapping and go back to the kernel with
+//   munmap when freed.
+// The state block counts live blocks, live bytes and peak live bytes so the
+// gate can prove that nothing accumulates (Runtime.finish).
+class Heap {
+    private static method smallLimit(): int {
+        return 65536
+    }
+
+    private static method chunkSize(): int {
+        return 1048576
+    }
+
+    private static method pageSize(): int {
+        return 16384
+    }
+
+    private static method classOf(total: int): int {
+        var size = 32
+        var sizeClass = 0
+        while size < total {
+            size = size * 2
+            sizeClass = sizeClass + 1
+        }
+        return sizeClass
+    }
+
+    private static method classSize(sizeClass: int): int {
+        return 32 << sizeClass
+    }
+
+    private static method freeListHead(sizeClass: int): int {
+        return Primitive.state() + 128 + 8 * sizeClass
+    }
+
+    private static method countLive(bytes: int): unit {
+        let state = Primitive.state()
+        Primitive.store(state + 48, Primitive.load(state + 48) + 1)
+        let live = Primitive.load(state + 56) + bytes
+        Primitive.store(state + 56, live)
+        if live > Primitive.load(state + 104) { Primitive.store(state + 104, live) }
+    }
+
+    private static method countFreed(bytes: int): unit {
+        let state = Primitive.state()
+        Primitive.store(state + 48, Primitive.load(state + 48) - 1)
+        Primitive.store(state + 56, Primitive.load(state + 56) - bytes)
+    }
+
+    private static method mapPages(length: int): int {
+        let address = System.map(length)
+        if address == 0 - 1 { Runtime.fail(9, 0) }
+        return address
+    }
+
+    // Carves a block of the given class from the current chunk.
+    private static method carve(blockSize: int): int {
+        let state = Primitive.state()
+        var cursor = Primitive.load(state + 24)
+        if cursor == 0 || cursor + blockSize > Primitive.load(state + 32) {
+            cursor = Heap.mapPages(Heap.chunkSize())
+            Primitive.store(state + 32, cursor + Heap.chunkSize())
+        }
+        Primitive.store(state + 24, cursor + blockSize)
+        return cursor
+    }
+
+    // Returns the payload address of a block with one owner.
+    public static method allocate(size: int): int {
+        let total = size + 16
+        var block = 0
+        if total <= Heap.smallLimit() {
+            let sizeClass = Heap.classOf(total)
+            let head = Heap.freeListHead(sizeClass)
+            block = Primitive.load(head)
+            if block != 0 {
+                Primitive.store(head, Primitive.load(block))
+            } else {
+                block = Heap.carve(Heap.classSize(sizeClass))
+            }
+            Primitive.store(block + 8, sizeClass)
+            Heap.countLive(Heap.classSize(sizeClass))
+        } else {
+            let length = (total + Heap.pageSize() - 1) / Heap.pageSize() * Heap.pageSize()
+            block = Heap.mapPages(length)
+            Primitive.store(block + 8, 0 - length)
+            Heap.countLive(length)
+        }
+        Primitive.store(block, 1)
+        return block + 16
+    }
+
+    // Returns a block to its free list, or unmaps a large block.
+    public static method free(payload: int): unit {
+        let block = payload - 16
+        let sizeClass = Primitive.load(block + 8)
+        if sizeClass < 0 {
+            Heap.countFreed(0 - sizeClass)
+            System.unmap(block, 0 - sizeClass)
+            return
+        }
+        Heap.countFreed(Heap.classSize(sizeClass))
+        let head = Heap.freeListHead(sizeClass)
+        Primitive.store(block, Primitive.load(head))
+        Primitive.store(head, block)
+    }
+
+    public static method copyBytes(target: int, source: int, count: int): unit {
+        var index = 0
+        while index < count {
+            Primitive.storeByte(target + index, Primitive.loadByte(source + index))
+            index = index + 1
+        }
+    }
+
+    public static method copyWords(target: int, source: int, count: int): unit {
+        var offset = 0
+        let end = count * 8
+        while offset < end {
+            Primitive.store(target + offset, Primitive.load(source + offset))
+            offset = offset + 8
+        }
+    }
+}

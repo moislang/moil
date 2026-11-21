@@ -1,0 +1,94 @@
+package snova.runtime
+
+// Operations on tagged values that the backend does not resolve inline. The
+// semantics follow the Snova SnBC executor (vmOps.snl), which is the
+// differential oracle for this runtime. Operands are borrowed.
+class Value {
+    // PRINT (45).
+    public static method display(tag: int, payload: int, newline: int): unit {
+        if tag == 1 {
+            Runtime.outputInteger(payload)
+        } else if tag == 2 {
+            if payload != 0 { Runtime.outputString("true") } else { Runtime.outputString("false") }
+        } else if tag == 3 {
+            Runtime.outputString(payload)
+        } else if tag == 6 {
+            Runtime.outputString("null")
+        } else if tag != 0 {
+            Runtime.fail(2, 45)
+        }
+        if newline != 0 { Runtime.outputByte(1, 10) }
+    }
+
+    private static method seenPair(seen: int, tag: int, left: int, right: int): bool {
+        let count = Container.arrayLength(seen)
+        var index = 0
+        while index < count {
+            let slot = Container.slot(seen, index)
+            if Primitive.load(slot) == tag && Primitive.load(slot + 16) == left && Primitive.load(slot + 32) == right {
+                return true
+            }
+            index = index + 3
+        }
+        return false
+    }
+
+    private static method equalSlots(leftSlot: int, rightSlot: int, seen: int): bool {
+        return Value.equal(Primitive.load(leftSlot + 8), Primitive.load(leftSlot), Primitive.load(rightSlot + 8), Primitive.load(rightSlot), seen)
+    }
+
+    // Value equality: strings by bytes, arrays and objects element by
+    // element; already visited (tag, left, right) triples count as equal.
+    public static method equal(leftTag: int, left: int, rightTag: int, right: int, seen: int): bool {
+        if leftTag != rightTag { return false }
+        if leftTag == 0 || leftTag == 6 { return true }
+        if leftTag == 1 || leftTag == 2 { return left == right }
+        if leftTag == 3 { return Text.equal(left, right) }
+        if left == right { return true }
+        if Value.seenPair(seen, leftTag, left, right) { return true }
+        Container.append(seen, 1, leftTag)
+        Container.append(seen, 1, left)
+        Container.append(seen, 1, right)
+        if leftTag == 4 {
+            let count = Container.arrayLength(left)
+            if count != Container.arrayLength(right) { return false }
+            var index = 0
+            while index < count {
+                if Value.equalSlots(Container.slot(left, index), Container.slot(right, index), seen) == false { return false }
+                index = index + 1
+            }
+            return true
+        }
+        if leftTag == 5 {
+            let count = Container.fieldCount(left)
+            if count != Container.fieldCount(right) { return false }
+            var index = 0
+            while index < count {
+                if Value.equalSlots(Container.fieldSlot(left, index), Container.fieldSlot(right, index), seen) == false { return false }
+                index = index + 1
+            }
+            return true
+        }
+        return false
+    }
+
+    // General path of binary operations: the backend already resolved
+    // int/bool pairs inline. This handles value equality and string
+    // concatenation; the rest is a type error, as in vmBinary. The result is
+    // a new owner.
+    public static method binary(opcode: int, leftTag: int, left: int, rightTag: int, right: int): int {
+        if opcode == 24 || opcode == 25 {
+            let seen = Container.newArray(0)
+            var equal = Value.equal(leftTag, left, rightTag, right, seen)
+            Container.freeArray(seen)
+            if opcode == 25 { equal = equal == false }
+            if equal { return Primitive.tagged(2, 1) }
+            return Primitive.tagged(2, 0)
+        }
+        if opcode == 12 && leftTag == 3 && rightTag == 3 {
+            return Primitive.tagged(3, Text.concat(left, right))
+        }
+        Runtime.fail(2, opcode)
+        return 0
+    }
+}

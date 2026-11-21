@@ -1,15 +1,15 @@
-# CI de documentação e governança
+# Documentation and governance CI
 
-O workflow inicial valida a presença da estrutura de planejamento e referências locais nos Markdown. Ele não compila Snovalang e não prova a arquitetura. Quando o código começar, adicionar gates por fase sem transformar checks ainda não implementados em sucesso vazio.
+The initial workflow checks that the planning structure exists and that local references in Markdown resolve. It does not compile Snovalang and does not prove the architecture. Once code exists, add per-phase gates without turning checks that are not implemented yet into empty successes.
 
-## Gatilhos
+## Triggers
 
-- Pull requests e pushes para `main` que alterem documentação, regras, skills, workflows ou scripts de validação.
-- Execução manual via `workflow_dispatch`.
+- Pull requests and pushes to `main` that change documentation, rules, skills, workflows or validation scripts.
+- Manual runs through `workflow_dispatch`.
 
-## Política
+## Policy
 
-- Não publicar artefatos nem fazer deploy.
-- Não acessar nem alterar checkout vizinho.
-- Não instalar dependências de rede para validar Markdown.
-- Um check de compilador só entra após haver um caminho reproduzível e versionado para executá-lo.
+- Do not publish artifacts or deploy.
+- Do not access or modify the neighboring checkout.
+- Do not install network dependencies to validate Markdown.
+- A compiler check enters only once there is a reproducible, versioned way to run it.

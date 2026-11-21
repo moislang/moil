@@ -1,0 +1,64 @@
+package snova.library
+
+// Hash map from int keys to int payloads with separate chaining over an
+// entry arena. Each bucket head is an IntCell holding an arena index (-1 for
+// an empty bucket). The bucket count is fixed by initialize; there is no
+// removal. Lookups are O(1) on average while the load stays low.
+class IntMap {
+    public var heads: IntCell[]
+    public var entries: MapEntry[]
+
+    // Creates bucketCount empty buckets (at least 1). Call once before use.
+    public method initialize(bucketCount: int): unit {
+        var count = bucketCount
+        if count < 1 { count = 1 }
+        var index = 0
+        while index < count {
+            heads.push(IntCell { value: -1 })
+            index = index + 1
+        }
+    }
+
+    public method count(): int {
+        return entries.len()
+    }
+
+    private method bucketIndex(key: int): int {
+        var index = key % heads.len()
+        if index < 0 { index = index + heads.len() }
+        return index
+    }
+
+    // Arena index of key, or -1 when absent.
+    private method entryIndex(key: int): int {
+        var index = IntCell.read(heads[bucketIndex(key)])
+        while index >= 0 {
+            if MapEntry.keyOf(entries[index]) == key { return index }
+            index = MapEntry.nextOf(entries[index])
+        }
+        return -1
+    }
+
+    // Inserts or replaces; returns true when the key is new.
+    public method store(key: int, payload: int): bool {
+        let existing = entryIndex(key)
+        if existing >= 0 {
+            MapEntry.replacePayload(entries[existing], payload)
+            return false
+        }
+        let bucket = bucketIndex(key)
+        entries.push(MapEntry { key: key, payload: payload, next: IntCell.read(heads[bucket]) })
+        IntCell.assign(heads[bucket], entries.len() - 1)
+        return true
+    }
+
+    public method lookup(key: int, missing: int): int {
+        let index = entryIndex(key)
+        if index < 0 { return missing }
+        return MapEntry.payloadOf(entries[index])
+    }
+
+    public method containsKey(key: int): bool {
+        return entryIndex(key) >= 0
+    }
+}

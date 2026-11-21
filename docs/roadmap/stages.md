@@ -1,37 +1,46 @@
-# Roadmap de desenvolvimento
+# Development roadmap
 
-O roadmap é uma sequência de gates. Não se inicia a fase seguinte enquanto a evidência mínima da anterior não estiver registrada. Datas e estimativas ficam fora deste plano até existir medição real.
+The roadmap is a sequence of gates. The next phase does not start until the minimum evidence for the previous one is recorded. Dates and estimates stay out of this plan until there are real measurements.
 
-| Fase | Entrega | Gate para avançar |
+| Phase | Deliverable | Gate to advance |
 |---|---|---|
-| P0 — Descoberta | Inventário do `snl` instalado, versão, host, interfaces de arquivos/processos, sintaxe e limites do seed. Sondas pequenas e reproduzíveis. | Cada capacidade usada pelo seed tem probe e resultado; limitações e versão são registradas. Nenhuma dependência implícita de `snl run`. |
-| P1 — Contratos | Especificação do primeiro subconjunto, formatos de entrada/saída, diagnósticos, layout inicial e baseline do compilador de referência. | Casos aceitos e rejeitados definidos; critérios de equivalência automatizáveis. |
-| P2 — Hello vertical | Seed mínimo em Snovalang/subconjunto confirmado que gera um programa host simples; assembly mínimo somente se indispensável. | Build limpo, execução, código de saída e stdout verificados; seed recompilável pelo procedimento documentado. |
-| P3 — Primeiro compilador | Lexer, parser mínimo, representação intermediária e backend para um alvo; compila exemplos e subset de si mesmo. | Diferenciais positivos/negativos, erros com posições, semântica definida para cada feature implementada. |
-| P4 — Crescimento incremental | Estender subset em pequenos marcos: dados/coleções, funções e chamadas, tipos, módulos e runtime conforme dependências reais. | Para cada extensão: probe da ferramenta, spec, fixtures, diferencial e build do compilador anterior. |
-| P5 — Bootstrap | Compilador anterior gera novo compilador; builds repetidos com entradas/toolchain fixadas. | Cadeia registrada, artefatos comparados, hashes e diferenças explicados. |
-| P6 — Compatibilidade | Expandir gradualmente CLI, projetos, builtins, diagnósticos e corpus de referência. | Matriz de compatibilidade atualizada; comportamento não suportado explicitamente listado. |
-| P7 — Plataformas adicionais | Portar backend e ABI após host estável. | Cada alvo tem assemble/link/run quando toolchain disponível; limitações distinguem compilação de execução. |
-| P8 — DDC e manutenção | Raiz independente, cadeia de confiança e fluxo de atualização do seed. | Root-of-trust explícita; comparação independente documentada. Se não for possível, DDC fica marcado como não comprovado. |
+| P0 — Discovery | Inventory of the installed `snl`: version, host, file/process interfaces, syntax and seed limits. Small, reproducible probes. | Every capability the seed uses has a probe and a result; limitations and version are recorded. No implicit dependency on `snl run`. |
+| P1 — Contracts | Specification of the first subset, input/output formats, diagnostics, initial layout and a baseline of the reference compiler. | Accepted and rejected cases defined; automatable equivalence criteria. |
+| P2 — Hello vertical | A minimal seed in Snovalang (confirmed subset) that generates a simple host program; minimal assembly only if indispensable. | Clean build, execution, exit status and stdout verified; the seed can be rebuilt with the documented procedure. |
+| P3 — First compiler | Lexer, minimal parser, intermediate representation and a backend for one target; compiles examples and a subset of itself. | Positive/negative differentials, errors with positions, defined semantics for each implemented feature. |
+| P4 — Incremental growth | Extend the subset in small milestones: data/collections, functions and calls, types, modules and runtime according to real dependencies. | For each extension: tool probe, spec, fixtures, differential and a build by the previous compiler. |
+| P5 — Bootstrap | The previous compiler generates the new compiler; repeated builds with fixed inputs/toolchain. | Recorded chain, compared artifacts, hashes and explained differences. |
+| P6 — Compatibility | Gradually expand CLI, projects, builtins, diagnostics and the reference corpus. | Updated compatibility matrix; unsupported behavior explicitly listed. |
+| P7 — Additional platforms | Port the backend and ABI after the host is stable. | Each target has assemble/link/run when a toolchain is available; limitations separate compilation from execution. |
+| P8 — DDC and maintenance | Independent root, chain of trust and seed update flow. | Explicit root of trust; independent comparison documented. If that is not possible, DDC is marked as unproven. |
 
-## Estado atual
+## Current state
 
-O seed Snova foi integrado em `bootstrap/src/`. Há evidência local de check,
-build pelo `snl build` (SnBC empacotado com a VM C, não código de máquina), execução de um programa gerado, diagnósticos positivos/negativos,
-compilação do source pelo seed, igualdade de duas imagens SnBC e execução da
-imagem do compilador pelo executor SnBC escrito em Snova, reproduzindo a mesma
-imagem. O backend nativo é a próxima fronteira (ADR-0005, proposto). Isso fecha um
-ciclo inicial restrito; não fecha compatibilidade nem substitui `snovac`. A sequência de expansão e os limites estão em
-[`subset.md`](subset.md) e os comandos reproduzíveis em `Makefile`.
+The Snova seed is integrated in `bootstrap/src/`. There is local evidence of:
+check; build by `snl build` (SnBC bundled with the C VM, not machine code);
+execution of a generated program; positive/negative diagnostics; compilation
+of the source by the seed; equality of two SnBC images; and execution of the
+compiler image by the SnBC executor written in Snova, reproducing the same
+image.
 
-## Regra de crescimento
+The native backend (ADR-0005) has slices N1 (numeric) and N2 (Snova runtime
+with ownership-based memory release, ADR-0006) implemented. Native
+executables are aarch64 machine code linked only against `libSystem`; they
+free every block before exit and keep constant memory in loops. The next
+slice is N3: compile the compiler itself natively.
 
-O subset do compilador `N+1` precisa estar contido no subset que o compilador `N` consegue compilar. Uma feature nova é entregue nesta ordem: probe → especificação → fixture → implementação mínima → diferencial → build do próximo estágio. Evitar saltos para dezenas de features antes de fechar um ciclo completo.
+This closes a restricted initial cycle; it does not close compatibility or
+replace `snovac`. The expansion sequence and the limits are in
+[`subset.md`](subset.md), and the reproducible commands are in the `Makefile`.
 
-## Fora do primeiro marco
+## Growth rule
 
-Multi-target, collector avançado, exceções com unwind, concorrência, compatibilidade total de CLI e DDC não são requisitos do primeiro hello vertical. Reintroduzi-los exige motivação e gate próprios.
+The subset of compiler `N+1` must be contained in the subset that compiler `N` can compile. A new feature is delivered in this order: probe → specification → fixture → minimal implementation → differential → build of the next stage. Avoid jumping to dozens of features before closing a full cycle.
 
-## Registro de execução
+## Outside the first milestone
 
-Cada fase deve atualizar `docs/roadmap/evidence.md` com commit/revisão, host, versão do compilador, comando, resultado, artefatos e limitações. Não registrar intenção como evidência concluída.
+Multi-target, advanced collectors, exceptions with unwinding, concurrency, full CLI compatibility and DDC are not requirements of the first hello vertical. Reintroducing them requires its own motivation and gate. Deterministic memory release is not optional: the native runtime frees memory through ownership (ADR-0006) without a tracing collector.
+
+## Execution log
+
+Each phase must update `docs/roadmap/evidence.md` with commit/revision, host, compiler version, command, result, artifacts and limitations. Do not record intent as completed evidence.

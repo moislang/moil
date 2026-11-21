@@ -1,28 +1,30 @@
-# ADR-0003 — Snovalang como linguagem principal; assembly nas fronteiras
+# ADR-0003 — Snovalang as the main language; assembly at the boundaries
 
-- **Status:** Aceito
-- **Data:** 2026-11-21
+- **Status:** Accepted
+- **Date:** 2026-11-21
 
-## Contexto
+## Context
 
-O objetivo é demonstrar self-hosting em Snovalang. Ao mesmo tempo, a primeira versão pode não expor primitivas para iniciar o processo, chamar o assembler/linker ou alcançar syscalls/ABI.
+The goal is to demonstrate self-hosting in Snovalang. At the same time, the first version may not expose primitives to start the process, call the assembler/linker or reach system calls and the ABI.
 
-## Decisão
+## Decision
 
-Implementar compilador, runtime e ferramentas em Snovalang quando as capacidades confirmadas permitirem. Permitir assembly somente em fronteiras de host documentadas: bootstrap mínimo e chamadas ABI/OS sem interface equivalente. Cada símbolo de fronteira precisa de contrato e teste de integração. Não permitir C como atalho de implementação.
+Implement the compiler, runtime and tools in Snovalang whenever the confirmed capabilities allow it. Allow assembly only at documented host boundaries: the minimal bootstrap and ABI/OS calls with no equivalent interface. Each boundary symbol needs a contract and an integration test. Do not allow C as an implementation shortcut.
 
-## Consequências
+## Consequences
 
-- O inventário de primitivas disponíveis precede o desenho do seed.
-- O conjunto de assembly depende de cada plataforma e deve ser minimizado.
-- O compilador, o runtime e as ferramentas específicas do produto são escritos em Snova; C/C++ não são linguagens de implementação alternativas.
-- A toolchain instalada é uma raiz transitória enquanto o compilador Snova não consegue produzir e executar seu próprio artefato sem o runtime anterior.
-- Uma necessidade de C exige proposta de decisão separada e justificativa de impossibilidade técnica em Snovalang/assembly.
+- The inventory of available primitives comes before the seed design.
+- The assembly set depends on each platform and must be minimized.
+- The compiler, runtime and product-specific tools are written in Snova; C/C++ are not alternative implementation languages.
+- The installed toolchain is a transitional root while the Snova compiler cannot produce and run its own artifact without the previous runtime.
+- A need for C requires a separate decision proposal and a justification that Snovalang/assembly cannot do it.
 
-O estado inicial ainda usa o runtime fornecido pelo `snl` para executar o SnBC
-gerado. Isso é dependência de bootstrap, não implementação C do compilador
-neste repositório; removê-la é um gate explícito da migração.
+The SnBC path still uses the runtime supplied by `snl` to execute generated
+SnBC. This is a bootstrap dependency, not a C implementation of the compiler
+in this repository; removing it is an explicit migration gate. The native
+path already follows this ADR: its runtime is Snova, and assembly is limited
+to the stubs listed in ADR-0006.
 
-## Reabrir quando
+## Reopen when
 
-Uma interface de runtime Snovalang nativa tornar desnecessária uma fronteira assembly ou quando evidência demonstrar que uma alternativa é necessária para a cadeia de bootstrap.
+A native Snovalang runtime interface makes an assembly boundary unnecessary, or evidence shows that an alternative is needed for the bootstrap chain.

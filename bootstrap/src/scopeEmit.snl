@@ -199,6 +199,11 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
                 if st >= 0 && bg.st_kind[st] != 3 {
                     let m = scopeFindMethod(src, bg, st, ns, nl)
                     if m >= 0 {
+                        // `Type.method(...)` needs a static method.
+                        if bg.fn_static[m] == 0 {
+                            fail(cx)
+                            return 1
+                        }
                         emitForward(src, bg, cx, code, fat, fb, args, 0)
                         scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
                         cx.expr_ty = 0
@@ -212,6 +217,11 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
                     let st = ty - 1
                     let m = scopeFindMethod(src, bg, st, ns, nl)
                     if m >= 0 {
+                        // A static method is called through its type.
+                        if bg.fn_static[m] != 0 {
+                            fail(cx)
+                            return 1
+                        }
                         emitExpr(src, bg, cx, code, fat, fb, recv)
                         emitForward(src, bg, cx, code, fat, fb, args, 0)
                         scopeCallOp(code, m, consCount(bg, args) + 1, bg.fn_async[m])
@@ -247,6 +257,12 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
     }
     if cx.owner >= 0 {
         let m = scopeFindMethod(src, bg, cx.owner, ns, nl)
+        if m >= 0 && bg.fn_static[m] != 0 {
+            emitForward(src, bg, cx, code, fat, fb, args, 0)
+            scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
+            cx.expr_ty = 0
+            return 1
+        }
         if m >= 0 {
             code.push(8)
             pushU32(code, 0)

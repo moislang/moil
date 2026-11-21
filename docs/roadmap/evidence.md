@@ -1,107 +1,117 @@
-# Registro de evidências
+# Evidence log
 
-Este arquivo começa vazio de resultados técnicos. As entradas devem registrar fatos observados, não metas.
+This file started with no technical results. Entries must record observed facts, not goals.
 
-## Modelo de entrada
+## Entry template
 
 ```text
-### YYYY-MM-DD — fase/marco
-- Revisão do repositório:
-- Host e SO:
-- snl/snovac de referência (versão e caminho):
-- Comando(s):
-- Resultado observado:
-- Artefatos/hash:
-- Limitações e itens não verificados:
+### YYYY-MM-DD — phase/milestone
+- Repository revision:
+- Host and OS:
+- Reference snl/snovac (version and path):
+- Command(s):
+- Observed result:
+- Artifacts/hash:
+- Limitations and unverified items:
 ```
 
-## 2026-11-21 — seed Snova e fixed point restrito
+## 2026-11-21 — Snova seed and restricted fixed point
 
-- Revisão do repositório de referência: `snovac` `2b5048aaf221527e22ea844f858b5d0f33f149c9` (checkout local; somente leitura).
-- Host e SO: Apple Silicon, macOS; triple observado `aarch64-apple-darwin`.
+- Reference repository revision: `snovac` `2b5048aaf221527e22ea844f858b5d0f33f149c9` (local checkout; read-only).
+- Host and OS: Apple Silicon, macOS; observed triple `aarch64-apple-darwin`.
 - `snl`: `snl v0.3.0` (`/Users/yurimoinhos/.snova/bin/snl`).
-- Comandos observados: `make bootstrap-fixed-point` (targets encadeados de join, check, build, self-host e compare).
-- Resultado observado: check e build nativo passaram; o seed compilou seu próprio source para SnBC; a segunda imagem comparou byte a byte igual à primeira.
-- SHA-256 das duas imagens comparadas: `2bff50e2757bd6fbd252f375832c445aa1b20a48aa9876bbe126f0da9e4482d1`.
-- Limitações: resultado do subset implementado no seed, usando runtime do `snl`; não comprova CLI completa, compilação do source de `snovac`, standalone sem runtime C, build reproduzível independente, DDC ou equivalência geral. A proveniência do source importado está em `bootstrap/README.md`.
+- Observed commands: `make bootstrap-fixed-point` (chained join, check, build, self-host and compare targets).
+- Observed result: check and the (then called "native") build passed; the seed compiled its own source to SnBC; the second image compared byte for byte equal to the first.
+- SHA-256 of the two compared images: `2bff50e2757bd6fbd252f375832c445aa1b20a48aa9876bbe126f0da9e4482d1`.
+- Limitations: a result for the subset implemented in the seed, using the `snl` runtime; it does not prove a full CLI, compilation of the `snovac` source, standalone execution without the C runtime, an independent reproducible build, DDC or general equivalence. The provenance of the imported source is in `bootstrap/README.md`.
 
-## 2026-11-21 — smoke e diagnósticos do seed
+## 2026-11-21 — seed smoke test and diagnostics
 
-- Revisão e host: mesmos do registro anterior; `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-smoke`, `make bootstrap-diagnostics`, `make bootstrap-fixed-point`.
-- Resultado observado: programa de fixture compilado pelo seed e executado pelo runtime SnBC imprimiu `snova bootstrap ok`; entradas léxica e sintaticamente inválidas falharam com fase e linha esperadas; a compilação do próprio source pelo SnBC gerado produziu imagem igual à anterior.
-- SHA-256 de ambas as imagens do fixed point restrito: `632aab95921a0ac749b8dca5ab575498f8a1ab004ad6636af148740f97ae1ef7`.
-- Limitações: diagnósticos de lowering ainda são gerais e não têm span; fixtures não constituem diferencial com o `snovac`; runtime, CLI de argumentos e backend standalone permanecem pendentes.
+- Revision and host: same as the previous entry; `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-smoke`, `make bootstrap-diagnostics`, `make bootstrap-fixed-point`.
+- Observed result: a fixture program compiled by the seed and run by the SnBC runtime printed `snova bootstrap ok`; lexically and syntactically invalid inputs failed with the expected phase and line; compiling its own source with the generated SnBC produced an image equal to the previous one.
+- SHA-256 of both images of the restricted fixed point: `632aab95921a0ac749b8dca5ab575498f8a1ab004ad6636af148740f97ae1ef7`.
+- Limitations: lowering diagnostics are still generic and have no span; fixtures are not a differential against `snovac`; runtime, argument CLI and standalone backend remain pending.
 
-## 2026-11-21 — módulos importáveis e nomes camelCase
+## 2026-11-21 — importable modules and camelCase names
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Organização: módulos do compilador em `bootstrap/src/`, funções e tipos em `camelCase`, arquivos abaixo de 400 linhas. `api.snl` importa `snova.compiler`; `apiConsumer.snl` importa `snova.compiler.api`.
-- Comandos: `snl check --project bootstrap/src`, `make bootstrap-smoke`, `make bootstrap-diagnostics`, `make bootstrap-fixed-point`.
-- Resultado observado: imports entre pacotes e projeto multi-arquivo passaram no check; smoke e diagnósticos passaram; o joiner em Snova gerou a unidade seed, que compilou as fontes e atingiu igualdade byte a byte.
-- SHA-256 das imagens SnBC stage 1 e 2: `6dab7126700e6416ade1ba2df110ea8486dc6cae989954d484330a0919c42740`.
-- Limitações: o seed ainda não carrega módulos/imports por conta própria; o joiner temporário remove cabeçalhos para auto-compilar. O runtime de execução continua sendo o do `snl`; compatibilidade ampla e backend standalone não foram demonstrados.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Organization: compiler modules in `bootstrap/src/`, functions and types in `camelCase`, files under 400 lines. `api.snl` imports `snova.compiler`; `apiConsumer.snl` imports `snova.compiler.api`.
+- Commands: `snl check --project bootstrap/src`, `make bootstrap-smoke`, `make bootstrap-diagnostics`, `make bootstrap-fixed-point`.
+- Observed result: cross-package imports and the multi-file project passed the check; smoke test and diagnostics passed; the Snova joiner generated the seed unit, which compiled the sources and reached byte-for-byte equality.
+- SHA-256 of the stage 1 and 2 SnBC images: `6dab7126700e6416ade1ba2df110ea8486dc6cae989954d484330a0919c42740`.
+- Limitations: the seed does not load modules/imports on its own yet; the temporary joiner strips headers to self-compile. The execution runtime is still the one from `snl`; broad compatibility and a standalone backend were not demonstrated.
 
-## 2026-11-21 — I/O por caminhos e montagem interna do bootstrap
+## 2026-11-21 — path-based I/O and internal bootstrap assembly
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-fixed-point`, `make bootstrap-smoke`, `make bootstrap-diagnostics`.
-- Resultado observado: o binário do projeto multi-arquivo aceitou caminhos de entrada/saída por argumentos; sem argumentos, compilou suas próprias fontes a partir de `sourceJoin.snl` e usou `SNL_OUTPUT`. O SnBC gerado repetiu a compilação sem o joiner externo e as duas imagens coincidiram byte a byte. Smoke e diagnósticos passaram com a nova CLI.
-- SHA-256 das duas imagens SnBC: `4d00222c46e427a3308bf1f7ede3935d8a6744222f7d074a2f7ac115b2482716`.
-- Limitações: `runtime.snl` encapsula as chamadas de argumentos, ambiente e bytes, mas essas primitivas e a execução de SnBC ainda vêm do runtime de referência. A montagem interna lista os módulos do próprio compilador; imports gerais, semântica completa, backend nativo em Snova e compatibilidade integral com `snovac` permanecem pendentes.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-fixed-point`, `make bootstrap-smoke`, `make bootstrap-diagnostics`.
+- Observed result: the multi-file project binary accepted input/output paths as arguments; without arguments it compiled its own sources through `sourceJoin.snl` and used `SNL_OUTPUT`. The generated SnBC repeated the compilation without the external joiner, and the two images matched byte for byte. Smoke test and diagnostics passed with the new CLI.
+- SHA-256 of the two SnBC images: `4d00222c46e427a3308bf1f7ede3935d8a6744222f7d074a2f7ac115b2482716`.
+- Limitations: `runtime.snl` wraps the argument, environment and byte calls, but those primitives and SnBC execution still come from the reference runtime. The internal assembly lists the compiler's own modules; general imports, full semantics, a Snova native backend and full compatibility with `snovac` remain pending.
 
-## 2026-11-21 — leitor estrutural SnBC em Snova
+## 2026-11-21 — structural SnBC reader in Snova
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-image-check`, `make bootstrap-fixed-point`.
-- Resultado observado: `imageReader.snl` aceitou a imagem produzida pelo compilador, rejeitou uma imagem truncada e foi compilado como parte do próprio compilador na geração seguinte. As imagens de estágio 1 e 2 coincidiram byte a byte.
-- SHA-256 de ambas as imagens: `8ecf10657461d96e7033ed391ba1fdfd60400579e503e36ff7d5dd5cec4952cd`.
-- Limitações: a validação cobre estrutura, tamanhos e índices principais; ainda não valida instruções/opcodes, não executa SnBC em Snova e não substitui o runtime ou backend de referência.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-image-check`, `make bootstrap-fixed-point`.
+- Observed result: `imageReader.snl` accepted the image produced by the compiler, rejected a truncated image and was compiled as part of the compiler itself in the next generation. The stage 1 and 2 images matched byte for byte.
+- SHA-256 of both images: `8ecf10657461d96e7033ed391ba1fdfd60400579e503e36ff7d5dd5cec4952cd`.
+- Limitations: validation covers structure, sizes and the main indexes; it did not yet validate instructions/opcodes, did not execute SnBC in Snova and did not replace the reference runtime or backend.
 
-## 2026-11-21 — validação de instruções SnBC em Snova
+## 2026-11-21 — SnBC instruction validation in Snova
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-fixed-point`, `make bootstrap-image-check`, `make bootstrap-smoke`; imagens derivadas de `stage1.snbc` com opcode inválido e salto fora da imagem foram rejeitadas pelo compilador Snova.
-- Resultado observado: `imageCode.snl` verificou limites das instruções, último opcode, índices de strings/locais/funções, aridade, chamadas de runtime, saltos e opcodes ainda sem implementação; as imagens de estágio 1 e 2 coincidiram byte a byte.
-- SHA-256 de ambas as imagens: `d85c9e395f93e2b16d8156dc47589f619b8d6693f6d935b79ddbc00b8100d3ee`.
-- Limitações: este validador não executa bytecode, não prova paridade para todo corpus e ainda usa o runtime anterior para construir/executar as imagens de estágio.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-fixed-point`, `make bootstrap-image-check`, `make bootstrap-smoke`; images derived from `stage1.snbc` with an invalid opcode and an out-of-image jump were rejected by the Snova compiler.
+- Observed result: `imageCode.snl` checked instruction bounds, the last opcode, string/local/function indexes, arity, runtime calls, jumps and not-yet-implemented opcodes; the stage 1 and 2 images matched byte for byte.
+- SHA-256 of both images: `d85c9e395f93e2b16d8156dc47589f619b8d6693f6d935b79ddbc00b8100d3ee`.
+- Limitations: this validator does not execute bytecode, does not prove parity for every corpus, and still uses the previous runtime to build/run the stage images.
 
-## 2026-11-21 — executor numérico SnBC em Snova
+## 2026-11-21 — numeric SnBC executor in Snova
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-vm-numeric bootstrap-fixed-point bootstrap-image-check bootstrap-smoke` e `git diff --check`.
-- Resultado observado: `vmStack.snl` e `vmNumeric.snl` executaram duas imagens geradas pelo seed. Ambas retornaram `48`, igual ao código de saída de `snl run-snbc` para as mesmas imagens. Os casos cobrem locais, aritmética, comparação, desvio condicional e laço. O fixed point restrito continuou byte a byte igual; SHA-256 das duas imagens: `ce8b1d0daf76aad72e1ffb43622d7963a6ad219e2a46e69eec0c3e0af645e724`.
-- Limitações: o executor aceita apenas uma função e valores numéricos/booleanos; não executa strings, chamadas, objetos, arrays, I/O ou a imagem do próprio compilador. A geração nativa e as primitivas de I/O ainda dependem do runtime anterior. Este resultado não constitui substituição integral do `snovac`.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-vm-numeric bootstrap-fixed-point bootstrap-image-check bootstrap-smoke` and `git diff --check`.
+- Observed result: `vmStack.snl` and `vmNumeric.snl` executed two images generated by the seed. Both returned `48`, equal to the exit status of `snl run-snbc` for the same images. The cases cover locals, arithmetic, comparison, conditional branch and loop. The restricted fixed point stayed byte-for-byte equal; SHA-256 of both images: `ce8b1d0daf76aad72e1ffb43622d7963a6ad219e2a46e69eec0c3e0af645e724`.
+- Limitations: the executor accepted only one function and numeric/boolean values; it did not execute strings, calls, objects, arrays, I/O or the compiler's own image. Native generation and I/O primitives still depended on the previous runtime. This result is not a full replacement of `snovac`.
 
-## 2026-11-21 — sondas do runtime SnBC v0.3.0 e do `snl build`
+## 2026-11-21 — probes of the SnBC runtime v0.3.0 and of `snl build`
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`. Imagens SnBC montadas à mão (ferramenta de sonda fora do repositório) e programas compilados pelo seed.
-- Observado: `snl run-snbc` recusa imagem com SET_INDEX (41) ("cannot read SnBC image"); SET_FIELD (38) espera alvo no topo e valor abaixo, devolvendo o valor; `"ab" + "c" == "abc"` dá `false` e constantes de mesmo conteúdo dão `true` (igualdade de strings por identidade, também no executável de `snl build`); `int + string` produz número espúrio; `bool == int` dá `false`; PRINT de unit imprime linha vazia; runtime calls 2/3/4 são `fileExists`, `readText` e `writeText`; o programa não recebe argumentos (`argumentCount` = 0); estouro de profundidade imprime `error: call depth exceeded` com saída 70.
-- Observado: `snl build` gera SnBC e empacota a VM C ("bundled binary dependencies"; perfil dominado por `run_function`); o lowering recusa `a[i].campo` ("cannot lower field to SnBC"). Os executáveis citados em entradas anteriores como "build nativo" são, portanto, SnBC + VM C, não código de máquina do programa.
-- Observado: `as -arch arm64` + `ld -lSystem` montam e ligam um `main` em assembly que retorna 48; o `ld` aplica assinatura ad-hoc (`adhoc,linker-signed`).
-- Limitações: sondas pontuais; não cobrem todos os opcodes nem a semântica completa da referência.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`. Hand-assembled SnBC images (probe tool outside the repository) and programs compiled by the seed.
+- Observed: `snl run-snbc` refuses an image with SET_INDEX (41) ("cannot read SnBC image"); SET_FIELD (38) expects the target on top and the value below, returning the value; `"ab" + "c" == "abc"` gives `false` and constants with the same content give `true` (string equality by identity, also in the `snl build` executable); `int + string` produces a spurious number; `bool == int` gives `false`; PRINT of unit prints an empty line; runtime calls 2/3/4 are `fileExists`, `readText` and `writeText`; the program receives no arguments (`argumentCount` = 0); depth overflow prints `error: call depth exceeded` with status 70.
+- Observed: `snl build` generates SnBC and bundles the C VM ("bundled binary dependencies"; profile dominated by `run_function`); its lowering refuses `a[i].field` ("cannot lower field to SnBC"). The executables that earlier entries called a "native build" are therefore SnBC + C VM, not machine code of the program.
+- Observed: `as -arch arm64` + `ld -lSystem` assemble and link an assembly `main` that returns 48; `ld` applies an ad-hoc signature (`adhoc,linker-signed`).
+- Limitations: point probes; they do not cover every opcode or the full reference semantics.
 
-## 2026-11-21 — executor SnBC em Snova roda a imagem do compilador
+## 2026-11-21 — the Snova SnBC executor runs the compiler image
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`; executável do compilador produzido por `snl build` (SnBC + VM C empacotada).
-- Comandos: `make bootstrap-vm bootstrap-diagnostics bootstrap-fixed-point bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
-- Resultado observado: o diferencial de stdout e código de saída entre o executor Snova (`<imagem> run`) e `snl run-snbc` passou para `numericVm` (48), `numericFlow` (48), `hello` (0), `vmCalls` (16, recursão) e `vmComposite` (14, structs/arrays/strings). `vmEquality` e `vmHostText` deram a saída esperada fixa (igualdade por valor; argumentos repassados), divergindo de propósito do `run-snbc`. `vmStackOverflow` falhou com `runtime error: Stack overflow` e saída 70. `invalidRuntimeArity` foi rejeitado pelo seed.
-- Resultado observado: em `bootstrap-vm-self`, o executor Snova executou `stage1.snbc`; o compilador convidado leu as próprias fontes, gravou `vm-stage.snbc` via `SNL_OUTPUT` e terminou com 0. `stage1.snbc`, `stage2.snbc` (via `run-snbc`) e `vm-stage.snbc` coincidiram byte a byte. SHA-256: `772cd2e01c2a2e7bc97ebc312d4c13679fb7e22b055d056817d6ac45d9ce563c`. Tempo: 3 min 08 s (185,6 s de CPU), contra cerca de 1 s do compilador no executável de `snl build`.
-- Limitações: o executor Snova roda sobre a VM C embutida pelo `snl build`, de modo que a execução continua dependendo do runtime anterior e não é nativa (ADR-0005, proposto). Opcodes que o compilador não usa (double, globais, variantes, defer/spawn) não são executados. Erros vão para stdout. Strings vindas do host usam um arquivo de rascunho em `/tmp` quando comparadas (fronteira provisória, ADR-0004). Isto não constitui DDC, reprodutibilidade em build limpo nem substituição integral do `snovac`.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`; compiler executable produced by `snl build` (SnBC + bundled C VM).
+- Commands: `make bootstrap-vm bootstrap-diagnostics bootstrap-fixed-point bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
+- Observed result: the stdout and exit-status differential between the Snova executor (`<image> run`) and `snl run-snbc` passed for `numericVm` (48), `numericFlow` (48), `hello` (0), `vmCalls` (16, recursion) and `vmComposite` (14, structs/arrays/strings). `vmEquality` and `vmHostText` gave the fixed expected output (value equality; arguments passed through), diverging on purpose from `run-snbc`. `vmStackOverflow` failed with `runtime error: Stack overflow` and status 70. `invalidRuntimeArity` was rejected by the seed.
+- Observed result: in `bootstrap-vm-self`, the Snova executor ran `stage1.snbc`; the guest compiler read its own sources, wrote `vm-stage.snbc` through `SNL_OUTPUT` and exited with 0. `stage1.snbc`, `stage2.snbc` (through `run-snbc`) and `vm-stage.snbc` matched byte for byte. SHA-256: `772cd2e01c2a2e7bc97ebc312d4c13679fb7e22b055d056817d6ac45d9ce563c`. Time: 3 min 08 s (185.6 s of CPU), against about 1 s for the compiler in the `snl build` executable.
+- Limitations: the Snova executor runs on the C VM embedded by `snl build`, so execution still depends on the previous runtime and is not native (ADR-0005). Opcodes the compiler does not use (double, globals, variants, defer/spawn) are not executed. Errors go to stdout. Host strings use a scratch file in `/tmp` when compared (provisional boundary, ADR-0004). This is not DDC, clean-build reproducibility or a full replacement of `snovac`.
 
-## 2026-11-21 — warning SNW0001 e repetição do gate do executor
+## 2026-11-21 — warning SNW0001 and a repeated executor gate
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Comandos: `make bootstrap-diagnostics bootstrap-vm bootstrap-fixed-point bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
-- Resultado observado: `warnMismatch.snl` compilou com saída 0 e dois diagnósticos `warning[SNW0001]`, nas linhas 10 (`"seven" == 7`) e 13 (struct `!=` int); `warnCompare.snl` compilou sem diagnóstico e retornou 7 no executor Snova. A compilação das próprias fontes do compilador não emitiu warnings. Todos os gates rápidos passaram.
-- Resultado observado: o executor Snova executou de novo a imagem do compilador com as fontes atuais; `stage1.snbc`, `stage2.snbc` e `vm-stage.snbc` coincidiram byte a byte. SHA-256: `e5aa78db2ad50a0898e2eaaea287b6ac6a66a39063a6f3fbc8c259ab4ddef2dc`. Tempo: 3 min 09 s (187,5 s de CPU). Este hash substitui o da entrada anterior como estado atual.
-- Observado no `snl run-snbc` v0.3.0: em `warnCompare`, `true == (1 < 2)` dá falso (saída 3), enquanto o executor Snova dá verdadeiro (saída 7). Por isso o gate verifica essa fixture apenas pelo executor Snova.
-- Limitações: o warning só cobre tipos estáticos conhecidos (literais, locais tipados, parâmetros, campos); chamadas e indexação têm tipo desconhecido e não geram aviso. O span é só a linha. Comparação de endereço (`&T`) ainda não existe no subset.
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-vm bootstrap-fixed-point bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
+- Observed result: `warnMismatch.snl` compiled with status 0 and two `warning[SNW0001]` diagnostics, at lines 10 (`"seven" == 7`) and 13 (struct `!=` int); `warnCompare.snl` compiled without diagnostics and returned 7 on the Snova executor. Compiling the compiler's own sources emitted no warnings. All quick gates passed.
+- Observed result: the Snova executor ran the compiler image again with the current sources; `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched byte for byte. SHA-256: `e5aa78db2ad50a0898e2eaaea287b6ac6a66a39063a6f3fbc8c259ab4ddef2dc`. Time: 3 min 09 s (187.5 s of CPU). This hash replaced the previous entry's hash as the current state.
+- Observed in `snl run-snbc` v0.3.0: in `warnCompare`, `true == (1 < 2)` gives false (status 3), while the Snova executor gives true (status 7). So the gate checks that fixture only through the Snova executor.
+- Limitations: the warning only covers known static types (literals, typed locals, parameters, fields); calls and indexing have an unknown type and produce no warning. The span is only the line. Address comparison (`&T`) does not exist in the subset yet.
 
-## 2026-11-21 — backend nativo N1 (ADR-0005)
+## 2026-11-21 — native backend N1 (ADR-0005)
 
-- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`; `as`/`ld` do Command Line Tools (`-platform_version macos` = versão do SDK, `-lSystem`).
-- Comandos: `make bootstrap-native bootstrap-fixed-point bootstrap-vm bootstrap-diagnostics bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
-- Resultado observado: o compilador Snova emitiu assembly aarch64 para `numericVm`, `numericFlow` e `nativeCalls`; os executáveis Mach-O arm64 montados e ligados retornaram 48, 48 e 126, iguais ao executor Snova e ao `snl run-snbc`. `hello.snl` foi recusado com `unsupported opcode for native backend: 3`. Duas emissões do mesmo fonte deram `.s` idênticos (SHA-256 de `nativeCalls.s`: `62345b3011b88abbfc36cb0ac6524a5cd76a00b2c05876f6569f63518f67fe4c`).
-- Resultado observado: com os módulos nativos nas fontes, o ponto fixo e o gate do executor continuaram passando; `stage1.snbc`, `stage2.snbc` e `vm-stage.snbc` coincidiram. SHA-256: `47469d977b858b6b463acec9bce71475a3d87a7d23115e547fe5a2c939959951`.
-- Limitações: N1 cobre só o subset numérico (sem strings, arrays, structs, impressão nem I/O); o compilador em si ainda roda no executável de `snl build` (SnBC + VM C); a montagem e a ligação usam `as`/`ld` do sistema; o código gerado não tem alocação de registradores. Não há ponto fixo nativo nem compilador nativo (N3).
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`; `as`/`ld` from the Command Line Tools (`-platform_version macos` = SDK version, `-lSystem`).
+- Commands: `make bootstrap-native bootstrap-fixed-point bootstrap-vm bootstrap-diagnostics bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
+- Observed result: the Snova compiler emitted aarch64 assembly for `numericVm`, `numericFlow` and `nativeCalls`; the assembled and linked arm64 Mach-O executables returned 48, 48 and 126, equal to the Snova executor and `snl run-snbc`. `hello.snl` was refused with `unsupported opcode for native backend: 3`. Two emissions of the same source gave identical `.s` files (SHA-256 of `nativeCalls.s`: `62345b3011b88abbfc36cb0ac6524a5cd76a00b2c05876f6569f63518f67fe4c`).
+- Observed result: with the native modules in the sources, the fixed point and the executor gate kept passing; `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched. SHA-256: `47469d977b858b6b463acec9bce71475a3d87a7d23115e547fe5a2c939959951`.
+- Limitations: N1 covered only the numeric subset (no strings, arrays, structs, printing or I/O); the compiler itself still runs in the `snl build` executable (SnBC + C VM); assembling and linking use the system `as`/`ld`; the generated code has no register allocation. There is no native fixed point and no native compiler (N3).
+
+## 2026-11-21 — native runtime N2 with ownership (ADR-0006)
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`; `as`/`ld` from the Command Line Tools.
+- Commands: `make bootstrap-native`, `make bootstrap-fixed-point bootstrap-vm bootstrap-diagnostics bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`; `/usr/bin/time -l` on `nativeMemory.native` with 1, 8 and 32 arguments; `nm -u` on the native executables.
+- Observed result: in `native` mode the compiler appended `bootstrap/runtime/*.snl` to the program and emitted assembly for both. Against the Snova executor (stdout and exit status): `hello` (0), `vmCalls` (16), `vmComposite` (14), `vmEquality` (0), `vmStackOverflow` (70, `runtime error: Stack overflow`), `nativeHostIo` (105: byte and text files, `fileExists`, arguments `alpha beta`, smallest integer, negative division, struct/array equality, `null`) and `nativeMemory` (160) matched. `vmHostText` printed `true true true`, exited with 1 and wrote `probe` to its file. The numeric fixtures still matched the Snova executor and `snl run-snbc`. `nativeUnsupported` (enum variant) was refused with `unsupported opcode for native backend: 42`.
+- Observed result (memory): with `SNOVA_MEMORY_REPORT=1`, every fixture that ends normally reported `live blocks 0, live bytes 0` at exit. `nativeMemory`, which allocates strings, arrays and objects every iteration and overwrites the previous ones, reported a peak of 1088 live bytes and a maximum resident set of 1 425 408 bytes for 20 000, 160 000 and 640 000 iterations (0.08 s, 0.66 s and 2.63 s). `nativeCycle` was rejected at the store that would close a cycle: `runtime error: strong reference cycle rejected for opcode 50`, status 70.
+- Observed result (boundary): `nm -u` lists only `_close`, `_exit`, `_mmap`, `_munmap`, `_open`, `_read` and `_write`; `otool -L` lists only `libSystem.B.dylib`. The assembly of `vmHostText` does not mention `/tmp`. Two emissions of `nativeMemory.s` were identical (SHA-256 `eedc162d8e1fddc5135ac12f294877ce5c601b98f9fc04603ef57127d5b0ce11`).
+- Observed result (self-compilation): with the N2 modules in the sources, `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched byte for byte. SHA-256: `532917fb7347cbd90374d79b801b921eebae3e7cd4eeca1baee2d395683ce215`. `bootstrap-vm-self` took 4 min 54 s (290.9 s of CPU).
+- Limitations: the compiler itself is still built by `snl build` and is not compiled natively (N3). Ownership is analyzed in the backend over SnBC stack slots; the frontend does not yet reject use-after-move or aliasing errors. Programs that end with a runtime error exit without the memory report. Byte copies and the release of locals go through runtime calls (slow paths). Cyclic data is rejected instead of supported (no weak references). Assembling and linking still use the system `as`/`ld`.

@@ -1,0 +1,23 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// BinarySearch and LinearSearch, including absent targets and an empty array.
+func main(): int {
+    let sorted = [2, 3, 3, 5, 8, 13, 21]
+    Console.printline(BinarySearch.indexOf(sorted, 8))
+    Console.printline(BinarySearch.indexOf(sorted, 4))
+    Console.printline(BinarySearch.lowerBound(sorted, 3))
+    Console.printline(BinarySearch.upperBound(sorted, 3))
+    Console.printline(BinarySearch.lowerBound(sorted, 99))
+    Console.printline(BinarySearch.contains(sorted, 21))
+    var empty: int[] = []
+    Console.printline(BinarySearch.indexOf(empty, 1))
+    let unsorted = [9, 4, 7, 4, 1]
+    Console.printline(LinearSearch.indexOf(unsorted, 4))
+    Console.printline(LinearSearch.lastIndexOf(unsorted, 4))
+    Console.printline(LinearSearch.occurrences(unsorted, 4))
+    Console.printline(LinearSearch.indexOfMinimum(unsorted))
+    Console.printline(LinearSearch.indexOfMinimum(empty))
+    return BinarySearch.indexOf(sorted, 13) * 10 + LinearSearch.lastIndexOf(unsorted, 4)
+}

@@ -1,28 +1,35 @@
 # snl
 
-Este repositório desenvolve um compilador Snovalang escrito em Snova. O compilador é a única peça pública do projeto; o código-fonte do compilador e de seu runtime permanece em `.snl` e evolui por estágios de bootstrap.
+This repository develops a Snovalang compiler written in Snova. The compiler is the only public piece of the project; the source of the compiler and of its runtime stays in `.snl` and evolves through bootstrap stages.
 
-## Comece por aqui
+## Start here
 
-1. [Visão de arquitetura](docs/architecture/overview.md)
-2. [Roadmap incremental](docs/roadmap/stages.md)
-3. [Decisões arquiteturais](docs/decisions/README.md)
-4. [Regras para contribuição](.claude/rules/architecture.md)
+1. [Architecture overview](docs/architecture/overview.md)
+2. [Incremental roadmap](docs/roadmap/stages.md)
+3. [Architecture decisions](docs/decisions/README.md)
+4. [Contribution rules](.claude/rules/architecture.md)
 5. Skill [bootstrap-incremental](.claude/skills/bootstrap-incremental/SKILL.md)
-6. [Fluxo de trabalho](docs/workflows/development.md)
-7. [Bibliografia de compiladores](docs/research/compiler-literature.md)
-8. Subagents Claude Code em `.claude/agents/`
-9. [Subset atual do compilador](docs/roadmap/subset.md)
+6. [Development workflow](docs/workflows/development.md)
+7. [Compiler bibliography](docs/research/compiler-literature.md)
+8. Claude Code subagents in `.claude/agents/`
+9. [Current compiler subset](docs/roadmap/subset.md)
 
-## Princípios
+## Principles
 
-- Cada compilador compila a próxima revisão: não se exige que o primeiro seed entenda toda a linguagem.
-- O compilador é escrito em Snovalang; assembly fica restrito a interfaces inevitáveis com o sistema e ao seed inicial onde a linguagem hospedeira não basta.
-- Capacidades do `snl` instalado são premissas a medir em sondas reproduzíveis, nunca fatos presumidos pelo plano.
-- `../snovac` é referência somente leitura para comparação e proveniência.
-- C/C++ não é usado para implementar o compilador neste repositório. O `snl` instalado é somente a raiz transitória do bootstrap inicial.
-- Self-hosting, ponto fixo, reprodutibilidade e DDC são afirmações distintas, cada uma com evidência própria.
+- Each compiler compiles the next revision: the first seed does not have to understand the whole language.
+- The compiler is written in Snovalang; assembly is limited to unavoidable system interfaces and to the initial seed where the host language is not enough.
+- Capabilities of the installed `snl` are assumptions to measure with reproducible probes, never facts assumed by the plan.
+- `../snovac` is a read-only reference for comparison and provenance.
+- C/C++ is not used to implement the compiler in this repository. The installed `snl` is only the transitional root of the initial bootstrap.
+- Self-hosting, fixed point, reproducibility and DDC are distinct claims, each with its own evidence.
 
-## Bootstrap atual
+## Current bootstrap
 
-O diretório `bootstrap/src/` contém o compilador e seu módulo de I/O em Snova. `make bootstrap-build` gera `build/bootstrap/snova-bootstrap`; execute esse binário com `<input.snl> <output.snbc>` para compilar, `<image.snbc>` para validar a estrutura de uma imagem `<image.snbc> run [args...]` para executá-la no executor SnBC escrito em Snova, ou `<input.snl> <output.s> native` para gerar assembly aarch64 do subset numérico (backend nativo N1, `make bootstrap-native`). `make bootstrap-fixed-point` constrói o projeto multi-arquivo, compila as próprias fontes e compara duas imagens SnBC consecutivas. A montagem das próprias fontes está em `sourceJoin.snl`, dentro do compilador. O executor em Snova roda a imagem do próprio compilador (`make bootstrap-vm-self`), mas o binário de `snl build` ainda é SnBC empacotado com a VM C do `snl`, não código de máquina; as chamadas de OS e o backend nativo ([ADR-0005](docs/decisions/ADR-0005-native-backend.md), proposto) ainda dependem da toolchain anterior; a substituição completa do `snovac` permanece pendente. Consulte o [registro de evidências](docs/roadmap/evidence.md) e a [matriz de subset](docs/roadmap/subset.md).
+`bootstrap/src/` holds the compiler and its I/O module in Snova; `bootstrap/runtime/` holds the native runtime in Snova. `make bootstrap-build` produces `build/bootstrap/snova-bootstrap`. Run that binary with:
+
+- `<input.snl> <output.snbc>` to compile;
+- `<image.snbc>` to validate an image's structure;
+- `<image.snbc> run [args...]` to execute an image on the SnBC executor written in Snova;
+- `<input.snl> <output.s> native` to generate aarch64 assembly for the program together with the Snova runtime (native backend N1 + N2, `make bootstrap-native`).
+
+`make bootstrap-fixed-point` builds the multi-file project, compiles its own sources and compares two consecutive SnBC images. `sourceJoin.snl`, inside the compiler, assembles the compiler's own sources. The Snova executor runs the compiler's own image (`make bootstrap-vm-self`). The `snl build` binary is still SnBC bundled with the `snl` C VM, not machine code. Native executables are machine code linked only against `libSystem` ([ADR-0005](docs/decisions/ADR-0005-native-backend.md), [ADR-0006](docs/decisions/ADR-0006-native-runtime.md)). The compiler itself does not compile natively yet (N3), and fully replacing `snovac` is still pending. See the [evidence log](docs/roadmap/evidence.md) and the [subset matrix](docs/roadmap/subset.md).

@@ -1,0 +1,45 @@
+package snova.library
+
+// Searches over int arrays sorted in ascending order.
+class BinarySearch {
+    // First index whose value is >= target; values.len() when none is.
+    public static method lowerBound(values: int[], target: int): int {
+        var low = 0
+        var high = values.len()
+        while low < high {
+            let middle = low + (high - low) / 2
+            if values[middle] < target {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return low
+    }
+
+    // First index whose value is > target; values.len() when none is.
+    public static method upperBound(values: int[], target: int): int {
+        var low = 0
+        var high = values.len()
+        while low < high {
+            let middle = low + (high - low) / 2
+            if values[middle] <= target {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return low
+    }
+
+    // Index of target, or -1 when it is absent.
+    public static method indexOf(values: int[], target: int): int {
+        let index = BinarySearch.lowerBound(values, target)
+        if index < values.len() && values[index] == target { return index }
+        return -1
+    }
+
+    public static method contains(values: int[], target: int): bool {
+        return BinarySearch.indexOf(values, target) >= 0
+    }
+}

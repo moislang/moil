@@ -1,0 +1,31 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// Static methods (no implicit self), annotations and instance methods that
+// call a static sibling without qualification.
+class Counter {
+    public var total: int
+
+    public static method start(): int {
+        return Counter.offset() + 1
+    }
+
+    @Native
+    public static method unavailable(value: int): int
+
+    public static method offset(): int {
+        return 40
+    }
+
+    public method add(amount: int): int {
+        total = total + amount + offset()
+        return total
+    }
+}
+
+func main(): int {
+    var counter = Counter { total: Counter.start() }
+    Console.printline(counter.add(1))
+    return counter.total - 41
+}

@@ -1,63 +1,69 @@
-# ADR-0004 — Executor SnBC iterativo em Snova e igualdade por valor
+# ADR-0004 — Iterative SnBC executor in Snova and value equality
 
-- **Status:** Aceito para o executor; **Proposto** para a primitiva string→bytes (seção "Fronteira provisória")
-- **Data:** 2026-11-21
+- **Status:** Accepted for the executor. The string→bytes boundary is resolved
+  on the native path (ADR-0006); the executor keeps the provisional boundary
+  while it runs on the `snl` C VM (see "Provisional boundary").
+- **Date:** 2026-11-21
 
-## Contexto
+## Context
 
-O compilador seed gera imagens SnBC que só o `snl run-snbc` executava. O
-executor em Snova precisa rodar a imagem do próprio compilador e continuar
-compilável pelo seed. As sondas registradas em `evidence.md` mostraram que:
+The seed compiler generates SnBC images that only `snl run-snbc` could
+execute. The Snova executor must run the compiler's own image and stay
+compilable by the seed. The probes recorded in `evidence.md` showed that:
 
-- `snl run-snbc` v0.3.0 rejeita o opcode SET_INDEX (41), e o subset do seed não
-  tem `a[i] = v`; a mutação disponível é SET_FIELD em structs;
-- o `snl build` também gera SnBC e embute a VM C; o lowering dele rejeita
-  `a[i].campo`, e cada chamada de função do host custa um quadro dessa VM;
-- a VM C hospedeira limita a profundidade de chamadas (`error: call depth exceeded`);
-- `==` de strings no `snl` v0.3.0 compara identidade, enquanto
-  `snovac/runtime/value/value_equal.c` define igualdade estrutural.
+- `snl run-snbc` v0.3.0 rejects the SET_INDEX opcode (41), and the seed
+  subset has no `a[i] = v`; the available mutation is SET_FIELD on structs;
+- `snl build` also generates SnBC and embeds the C VM; its lowering rejects
+  `a[i].field`, and every host function call costs a frame of that VM;
+- the host C VM limits call depth (`error: call depth exceeded`);
+- `==` on strings in `snl` v0.3.0 compares identity, while
+  `snovac/runtime/value/value_equal.c` defines structural equality.
 
-## Decisão
+## Decision
 
-1. Valores do convidado são pares `(tag, value)` guardados em células
-   (`vmCell`), mutadas por parâmetros tipados. Arrays do convidado são structs
-   `vmArray` com tags materializadas só quando surge um elemento não inteiro.
-2. As instruções são pré-decodificadas na carga (`vmDecode.snl`): opcode,
-   operandos e destinos de salto já resolvidos em índices de instrução.
-3. O laço (`vmFrame.snl`) é iterativo: CALL salva o quadro em `vm.frames` e
-   RETURN o restaura. O limite de 256 quadros segue `SN_VM_FRAMES_MAX` da
-   referência e não depende da pilha do host.
-4. `==`/`!=` comparam valores: strings por bytes e arrays/objetos campo a
-   campo, com pares visitados para encerrar ciclos. Comparação de endereço
-   (`&T == &E`) ainda não tem representação em SnBC e fica fora deste ADR.
-5. O modo de execução é reconhecido pelo magic `SNBC` do primeiro argumento:
-   `snova-bootstrap <imagem.snbc> run [args...]`. Os argumentos depois de `run`
-   são os do programa. O seed ainda não compara a palavra `run`.
+1. Guest values are `(tag, value)` pairs kept in cells (`vmCell`), mutated
+   through typed parameters. Guest arrays are `vmArray` structs whose tags are
+   materialized only when a non-integer element appears.
+2. Instructions are predecoded at load time (`vmDecode.snl`): opcode,
+   operands and jump targets are already resolved to instruction indexes.
+3. The loop (`vmFrame.snl`) is iterative: CALL saves the frame in `vm.frames`
+   and RETURN restores it. The 256-frame limit follows the reference's
+   `SN_VM_FRAMES_MAX` and does not depend on the host stack.
+4. `==`/`!=` compare values: strings by bytes, and arrays/objects field by
+   field, with visited pairs to end cycles. Address comparison (`&T == &E`)
+   has no SnBC representation yet and is outside this ADR.
+5. The execution mode is recognized by the `SNBC` magic of the first
+   argument: `snova-bootstrap <image.snbc> run [args...]`. The arguments after
+   `run` belong to the program. The seed does not compare the word `run` yet.
 
-## Fronteira provisória (proposta pendente)
+## Provisional boundary
 
-Strings vindas do host (`Runtime.environment`, `Runtime.argument`) não trazem
-bytes, e o subset não converte string em bytes. Quando uma delas participa de
-igualdade ou concatenação, `vmString.snl` grava o texto com `Runtime.writeText`
-em `/tmp/snova-vm-string.bin` e relê os bytes com `read_bytes`. Riscos:
-execuções simultâneas compartilham o arquivo, e a VM depende de `/tmp`
-gravável. A execução da imagem do compilador não passa por esse caminho.
+Host strings (`Runtime.environment`, `Runtime.argument`) carry no bytes, and
+the seed subset cannot convert a string into bytes. When one of them takes
+part in equality or concatenation, `vmString.snl` writes the text with
+`Runtime.writeText` to `/tmp/snova-vm-string.bin` and reads the bytes back
+with `read_bytes`. Risks: concurrent runs share the file, and the VM depends
+on a writable `/tmp`. Running the compiler image never takes this path.
 
-Proposta: substituir o arquivo por uma primitiva de runtime string→bytes,
-registrada como fronteira de OS/ABI conforme ADR-0003, assim que o alvo de
-runtime permitir. Até a decisão, o caminho continua isolado em `vmStringStart`.
+Resolution: the native runtime (ADR-0006) treats every string as bytes,
+copying arguments and environment from `argv`/`envp`. Programs compiled by
+the native backend never touch `/tmp`, including the `vmHostText` fixture. The
+executor keeps the file only while it is built by `snl build`, whose host has
+no string→bytes primitive. The path stays isolated in `vmStringStart` until
+the executor itself is compiled natively (N3).
 
-## Consequências
+## Consequences
 
-- Divergências intencionais em relação ao `snl run-snbc` v0.3.0: igualdade de
-  strings por conteúdo; argumentos repassados ao programa; mensagens de erro em
-  stdout com prefixo `runtime error:`, já que o subset não escreve em stderr.
-- Opcodes fora do uso do compilador (double, globais, variantes, defer/spawn)
-  falham com `unsupported opcode`.
-- O executor herda o custo da VM C hospedeira. A independência de desempenho e
-  de runtime depende do backend nativo (ADR-0005).
+- Intentional divergences from `snl run-snbc` v0.3.0: string equality by
+  content; arguments passed to the program; error messages on stdout with the
+  `runtime error:` prefix, since the seed subset does not write to stderr.
+- Opcodes the compiler does not use (double, globals, variants, defer/spawn)
+  fail with `unsupported opcode`.
+- The executor inherits the cost of the host C VM. Performance and runtime
+  independence come from the native backend (ADR-0005).
 
-## Reabrir quando
+## Reopen when
 
-O runtime oferecer string→bytes ou stderr, o seed ganhar atribuição por índice
-suportada pela referência, ou o backend nativo substituir a VM hospedeira.
+The executor is compiled by the native backend, the seed gains an index
+assignment supported by the reference, or the native backend replaces the
+host VM.

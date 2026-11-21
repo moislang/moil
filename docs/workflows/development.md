@@ -1,32 +1,33 @@
-# Fluxo de desenvolvimento
+# Development workflow
 
-Este fluxo organiza o trabalho antes de cada feature e define como manter o plano sincronizado com a implementação.
+This workflow organizes the work before each feature and defines how to keep the plan in sync with the implementation.
 
-## Antes de implementar
+## Before implementing
 
-1. Leia `README.md`, regras em `.claude/rules/` e a skill relevante.
-2. Confirme a raiz atual e não escreva em `../snovac`.
-3. Leia o ADR e a fase aplicável; confira `docs/roadmap/evidence.md`.
-4. Para dependência do compilador hospedeiro, execute uma sonda isolada, anote versão, comando e resultado.
-5. Especifique subset, sintaxe, semântica, erros, fixtures positivas/negativas e critério de conclusão.
-6. Planeje um corte vertical pequeno que o compilador anterior consiga construir.
+1. Read `README.md`, the rules in `.claude/rules/` and the relevant skill.
+2. Confirm the current root and do not write to `../snovac`.
+3. Read the applicable ADR and phase; check `docs/roadmap/evidence.md`.
+4. For a dependency on the host compiler, run an isolated probe and record version, command and result.
+5. Specify subset, syntax, semantics, errors, positive/negative fixtures and the completion criterion.
+6. Plan a small vertical slice that the previous compiler can build.
 
-## Durante a implementação (futuro)
+## During implementation
 
-- Mantenha uma declaração por arquivo quando isso melhorar localização e revisão; evite monólitos e use tipos/retornos explícitos.
-- Use `camelCase` em funções, classes, structs, interfaces e nomes de arquivos-fonte.
-- Código do compilador/runtime em `.snl`/`.sns`; assembly só na fronteira aprovada.
-- Não avance recursos do subset sem suporte no compilador predecessor.
-- Registre limitações observadas e atualize os diagramas/ADRs apenas quando a arquitetura mudar.
+- Keep one declaration per file when that improves locality and review; avoid monoliths and use explicit types/returns.
+- Use `camelCase` for functions, classes, structs, interfaces and source file names.
+- Compiler/runtime code goes in `.snl`/`.sns`; assembly only at the approved boundary.
+- Do not advance subset features without support in the predecessor compiler.
+- Write documentation and code comments in English.
+- Record observed limitations and update diagrams/ADRs only when the architecture changes.
 
-## Fechamento de marco
+## Closing a milestone
 
-1. Execute apenas os checks definidos para o marco e reporte comandos/resultados.
-2. Compare comportamento com referência quando aplicável.
-3. Atualize `evidence.md`, matriz do subset e status do roadmap.
-4. Confirme que nenhuma mudança alcançou `../snovac`.
-5. Diferencie build, teste, execução nativa, cross-compile, reprodução e DDC.
+1. Run only the checks defined for the milestone and report commands/results.
+2. Compare behavior with the reference when applicable.
+3. Update `evidence.md`, the subset matrix and the roadmap status.
+4. Confirm that no change reached `../snovac`.
+5. Distinguish build, test, native execution, cross-compilation, reproduction and DDC.
 
 ## Pull requests
 
-PRs futuros devem declarar fase/marco, subset afetado, riscos, evidência, limitações e plano de reversão. Mudanças de arquitetura requerem ADR atualizado. Mudanças de linguagem exigem exemplos aceitos e rejeitados. Falha de um alvo não pode ser ocultada por sucesso em outro.
+Future PRs must state the phase/milestone, affected subset, risks, evidence, limitations and rollback plan. Architecture changes require an updated ADR. Language changes require accepted and rejected examples. A failure on one target cannot be hidden by success on another.

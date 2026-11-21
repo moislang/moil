@@ -1,0 +1,24 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// Sorting: merge sort with duplicates and negatives, plus empty and single
+// arrays; the input stays unchanged.
+func main(): int {
+    let input = [5, -3, 9, 0, 5, 12, -8, 1]
+    let output = Sorting.sorted(input)
+    var index = 0
+    while index < output.len() {
+        Console.print(output[index])
+        Console.print(" ")
+        index = index + 1
+    }
+    Console.printline("")
+    Console.printline(Sorting.isSorted(output))
+    Console.printline(Sorting.isSorted(input))
+    Console.printline(input[0])
+    var empty: int[] = []
+    Console.printline(Sorting.sorted(empty).len())
+    Console.printline(Sorting.sorted([7])[0])
+    return output[0] + output[7] + output.len()
+}

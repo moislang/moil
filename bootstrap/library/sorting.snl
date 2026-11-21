@@ -1,0 +1,51 @@
+package snova.library
+
+// Stable merge sort of int arrays. Returns a new sorted array and leaves the
+// input unchanged; O(n log n) time and O(n) extra space per level.
+class Sorting {
+    public static method sorted(values: int[]): int[] {
+        return Sorting.sortRange(values, 0, values.len())
+    }
+
+    // True when values are in ascending order.
+    public static method isSorted(values: int[]): bool {
+        var index = 1
+        while index < values.len() {
+            if values[index - 1] > values[index] { return false }
+            index = index + 1
+        }
+        return true
+    }
+
+    private static method sortRange(values: int[], start: int, end: int): int[] {
+        if end - start == 0 {
+            var empty: int[] = []
+            return empty
+        }
+        if end - start == 1 { return [values[start]] }
+        let middle = start + (end - start) / 2
+        let left = Sorting.sortRange(values, start, middle)
+        let right = Sorting.sortRange(values, middle, end)
+        var result: int[] = []
+        var leftIndex = 0
+        var rightIndex = 0
+        while leftIndex < left.len() && rightIndex < right.len() {
+            if right[rightIndex] < left[leftIndex] {
+                result.push(right[rightIndex])
+                rightIndex = rightIndex + 1
+            } else {
+                result.push(left[leftIndex])
+                leftIndex = leftIndex + 1
+            }
+        }
+        while leftIndex < left.len() {
+            result.push(left[leftIndex])
+            leftIndex = leftIndex + 1
+        }
+        while rightIndex < right.len() {
+            result.push(right[rightIndex])
+            rightIndex = rightIndex + 1
+        }
+        return result
+    }
+}

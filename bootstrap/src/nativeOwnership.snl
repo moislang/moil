@@ -1,0 +1,236 @@
+package snova.compiler.backend
+
+// Static ownership model of the operand stack (ADR-0006). For every value
+// on the stack the backend knows at compile time whether it is an owner
+// (origin -1) or a borrow of local `origin`. LOAD_LOCAL produces a borrow:
+// no count is taken, because the local keeps the value alive. A borrow
+// becomes an owner (one retain) only where it escapes or where its source
+// could change: stored into a local, field or array, passed to a call,
+// returned, kept across a jump, or held while its source local is
+// overwritten. Owners are released when consumed. Methods of runtime types
+// manage raw memory themselves and are not instrumented (counting == 0).
+// Methods that emit code take the NativeAssembly as a parameter.
+class NativeOwnership {
+    public var slots: NativeSlot[]
+    public var depth: int
+    public var counting: int
+    public var reachable: int
+    public var jumpTargets: int[]
+    public var targetOffsets: int[]
+    public var targetDepths: int[]
+
+    // Starts the model for one function body.
+    public method begin(instrumented: bool): unit {
+        counting = 0
+        if instrumented { counting = 1 }
+        depth = 0
+        reachable = 1
+    }
+
+    // Registers that carry values across runtime calls in instrumented code.
+    // x19..x24 are callee-saved for libSystem, and generated code only
+    // writes them in instrumented functions, so runtime methods keep them
+    // intact. Runtime methods never hold a value across a call and use
+    // scratch registers instead.
+    public method stash(register: int): string {
+        if counting != 0 {
+            if register == 19 { return "x19" }
+            if register == 20 { return "x20" }
+            if register == 21 { return "x21" }
+            if register == 22 { return "x22" }
+            if register == 23 { return "x23" }
+            return "x24"
+        }
+        if register == 19 { return "x12" }
+        if register == 20 { return "x13" }
+        if register == 21 { return "x14" }
+        if register == 22 { return "x16" }
+        if register == 23 { return "x17" }
+        return "x8"
+    }
+
+    public method push(origin: int): unit {
+        if depth == slots.len() {
+            slots.push(NativeSlot(origin))
+        } else {
+            setOrigin(slots[depth], origin)
+        }
+        depth = depth + 1
+    }
+
+    // The seed cannot call a method on an array element, so slots are read
+    // and written through methods that take the slot as a typed parameter.
+    private method setOrigin(slot: NativeSlot, value: int): unit {
+        slot.origin = value
+    }
+
+    private method originOf(slot: NativeSlot): int {
+        return slot.origin
+    }
+
+    public method pop(): int {
+        if depth == 0 { return -1 }
+        depth = depth - 1
+        return originOf(slots[depth])
+    }
+
+    public method origin(fromTop: int): int {
+        let index = depth - 1 - fromTop
+        if index < 0 { return -1 }
+        return originOf(slots[index])
+    }
+
+    public method own(fromTop: int): unit {
+        let index = depth - 1 - fromTop
+        if index >= 0 { setOrigin(slots[index], -1) }
+    }
+
+    // Skips the count operation unless tag is 3..5 and the block is counted.
+    private method countedHeader(output: NativeAssembly, payload: string, tag: string, skip: string): unit {
+        output.line("sub x9, " + tag + ", #3")
+        output.line("cmp x9, #2")
+        output.line("b.hi " + skip)
+        output.line("ldr x10, [" + payload + ", #-16]")
+        output.line("tbnz x10, #63, " + skip)
+    }
+
+    // Adds an owner to the value in (payload, tag); scratch x9, x10.
+    public method retain(output: NativeAssembly, payload: string, tag: string): unit {
+        if counting == 0 { return }
+        let skip = output.newLabel()
+        countedHeader(output, payload, tag, skip)
+        output.line("add x10, x10, #1")
+        output.line("str x10, [" + payload + ", #-16]")
+        output.label(skip)
+    }
+
+    // Removes an owner; at zero calls Ownership.destroy(tag, payload), which
+    // clobbers x0-x15. Values needed afterwards must live in stash registers.
+    public method release(output: NativeAssembly, payload: string, tag: string): unit {
+        if counting == 0 { return }
+        let skip = output.newLabel()
+        countedHeader(output, payload, tag, skip)
+        output.line("subs x10, x10, #1")
+        output.line("str x10, [" + payload + ", #-16]")
+        output.line("b.ne " + skip)
+        output.beginArguments()
+        output.pushInteger(tag)
+        output.pushInteger(payload)
+        output.callRole(output.roleDestroy(), 2)
+        output.label(skip)
+    }
+
+    public method releaseIfOwned(output: NativeAssembly, origin: int, payload: string, tag: string): unit {
+        if origin < 0 { release(output, payload, tag) }
+    }
+
+    // Turns the borrow at fromTop into an owner.
+    public method upgrade(output: NativeAssembly, fromTop: int): unit {
+        if origin(fromTop) < 0 { return }
+        own(fromTop)
+        if counting == 0 { return }
+        output.offset("x11", "sp", 16 * fromTop, false)
+        output.line("ldp x0, x1, [x11]")
+        retain(output, "x0", "x1")
+    }
+
+    public method upgradeRange(output: NativeAssembly, first: int, count: int): unit {
+        var fromTop = first
+        while fromTop < first + count {
+            upgrade(output, fromTop)
+            fromTop = fromTop + 1
+        }
+    }
+
+    public method upgradeAll(output: NativeAssembly): unit {
+        upgradeRange(output, 0, depth)
+    }
+
+    // Before local `slot` is overwritten, borrows of it must own their value.
+    public method upgradeOrigin(output: NativeAssembly, slot: int): unit {
+        var fromTop = 0
+        while fromTop < depth {
+            if origin(fromTop) == slot { upgrade(output, fromTop) }
+            fromTop = fromTop + 1
+        }
+    }
+
+    // POP (6) and every other drop of the top slot.
+    public method dropTop(output: NativeAssembly): unit {
+        let source = pop()
+        if source < 0 && counting != 0 {
+            output.popPair("x0", "x1")
+            release(output, "x0", "x1")
+        } else {
+            output.line("add sp, sp, #16")
+        }
+    }
+
+    // Jump targets of the current function, as code offsets.
+    public method collectTargets(image: NativeImage, codeStart: int, codeLength: int): unit {
+        var targets: int[] = []
+        var offsets: int[] = []
+        var depths: int[] = []
+        jumpTargets = targets
+        targetOffsets = offsets
+        targetDepths = depths
+        var offset = 0
+        while offset < codeLength {
+            let opcode = image.byteAt(codeStart + offset)
+            let nextOffset = offset + 1 + image.operandWidth(opcode)
+            if opcode == 30 || opcode == 31 || opcode == 32 {
+                jumpTargets.push(nextOffset + image.signed32(codeStart + offset + 1))
+            }
+            offset = nextOffset
+        }
+    }
+
+    private method isTarget(offset: int): bool {
+        var index = 0
+        while index < jumpTargets.len() {
+            if jumpTargets[index] == offset { return true }
+            index = index + 1
+        }
+        return false
+    }
+
+    // Records the stack depth that a jump carries to its target.
+    public method recordJump(target: int): unit {
+        targetOffsets.push(target)
+        targetDepths.push(depth)
+    }
+
+    private method recordedDepth(target: int): int {
+        var index = 0
+        while index < targetOffsets.len() {
+            if targetOffsets[index] == target { return targetDepths[index] }
+            index = index + 1
+        }
+        return 0
+    }
+
+    // At a jump target every slot is an owner on every incoming edge, so the
+    // model agrees on all paths. Code after an unconditional transfer that
+    // is not a target is unreachable; it starts with an empty stack.
+    public method enter(output: NativeAssembly, offset: int): unit {
+        if isTarget(offset) {
+            if reachable != 0 {
+                upgradeAll(output)
+            } else {
+                depth = recordedDepth(offset)
+            }
+            var fromTop = 0
+            while fromTop < depth {
+                own(fromTop)
+                fromTop = fromTop + 1
+            }
+        } else if reachable == 0 {
+            depth = 0
+        }
+        reachable = 1
+    }
+
+    public method stop(): unit {
+        reachable = 0
+    }
+}

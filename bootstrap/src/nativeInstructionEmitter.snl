@@ -1,0 +1,310 @@
+package snova.compiler.backend
+
+// Translates the instructions of one function body (ADR-0005, ADR-0006):
+// frame, control flow, locals, calls and int/bool arithmetic, delegating
+// composite operations to values.
+// The assembly and the ownership model arrive as typed parameters.
+class NativeInstructionEmitter {    public var functionIndex: int
+    public var localCount: int
+    public var runtimeCode: bool
+
+    // Program functions count their depth in the state block; past 256
+    // frames (SN_VM_FRAMES_MAX of the reference VM) the program stops with
+    // "Stack overflow". Runtime methods do not count, as in the executor.
+    public method prologue(output: NativeAssembly, stack: NativeOwnership, arity: int): unit {
+        output.directive(".p2align 2")
+        output.label(output.symbol(functionIndex))
+        output.line("stp x29, x30, [sp, #-16]!")
+        output.line("mov x29, sp")
+        if localCount > 0 { output.offset("sp", "sp", 16 * localCount, true) }
+        if runtimeCode == false {
+            let depthLabel = output.codeLabel(functionIndex, 0) + "_depth"
+            output.stateAddress("x9")
+            output.line("ldr x10, [x9, #40]")
+            output.line("add x10, x10, #1")
+            output.line("str x10, [x9, #40]")
+            output.line("cmp x10, #256")
+            output.line("b.le " + depthLabel)
+            output.line("bl Lsnova_stack_overflow")
+            output.label(depthLabel)
+        }
+        var slot = 0
+        while slot < localCount {
+            output.localAddress(slot)
+            if slot < arity {
+                output.offset("x11", "x29", 16 + 16 * (arity - 1 - slot), false)
+                output.line("ldp x12, x13, [x11]")
+                output.line("stp x12, x13, [x10]")
+            } else {
+                output.line("stp xzr, xzr, [x10]")
+            }
+            slot = slot + 1
+        }
+    }
+
+    // RETURN (35): the result leaves as an owner; leftover owned temporaries
+    // and every local are released before the frame goes away.
+    private method returnValue(output: NativeAssembly, stack: NativeOwnership): unit {
+        let resultOrigin = stack.pop()
+        output.popPair("x0", "x1")
+        if runtimeCode == false {
+            if resultOrigin >= 0 { stack.retain(output, "x0", "x1") }
+            output.line("mov x19, x0")
+            output.line("mov x20, x1")
+            while stack.depth > 0 { stack.dropTop(output) }
+            if localCount > 0 {
+                output.beginArguments()
+                output.offset("x9", "x29", 16 * localCount, true)
+                output.pushInteger("x9")
+                output.loadConstant("x9", localCount)
+                output.pushInteger("x9")
+                output.callRole(output.roleReleaseSlots(), 2)
+            }
+            output.line("mov x0, x19")
+            output.line("mov x1, x20")
+            output.stateAddress("x9")
+            output.line("ldr x10, [x9, #40]")
+            output.line("sub x10, x10, #1")
+            output.line("str x10, [x9, #40]")
+        }
+        output.line("mov sp, x29")
+        output.line("ldp x29, x30, [sp], #16")
+        output.line("ret")
+        stack.depth = 0
+        stack.stop()
+    }
+
+    private method condition(opcode: int): string {
+        if opcode == 24 { return "eq" }
+        if opcode == 25 { return "ne" }
+        if opcode == 26 { return "lt" }
+        if opcode == 27 { return "le" }
+        if opcode == 28 { return "gt" }
+        return "ge"
+    }
+
+    // Branches to slow when the tag register is neither int (1) nor bool (2).
+    private method requireNumeric(output: NativeAssembly, stack: NativeOwnership, tag: string, slow: string): unit {
+        output.line("sub x9, " + tag + ", #1")
+        output.line("cmp x9, #1")
+        output.line("b.hi " + slow)
+    }
+
+    private method arithmetic(output: NativeAssembly, stack: NativeOwnership, opcode: int): unit {
+        if opcode == 12 { output.line("add x0, x0, x1") }
+        if opcode == 13 { output.line("sub x0, x0, x1") }
+        if opcode == 14 { output.line("mul x0, x0, x1") }
+        if opcode == 15 { output.line("sdiv x0, x0, x1") }
+        if opcode == 16 {
+            output.line("sdiv x2, x0, x1")
+            output.line("msub x2, x2, x1, x0")
+            output.line("cmp x1, #0")
+            output.line("csel x0, xzr, x2, eq")
+        }
+        if opcode == 19 { output.line("and x0, x0, x1") }
+        if opcode == 20 { output.line("orr x0, x0, x1") }
+        if opcode == 21 { output.line("eor x0, x0, x1") }
+        if opcode == 22 { output.line("lsl x0, x0, x1") }
+        if opcode == 23 { output.line("asr x0, x0, x1") }
+        if opcode >= 24 && opcode <= 29 {
+            output.line("cmp x0, x1")
+            output.line("cset x0, " + condition(opcode))
+            output.line("mov x1, #2")
+        } else {
+            output.line("mov x1, #1")
+        }
+    }
+
+    // Binary operations. Int/bool operands take the inline path (x0 = left,
+    // x1 = right); they are not heap values, so nothing is released. Any
+    // other pair calls Value.binary, which borrows both operands; owned
+    // operands are released after the call. Division and remainder by zero
+    // give 0, as in the SnBC runtime; aarch64 sdiv already returns 0.
+    private method binary(output: NativeAssembly, stack: NativeOwnership, opcode: int, label: string): unit {
+        let rightOrigin = stack.pop()
+        let leftOrigin = stack.pop()
+        output.popPair("x1", "x3")
+        output.popPair("x0", "x2")
+        if opcode == 24 || opcode == 25 {
+            output.line("cmp x2, x3")
+            output.line("b.ne " + label + "_slow")
+        }
+        requireNumeric(output, stack, "x2", label + "_slow")
+        requireNumeric(output, stack, "x3", label + "_slow")
+        arithmetic(output, stack, opcode)
+        output.line("b " + label + "_done")
+        output.label(label + "_slow")
+        output.line("mov " + stack.stash(21) + ", x0")
+        output.line("mov " + stack.stash(22) + ", x2")
+        output.line("mov " + stack.stash(23) + ", x1")
+        output.line("mov " + stack.stash(24) + ", x3")
+        output.beginArguments()
+        output.line("mov x4, #" + output.decimal(opcode))
+        output.pushInteger("x4")
+        output.pushInteger("x2")
+        output.pushInteger("x0")
+        output.pushInteger("x3")
+        output.pushInteger("x1")
+        output.callRole(output.roleBinary(), 5)
+        output.line("mov " + stack.stash(19) + ", x0")
+        output.line("mov " + stack.stash(20) + ", x1")
+        stack.releaseIfOwned(output, leftOrigin, stack.stash(21), stack.stash(22))
+        stack.releaseIfOwned(output, rightOrigin, stack.stash(23), stack.stash(24))
+        output.line("mov x0, " + stack.stash(19))
+        output.line("mov x1, " + stack.stash(20))
+        output.label(label + "_done")
+        output.pushPair()
+        stack.push(-1)
+    }
+
+    private method pushConstant(output: NativeAssembly, stack: NativeOwnership, payload: int, tag: int): unit {
+        output.loadConstant("x0", payload)
+        output.line("mov x1, #" + output.decimal(tag))
+        output.pushPair()
+        stack.push(-1)
+    }
+
+    // STORE_LOCAL (9): the value stays on the stack and the local becomes
+    // one more owner; borrows of the old value own it first, then it is
+    // released.
+    private method storeLocal(output: NativeAssembly, stack: NativeOwnership, slot: int): unit {
+        stack.upgradeOrigin(output, slot)
+        output.line("ldp x0, x1, [sp]")
+        stack.retain(output, "x0", "x1")
+        output.localAddress(slot)
+        output.line("ldp x2, x3, [x10]")
+        output.line("stp x0, x1, [x10]")
+        stack.release(output, "x2", "x3")
+    }
+
+    // JUMP (30), JUMP_IF_FALSE (31), JUMP_IF_TRUE (32): slots that cross the
+    // jump are owners, so the target sees the same model on every edge.
+    private method jump(output: NativeAssembly, stack: NativeOwnership, opcode: int, target: int): unit {
+        let label = output.codeLabel(functionIndex, target)
+        if opcode == 30 {
+            stack.upgradeAll(output)
+            stack.recordJump(target)
+            output.line("b " + label)
+            stack.stop()
+            return
+        }
+        stack.upgradeRange(output, 1, stack.depth - 1)
+        let origin = stack.pop()
+        let flag = stack.stash(21)
+        output.popPair(flag, stack.stash(22))
+        stack.releaseIfOwned(output, origin, flag, stack.stash(22))
+        stack.recordJump(target)
+        if opcode == 31 { output.line("cbz " + flag + ", " + label) } else { output.line("cbnz " + flag + ", " + label) }
+    }
+
+    // CALL (33): arguments move into the callee, which owns its parameters.
+    private method call(output: NativeAssembly, stack: NativeOwnership, callee: int, argumentCount: int): unit {
+        stack.upgradeRange(output, 0, argumentCount)
+        output.line("bl " + output.symbol(callee))
+        if argumentCount > 0 { output.offset("sp", "sp", 16 * argumentCount, false) }
+        var dropped = 0
+        while dropped < argumentCount {
+            stack.pop()
+            dropped = dropped + 1
+        }
+        output.pushPair()
+        stack.push(-1)
+    }
+
+    private method loadLocal(output: NativeAssembly, stack: NativeOwnership, slot: int): unit {
+        output.localAddress(slot)
+        output.line("ldp x0, x1, [x10]")
+        output.pushPair()
+        stack.push(slot)
+    }
+
+    private method duplicate(output: NativeAssembly, stack: NativeOwnership): unit {
+        let origin = stack.origin(0)
+        output.line("ldp x0, x1, [sp]")
+        if origin < 0 { stack.retain(output, "x0", "x1") }
+        output.pushPair()
+        stack.push(origin)
+    }
+
+    private method stopWith(output: NativeAssembly, stack: NativeOwnership, code: int, detail: int): unit {
+        output.callFail(code, detail)
+        stack.stop()
+    }
+
+    private method halt(output: NativeAssembly, stack: NativeOwnership): unit {
+        output.beginArguments()
+        output.line("mov x0, #0")
+        output.pushInteger("x0")
+        output.callRole(output.roleExit(), 1)
+        stack.stop()
+    }
+
+    // Emits one instruction; returns the next code offset, or -1 for an
+    // opcode outside the native subset.
+    public method emit(output: NativeAssembly, stack: NativeOwnership, values: NativeValueEmitter, image: NativeImage, codeStart: int, offset: int): int {
+        let opcode = image.byteAt(codeStart + offset)
+        let operandAt = codeStart + offset + 1
+        let nextOffset = offset + 1 + image.operandWidth(opcode)
+        let label = output.codeLabel(functionIndex, offset)
+        stack.enter(output, offset)
+        output.label(label)
+        if opcode == 1 {
+            pushConstant(output, stack, image.signed32(operandAt + 4) * 4294967296 + image.u32(operandAt), 1)
+        } else if opcode == 4 {
+            pushConstant(output, stack, image.byteAt(operandAt), 2)
+        } else if opcode == 5 {
+            pushConstant(output, stack, 0, 0)
+        } else if opcode == 51 {
+            pushConstant(output, stack, 0, 6)
+        } else if opcode == 3 {
+            values.constantString(output, stack, image.u32(operandAt))
+        } else if opcode == 6 {
+            stack.dropTop(output)
+        } else if opcode == 7 {
+            duplicate(output, stack)
+        } else if opcode == 8 {
+            loadLocal(output, stack, image.u32(operandAt))
+        } else if opcode == 9 {
+            storeLocal(output, stack, image.u32(operandAt))
+        } else if opcode >= 12 && opcode <= 16 || opcode >= 19 && opcode <= 29 {
+            binary(output, stack, opcode, label)
+        } else if opcode == 17 || opcode == 18 {
+            values.unary(output, stack, opcode, label)
+        } else if opcode == 30 || opcode == 31 || opcode == 32 {
+            jump(output, stack, opcode, nextOffset + image.signed32(operandAt))
+        } else if opcode == 33 {
+            call(output, stack, image.u32(operandAt), image.u32(operandAt + 4))
+        } else if opcode == 35 {
+            returnValue(output, stack)
+        } else if opcode == 36 {
+            values.fromStack(output, stack, output.roleObjectFromStack(), image.u32(operandAt + 4))
+        } else if opcode == 37 {
+            values.getField(output, stack, image.u32(operandAt), label)
+        } else if opcode == 38 {
+            values.setField(output, stack, image.u32(operandAt), label)
+        } else if opcode == 39 {
+            values.fromStack(output, stack, output.roleArrayFromStack(), image.u32(operandAt))
+        } else if opcode == 40 {
+            values.getIndex(output, stack, label)
+        } else if opcode == 45 {
+            values.display(output, stack, image.byteAt(operandAt))
+        } else if opcode == 46 {
+            halt(output, stack)
+        } else if opcode == 47 {
+            values.readBytes(output, stack)
+        } else if opcode == 48 {
+            values.twoValueCall(output, stack, output.roleWriteBytes(), false)
+        } else if opcode == 49 {
+            values.arrayLength(output, stack, label)
+        } else if opcode == 50 {
+            values.twoValueCall(output, stack, output.rolePushValue(), true)
+        } else if opcode == 52 {
+            stopWith(output, stack, 5, functionIndex)
+        } else if opcode == 57 {
+            values.runtimeCall(output, stack, image.u32(operandAt))
+        } else if opcode != 0 {
+            return 0 - opcode
+        }
+        return nextOffset
+    }
+}

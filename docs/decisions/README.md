@@ -1,9 +1,10 @@
-# Decisões arquiteturais
+# Architecture decisions
 
-ADRs registram decisões, contexto, consequências e condições para reabrir a decisão. São documentos de planejamento até serem aprovados e validados por implementação.
+ADRs record decisions, context, consequences and the conditions for reopening a decision. They remain planning documents until approved and validated by an implementation.
 
-- [ADR-0001: bootstrap por subconjuntos cumulativos](ADR-0001-incremental-subsets.md)
-- [ADR-0002: evidência de self-hosting e ponto fixo](ADR-0002-evidence-and-fixed-point.md)
-- [ADR-0003: Snovalang como linguagem principal e assembly nas fronteiras](ADR-0003-language-boundaries.md)
-- [ADR-0004: executor SnBC iterativo em Snova e igualdade por valor](ADR-0004-snova-snbc-executor.md)
-- [ADR-0005: backend nativo aarch64-apple-darwin em Snova (proposto)](ADR-0005-native-backend.md)
+- [ADR-0001: bootstrap through cumulative subsets](ADR-0001-incremental-subsets.md)
+- [ADR-0002: self-hosting and fixed-point evidence](ADR-0002-evidence-and-fixed-point.md)
+- [ADR-0003: Snovalang as the main language and assembly at the boundaries](ADR-0003-language-boundaries.md)
+- [ADR-0004: iterative SnBC executor in Snova and value equality](ADR-0004-snova-snbc-executor.md)
+- [ADR-0005: native aarch64-apple-darwin backend in Snova (N1 and N2 implemented)](ADR-0005-native-backend.md)
+- [ADR-0006: native runtime in Snova with a libSystem boundary](ADR-0006-native-runtime.md)

@@ -1,0 +1,40 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// BinaryTree: insertion, replacement, lookup of present and missing keys,
+// ordered traversal, extremes and an empty tree.
+func main(): int {
+    var nodes: TreeNode[] = []
+    var tree = BinaryTree { nodes: nodes, rootIndex: -1 }
+    Console.printline(tree.find(1, -1))
+    Console.printline(tree.minimumKey(-1))
+    Console.printline(tree.keys().len())
+    let keys = [50, 30, 70, 20, 40, 60, 80, 30]
+    var index = 0
+    var added = 0
+    while index < keys.len() {
+        if tree.insert(keys[index], keys[index] * 2) { added = added + 1 }
+        index = index + 1
+    }
+    tree.insert(40, 400)
+    Console.printline(added)
+    Console.printline(tree.count())
+    Console.printline(tree.find(60, -1))
+    Console.printline(tree.find(40, -1))
+    Console.printline(tree.find(65, -1))
+    Console.printline(tree.contains(80))
+    Console.printline(tree.contains(81))
+    Console.printline(tree.minimumKey(-1))
+    Console.printline(tree.maximumKey(-1))
+    Console.printline(tree.height())
+    let ordered = tree.keys()
+    var position = 0
+    while position < ordered.len() {
+        Console.print(ordered[position])
+        Console.print(" ")
+        position = position + 1
+    }
+    Console.printline("")
+    return tree.count() * 10 + tree.height()
+}

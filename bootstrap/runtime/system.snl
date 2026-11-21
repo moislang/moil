@@ -1,0 +1,37 @@
+package snova.runtime
+
+// libSystem boundary of the native runtime (ADR-0003, ADR-0006). Each native
+// stub only moves its arguments into x0..x5 and calls the symbol; 32-bit
+// results (open, close, munmap) are sign-extended. Nothing else in generated
+// code calls libSystem.
+class System {
+    // _write(descriptor, address, length) -> bytes written or -1
+    @Native
+    public static method write(descriptor: int, address: int, length: int): int
+
+    // _read(descriptor, address, length) -> bytes read, 0 at end or -1
+    @Native
+    public static method read(descriptor: int, address: int, length: int): int
+
+    // _open(path, flags, mode) -> descriptor or -1; mode goes on the stack
+    // because open is variadic on Darwin arm64
+    @Native
+    public static method open(pathAddress: int, flags: int, mode: int): int
+
+    // _close(descriptor) -> 0 or -1
+    @Native
+    public static method close(descriptor: int): int
+
+    // _mmap(0, length, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0)
+    // -> address of zeroed memory or -1
+    @Native
+    public static method map(length: int): int
+
+    // _munmap(address, length) -> 0 or -1; returns a large block to the kernel
+    @Native
+    public static method unmap(address: int, length: int): int
+
+    // _exit(status); does not return
+    @Native
+    public static method exit(status: int): unit
+}

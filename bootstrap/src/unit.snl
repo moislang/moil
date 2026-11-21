@@ -59,6 +59,8 @@ struct compilerState {
     public var fn_own: int[]
     public var fn_async: int[]
     public var fn_pulsar: int[]
+    // 1 for `static` methods: no implicit self parameter
+    public var fn_static: int[]
     public var st_kind: int[]
     public var fd_init: int[]
     public var va_ns: int[]
@@ -88,6 +90,7 @@ struct compilerContext {
     public var seq: int
     public var decl_async: int
     public var decl_pulsar: int
+    public var decl_static: int
     public var decl_owner: int
     public var phase: int
     public var error_phase: int

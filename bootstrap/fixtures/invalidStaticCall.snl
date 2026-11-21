@@ -1,0 +1,15 @@
+package bootstrap.fixture
+
+class Counter {
+    public var total: int
+
+    public method add(amount: int): int {
+        total = total + amount
+        return total
+    }
+}
+
+// An instance method has no receiver when called through its type.
+func main(): int {
+    return Counter.add(1)
+}

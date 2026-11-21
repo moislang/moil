@@ -1,0 +1,41 @@
+package snova.library
+
+// Node of BinaryTree, stored in the tree's node arena. Children are arena
+// indexes (-1 when absent), so the tree holds no object references: it is
+// acyclic by construction and needs no null. The seed cannot call a method
+// on an array element, so nodes are read and written through static
+// methods that take the node as a typed parameter.
+class TreeNode {
+    public var key: int
+    public var payload: int
+    public var left: int
+    public var right: int
+
+    public static method keyOf(node: TreeNode): int {
+        return node.key
+    }
+
+    public static method payloadOf(node: TreeNode): int {
+        return node.payload
+    }
+
+    public static method leftOf(node: TreeNode): int {
+        return node.left
+    }
+
+    public static method rightOf(node: TreeNode): int {
+        return node.right
+    }
+
+    public static method replacePayload(node: TreeNode, newPayload: int): unit {
+        node.payload = newPayload
+    }
+
+    public static method linkLeft(node: TreeNode, child: int): unit {
+        node.left = child
+    }
+
+    public static method linkRight(node: TreeNode, child: int): unit {
+        node.right = child
+    }
+}

@@ -1,0 +1,170 @@
+package snova.compiler.backend
+
+// Assembly output of the native backend (ADR-0005, ADR-0006) and the calling
+// conventions every emitter shares.
+//
+// Values are (payload, tag) pairs in 16-byte slots, with the tags of the
+// SnBC executor: 0 unit, 1 int, 2 bool, 3 string, 4 array, 5 object, 6 null.
+// Function frame: x29 points to the saved (x29, x30) pair; local i is the
+// slot at [x29 - 16 * (i + 1)]; the operand stack grows below the locals,
+// one slot per value, keeping sp 16-byte aligned. Argument i of a call with
+// n arguments is at [x29 + 16 + 16 * (n - 1 - i)] on entry. Results return
+// in x0 (payload) and x1 (tag).
+//
+// Collaborators are passed as typed parameters: the transitional root
+// (`snl build` v0.3.0) cannot lower a method call whose receiver is a field.
+class NativeAssembly {
+    public var lines: string[]
+    public var labelSerial: int
+    // role -> function index: the same array NativeRoles.resolve fills
+    public var roleFunction: int[]
+
+    public method line(text: string): unit {
+        lines.push("    " + text)
+    }
+
+    public method label(name: string): unit {
+        lines.push(name + ":")
+    }
+
+    public method directive(text: string): unit {
+        lines.push("    " + text)
+    }
+
+    public method newLabel(): string {
+        labelSerial = labelSerial + 1
+        return "Lsnova_" + decimal(labelSerial)
+    }
+
+    private method digit(value: int): string {
+        if value == 0 { return "0" }
+        if value == 1 { return "1" }
+        if value == 2 { return "2" }
+        if value == 3 { return "3" }
+        if value == 4 { return "4" }
+        if value == 5 { return "5" }
+        if value == 6 { return "6" }
+        if value == 7 { return "7" }
+        if value == 8 { return "8" }
+        return "9"
+    }
+
+    // Decimal text of a non-negative integer.
+    public method decimal(value: int): string {
+        if value < 10 { return digit(value) }
+        return decimal(value / 10) + digit(value % 10)
+    }
+
+    // Joins lines by halving: O(n log n) copies instead of O(n^2).
+    private method joinRange(start: int, end: int): string {
+        if end - start == 1 { return lines[start] + "\n" }
+        let middle = start + (end - start) / 2
+        return joinRange(start, middle) + joinRange(middle, end)
+    }
+
+    public method text(): string {
+        if lines.len() == 0 { return "" }
+        return joinRange(0, lines.len())
+    }
+
+    // Runtime methods that generated code calls (NativeRoles order).
+    public method roleExit(): int { return 12 }
+    public method roleBinary(): int { return 13 }
+    public method roleFail(): int { return 14 }
+    public method roleDisplay(): int { return 15 }
+    public method roleArrayFromStack(): int { return 16 }
+    public method roleObjectFromStack(): int { return 17 }
+    public method rolePushValue(): int { return 18 }
+    public method roleReadBytes(): int { return 19 }
+    public method roleWriteBytes(): int { return 20 }
+    public method roleHostCall(): int { return 21 }
+    public method roleWriteText(): int { return 22 }
+    public method roleArgumentCount(): int { return 23 }
+    public method roleDestroy(): int { return 24 }
+    public method roleStoreField(): int { return 25 }
+    public method roleReleaseSlots(): int { return 26 }
+    public method roleFinish(): int { return 27 }
+
+    public method codeLabel(functionIndex: int, offset: int): string {
+        return "Lsn" + decimal(functionIndex) + "_" + decimal(offset)
+    }
+
+    public method symbol(functionIndex: int): string {
+        return "_snova_fn_" + decimal(functionIndex)
+    }
+
+    public method pushPair(): unit {
+        line("stp x0, x1, [sp, #-16]!")
+    }
+
+    public method pushRegisters(payload: string, tag: string): unit {
+        line("stp " + payload + ", " + tag + ", [sp, #-16]!")
+    }
+
+    public method popPair(payload: string, tag: string): unit {
+        line("ldp " + payload + ", " + tag + ", [sp], #16")
+    }
+
+    // Arguments to runtime methods are int slots; x15 holds the int tag.
+    public method beginArguments(): unit {
+        line("mov x15, #1")
+    }
+
+    public method pushInteger(register: string): unit {
+        line("stp " + register + ", x15, [sp, #-16]!")
+    }
+
+    // Calls a runtime role whose arguments are already pushed, then drops
+    // them.
+    public method callRole(role: int, argumentCount: int): unit {
+        line("bl " + symbol(roleFunction[role]))
+        if argumentCount > 0 { line("add sp, sp, #" + decimal(16 * argumentCount)) }
+    }
+
+    // Runtime.fail(code, detail); it does not return.
+    public method callFail(code: int, detail: int): unit {
+        beginArguments()
+        loadConstant("x9", code)
+        pushInteger("x9")
+        loadConstant("x9", detail)
+        pushInteger("x9")
+        callRole(roleFail(), 2)
+    }
+
+    // Materializes a 64-bit integer with movz/movk (two's complement).
+    public method loadConstant(register: string, value: int): unit {
+        line("movz " + register + ", #" + decimal(value & 65535))
+        var part = 1
+        while part < 4 {
+            let chunk = (value >> (16 * part)) & 65535
+            if chunk != 0 {
+                line("movk " + register + ", #" + decimal(chunk) + ", lsl #" + decimal(16 * part))
+            }
+            part = part + 1
+        }
+    }
+
+    // target = source + value, or source - value when subtract is true;
+    // values that do not fit the 12-bit immediate go through x11.
+    public method offset(target: string, source: string, value: int, subtract: bool): unit {
+        var operation = "add "
+        if subtract { operation = "sub " }
+        if value < 4096 {
+            line(operation + target + ", " + source + ", #" + decimal(value))
+            return
+        }
+        loadConstant("x11", value)
+        line(operation + target + ", " + source + ", x11")
+    }
+
+    // x10 = address of local slot.
+    public method localAddress(slot: int): unit {
+        offset("x10", "x29", 16 * (slot + 1), true)
+    }
+
+    public method stateAddress(register: string): unit {
+        line("adrp " + register + ", _snova_state@PAGE")
+        line("add " + register + ", " + register + ", _snova_state@PAGEOFF")
+    }
+
+}

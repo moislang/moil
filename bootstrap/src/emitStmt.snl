@@ -203,7 +203,9 @@ func emitFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit
     cx.loc_base = bg.loc_slot.len()
     cx.expr_ty = 0
     cx.owner = bg.fn_own[fi]
-    if bg.fn_own[fi] >= 0 {
+    // A static method has no instance: no self local, no implicit fields.
+    if bg.fn_static[fi] != 0 { cx.owner = -1 }
+    if cx.owner >= 0 {
         addLocal(bg, cx, 0, 0, bg.fn_own[fi] + 1)
     }
     var i = 0

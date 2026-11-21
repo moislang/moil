@@ -1,70 +1,73 @@
-# Visão da arquitetura
+# Architecture overview
 
-## Objetivo
+## Goal
 
-Construir neste repositório um compilador capaz de compilar seu próprio código-fonte, preservando Snovalang como linguagem de implementação. O compilador de referência `../snovac` serve como especificação observável e oráculo durante a migração; não deve ser alterado por este trabalho.
+Build in this repository a compiler that compiles its own source code, keeping Snovalang as the implementation language. The reference compiler `../snovac` serves as an observable specification and oracle during the migration; this work must not modify it.
 
-O compilador é a única peça pública de produto. Seu frontend, semântica,
-backend, runtime e driver devem ser desenvolvidos em Snova. A raiz `snl`
-instalada é temporária; C/C++ não serão uma implementação paralela. O código
-atual está em módulos `.snl` importáveis no projeto `bootstrap/src/`, com APIs
-públicas pequenas. O `snl build` usa esses módulos diretamente e produz um executável que empacota SnBC com a VM C do `snl` (não é código de máquina do programa; ver ADR-0005). Para se
-auto-compilar, o seed ainda monta internamente uma unidade de fonte; resolver
-imports entre arquivos arbitrários é o próximo gate de arquitetura. As demais
-lacunas estão em `docs/roadmap/subset.md`.
+The compiler is the only public product. Its frontend, semantics, backend,
+runtime and driver must be developed in Snova. The installed `snl` root is
+temporary; C/C++ will not be a parallel implementation. The current code is in
+importable `.snl` modules in the `bootstrap/src/` project, with small public
+APIs, and the native runtime is in `bootstrap/runtime/`. `snl build` uses
+these modules directly and produces an executable that bundles SnBC with the
+`snl` C VM (not machine code of the program; see ADR-0005). The native backend
+emits aarch64 machine code for the program plus the Snova runtime, linked only
+against `libSystem` (ADR-0006). To compile itself, the seed still assembles
+one source unit internally; resolving imports between arbitrary files is the
+next architecture gate. The remaining gaps are in `docs/roadmap/subset.md`.
 
-## Estratégia: bootstrap por subconjuntos cumulativos
+## Strategy: bootstrap through cumulative subsets
 
-O seed e o compilador mantêm um subconjunto comum. Cada marco estende a linguagem que o compilador anterior consegue aceitar. O código do compilador só usa recursos já suportados pelo compilador imediatamente anterior. Assim, não há uma fronteira arbitrária entre um dialeto K simples e uma linguagem S que o seed não sabe compilar.
+The seed and the compiler share a common subset. Each milestone extends the language that the previous compiler can accept. The compiler source only uses features already supported by the immediately previous compiler. This avoids an arbitrary boundary between a simple dialect K and a language S that the seed cannot compile.
 
 ```mermaid
 flowchart LR
-  H[snl instalado e sondado] --> K[Seed mínimo em subconjunto K]
-  K --> C1[Compilador 1: subset 0]
-  C1 --> C2[Compilador 2: subset 1]
-  C2 --> C3[Compilador N: subset completo acordado]
-  C3 --> SH[Compila seu próprio código]
-  SH --> FP[Builds sucessivos comparados]
-  FP --> DDC[DDC independente, quando houver raiz independente]
+  H[installed and probed snl] --> K[Minimal seed in subset K]
+  K --> C1[Compiler 1: subset 0]
+  C1 --> C2[Compiler 2: subset 1]
+  C2 --> C3[Compiler N: agreed complete subset]
+  C3 --> SH[Compiles its own code]
+  SH --> FP[Successive builds compared]
+  FP --> DDC[Independent DDC, once an independent root exists]
 ```
 
 ```mermaid
 flowchart TB
-  SRC[Fontes Snovalang] --> L[Lexer]
-  L --> P[Parser e AST]
-  P --> S[Resolução e semântica]
-  S --> IR[IR explícita e validada]
-  IR --> B[Backend do alvo]
-  B --> OBJ[Assembly/objeto/executável]
-  R[Runtime Snovalang] --> B
-  A[Assembly de fronteira do SO] --> R
-  D[Driver e projetos] --> L
+  SRC[Snovalang sources] --> L[Lexer]
+  L --> P[Parser and AST]
+  P --> S[Resolution and semantics]
+  S --> IR[Explicit, validated IR]
+  IR --> B[Target backend]
+  B --> OBJ[Assembly/object/executable]
+  R[Snovalang runtime] --> B
+  A[OS boundary assembly] --> R
+  D[Driver and projects] --> L
 ```
 
-Versões do Mermaid usadas nestes diagramas devem ser suportadas pelo renderizador do GitHub. Os arquivos `.mmd` em `docs/diagrams/` são as fontes editáveis.
+The Mermaid versions used in these diagrams must be supported by the GitHub renderer. The `.mmd` files in `docs/diagrams/` are the editable sources.
 
-## Componentes propostos
+## Proposed components
 
-- **Seed**: pequeno, auditável, determinístico e limitado ao subconjunto confirmado pela sonda. Gera o próximo compilador; não tenta implementar toda a linguagem.
-- **Frontend**: lexer, parser, AST, nomes, tipos e diagnósticos compatíveis com o comportamento de referência documentado.
-- **IR**: representação independente do backend, com invariantes e validação explícitas.
-- **Backend**: inicialmente um único alvo host. Outros alvos entram apenas após o primeiro caminho vertical estar estável.
-- **Runtime**: implementação em Snovalang sempre que possível; assembly apenas para ABI, syscalls e primitivas sem API de linguagem equivalente.
-- **Driver**: CLI mínima primeiro; compatibilidade com comandos e flags existentes é expandida por etapas.
-- **Conformance harness**: compara resultado do novo compilador com o `snl`/`snovac` de referência sem modificar o checkout de referência.
+- **Seed**: small, auditable, deterministic and limited to the subset confirmed by probes. It generates the next compiler; it does not try to implement the whole language.
+- **Frontend**: lexer, parser, AST, names, types and diagnostics compatible with the documented reference behavior.
+- **IR**: a backend-independent representation with explicit invariants and validation.
+- **Backend**: initially a single host target. Other targets come only after the first vertical path is stable.
+- **Runtime**: implemented in Snovalang whenever possible; assembly only for the ABI, system calls and primitives with no equivalent language API. The native runtime follows this rule: memory, strings, arrays, objects, printing and files are Snova, and assembly is limited to stubs for memory primitives and six libSystem calls (ADR-0006).
+- **Driver**: minimal CLI first; compatibility with existing commands and flags grows in stages.
+- **Conformance harness**: compares the new compiler's results with the reference `snl`/`snovac` without modifying the reference checkout.
 
-O layout físico final fica deliberadamente em aberto até o marco de descoberta. A estrutura sugerida é `seed/`, `compiler/`, `runtime/`, `docs/` e `scripts/`, mas os nomes não devem obrigar uma divisão prematura nem duplicar módulos.
+The final physical layout stays deliberately open until the discovery milestone. A suggested structure is `seed/`, `compiler/`, `runtime/`, `docs/` and `scripts/`, but the names must not force a premature split or duplicate modules.
 
-## Fronteiras e contratos
+## Boundaries and contracts
 
-1. Cada fase recebe dados explícitos e retorna resultado/diagnósticos; erros não interrompem o processo por exceções antes de existir suporte validado.
-2. A serialização/ordenação de símbolos, strings, diagnósticos e artefatos é determinística.
-3. Não se adiciona recurso de linguagem sem uma sonda, especificação do subconjunto e casos positivos/negativos.
-4. O seed, compilador, runtime e ferramentas de validação têm fronteiras de responsabilidade documentadas.
-5. Assembly não vira linguagem de implementação geral: toda função assembly tem contrato de ABI, plataforma, ownership e teste de chamada.
+1. Each phase receives explicit data and returns results/diagnostics; errors do not stop the process through exceptions before validated support exists.
+2. Serialization and ordering of symbols, strings, diagnostics and artifacts are deterministic.
+3. No language feature is added without a probe, a subset specification and positive/negative cases.
+4. The seed, compiler, runtime and validation tools have documented responsibility boundaries.
+5. Assembly does not become a general implementation language: every assembly function has an ABI, platform, ownership and call-test contract.
 
-## Definição de self-hosted
+## Definition of self-hosted
 
-Self-hosted significa que uma versão do compilador, construída por um bootstrap identificado, compila as fontes do compilador seguinte. O ponto fixo exige que builds sucessivos tenham artefatos comparáveis e iguais segundo uma política definida. Reprodutibilidade exige builds limpos repetidos com entradas e toolchains registradas. DDC exige uma raiz de confiança independente e é reportado separadamente; dois builds produzidos pela mesma raiz não constituem DDC.
+Self-hosted means that a compiler version, built by an identified bootstrap, compiles the sources of the next compiler. A fixed point requires successive builds to produce comparable artifacts that are equal under a defined policy. Reproducibility requires repeated clean builds with recorded inputs and toolchains. DDC requires an independent root of trust and is reported separately; two builds produced by the same root are not DDC.
 
-Ver [ADR-0001](../decisions/ADR-0001-incremental-subsets.md), [ADR-0002](../decisions/ADR-0002-evidence-and-fixed-point.md) e o [roadmap](../roadmap/stages.md).
+See [ADR-0001](../decisions/ADR-0001-incremental-subsets.md), [ADR-0002](../decisions/ADR-0002-evidence-and-fixed-point.md) and the [roadmap](../roadmap/stages.md).

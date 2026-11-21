@@ -1,0 +1,63 @@
+package snova.runtime
+
+// Native runtime strings: address of a block [length: 8 bytes][bytes].
+// Program constants use the same layout in __TEXT,__const. Strings are
+// immutable; concatenation creates a new block. Bytes of host strings
+// (arguments, environment, files) are copied on entry, so equality and
+// concatenation never depend on an intermediate file.
+class Text {
+    public static method create(length: int): int {
+        let text = Heap.allocate(8 + length)
+        Primitive.store(text, length)
+        return text
+    }
+
+    public static method empty(): int {
+        return Text.create(0)
+    }
+
+    public static method byteCount(text: int): int {
+        return Primitive.load(text)
+    }
+
+    public static method concat(left: int, right: int): int {
+        let leftLength = Primitive.load(left)
+        let rightLength = Primitive.load(right)
+        let joined = Text.create(leftLength + rightLength)
+        Heap.copyBytes(joined + 8, left + 8, leftLength)
+        Heap.copyBytes(joined + 8 + leftLength, right + 8, rightLength)
+        return joined
+    }
+
+    public static method equal(left: int, right: int): bool {
+        if left == right { return true }
+        let length = Primitive.load(left)
+        if length != Primitive.load(right) { return false }
+        var index = 0
+        while index < length {
+            if Primitive.loadByte(left + 8 + index) != Primitive.loadByte(right + 8 + index) { return false }
+            index = index + 1
+        }
+        return true
+    }
+
+    // Copies a C string (zero-terminated) into a runtime string.
+    public static method fromC(address: int, start: int): int {
+        var length = 0
+        while Primitive.loadByte(address + start + length) != 0 {
+            length = length + 1
+        }
+        let text = Text.create(length)
+        Heap.copyBytes(text + 8, address + start, length)
+        return text
+    }
+
+    // Zero-terminated C string for system calls; the caller frees it.
+    public static method toC(text: int): int {
+        let length = Primitive.load(text)
+        let address = Heap.allocate(length + 1)
+        Heap.copyBytes(address, text + 8, length)
+        Primitive.storeByte(address + length, 0)
+        return address
+    }
+}

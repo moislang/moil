@@ -1,0 +1,33 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// IntMap: chaining with colliding keys, replacement, negative keys and
+// missing lookups.
+func main(): int {
+    var heads: IntCell[] = []
+    var entries: MapEntry[] = []
+    var table = IntMap { heads: heads, entries: entries }
+    table.initialize(4)
+    Console.printline(table.lookup(3, -1))
+    table.store(3, 30)
+    table.store(7, 70)
+    table.store(11, 110)
+    table.store(-5, 50)
+    Console.printline(table.store(7, 77))
+    Console.printline(table.count())
+    Console.printline(table.lookup(7, -1))
+    Console.printline(table.lookup(11, -1))
+    Console.printline(table.lookup(-5, -1))
+    Console.printline(table.lookup(15, -1))
+    Console.printline(table.containsKey(3))
+    Console.printline(table.containsKey(4))
+    var key = 0
+    while key < 100 {
+        table.store(key * 13, key)
+        key = key + 1
+    }
+    Console.printline(table.count())
+    Console.printline(table.lookup(13 * 57, -1))
+    return table.count() % 256
+}

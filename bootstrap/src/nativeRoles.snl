@@ -1,0 +1,194 @@
+package snova.compiler.backend
+
+// Native runtime roles (ADR-0006). The backend finds the runtime methods it
+// calls by their full name `Type.method` in the image, and treats every
+// method of a runtime type as runtime code: no program depth accounting and
+// no ownership instrumentation. Names are stored as bytes because the seed
+// subset cannot turn a host string into bytes.
+//
+// Role ids are mirrored by NativeAssembly.role*. Roles 0..12 are native methods (Primitive, System) implemented as assembly
+// stubs; roles 13..27 are Snova runtime methods called by generated code.
+class NativeRoles {
+    // role -> function index
+    public var roleFunction: int[]
+    // function index -> role, or -1
+    public var functionRole: int[]
+    // function index -> 1 for methods of runtime types
+    public var runtimeFunction: int[]
+
+    public method count(): int { return 28 }
+    public method lastNative(): int { return 12 }
+
+    public method addName(names: int[], bytes: int[]): unit {
+        var index = 0
+        while index < bytes.len() {
+            names.push(bytes[index])
+            index = index + 1
+        }
+        names.push(0)
+    }
+
+    // Full role names, separated by 0, in role order.
+    private method roleNames(): int[] {
+        var names: int[] = []
+        // 0: Primitive.state
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 115, 116, 97, 116, 101])
+        // 1: Primitive.load
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 108, 111, 97, 100])
+        // 2: Primitive.store
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 115, 116, 111, 114, 101])
+        // 3: Primitive.loadByte
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 108, 111, 97, 100, 66, 121, 116, 101])
+        // 4: Primitive.storeByte
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 115, 116, 111, 114, 101, 66, 121, 116, 101])
+        // 5: Primitive.tagged
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101, 46, 116, 97, 103, 103, 101, 100])
+        // 6: System.write
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 119, 114, 105, 116, 101])
+        // 7: System.read
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 114, 101, 97, 100])
+        // 8: System.open
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 111, 112, 101, 110])
+        // 9: System.close
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 99, 108, 111, 115, 101])
+        // 10: System.map
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 109, 97, 112])
+        // 11: System.unmap
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 117, 110, 109, 97, 112])
+        // 12: System.exit
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 101, 120, 105, 116])
+        // 13: Value.binary
+        addName(names, [86, 97, 108, 117, 101, 46, 98, 105, 110, 97, 114, 121])
+        // 14: Runtime.fail
+        addName(names, [82, 117, 110, 116, 105, 109, 101, 46, 102, 97, 105, 108])
+        // 15: Value.display
+        addName(names, [86, 97, 108, 117, 101, 46, 100, 105, 115, 112, 108, 97, 121])
+        // 16: Container.arrayFromStack
+        addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 97, 114, 114, 97, 121, 70, 114, 111, 109, 83, 116, 97, 99, 107])
+        // 17: Container.objectFromStack
+        addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 111, 98, 106, 101, 99, 116, 70, 114, 111, 109, 83, 116, 97, 99, 107])
+        // 18: Container.pushValue
+        addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 112, 117, 115, 104, 86, 97, 108, 117, 101])
+        // 19: Host.readBytes
+        addName(names, [72, 111, 115, 116, 46, 114, 101, 97, 100, 66, 121, 116, 101, 115])
+        // 20: Host.writeBytes
+        addName(names, [72, 111, 115, 116, 46, 119, 114, 105, 116, 101, 66, 121, 116, 101, 115])
+        // 21: Host.call
+        addName(names, [72, 111, 115, 116, 46, 99, 97, 108, 108])
+        // 22: Host.writeText
+        addName(names, [72, 111, 115, 116, 46, 119, 114, 105, 116, 101, 84, 101, 120, 116])
+        // 23: Host.argumentCount
+        addName(names, [72, 111, 115, 116, 46, 97, 114, 103, 117, 109, 101, 110, 116, 67, 111, 117, 110, 116])
+        // 24: Ownership.destroy
+        addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 100, 101, 115, 116, 114, 111, 121])
+        // 25: Ownership.storeField
+        addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 115, 116, 111, 114, 101, 70, 105, 101, 108, 100])
+        // 26: Ownership.releaseSlots
+        addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 114, 101, 108, 101, 97, 115, 101, 83, 108, 111, 116, 115])
+        // 27: Runtime.finish
+        addName(names, [82, 117, 110, 116, 105, 109, 101, 46, 102, 105, 110, 105, 115, 104])
+        return names
+    }
+
+    // Runtime type names, separated by 0. These names are reserved.
+    private method runtimeTypes(): int[] {
+        var names: int[] = []
+        // Primitive
+        addName(names, [80, 114, 105, 109, 105, 116, 105, 118, 101])
+        // System
+        addName(names, [83, 121, 115, 116, 101, 109])
+        // Heap
+        addName(names, [72, 101, 97, 112])
+        // Runtime
+        addName(names, [82, 117, 110, 116, 105, 109, 101])
+        // Text
+        addName(names, [84, 101, 120, 116])
+        // Container
+        addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114])
+        // Ownership
+        addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112])
+        // Value
+        addName(names, [86, 97, 108, 117, 101])
+        // Host
+        addName(names, [72, 111, 115, 116])
+        return names
+    }
+
+    // Index of the entry of names equal to image[start .. start + length),
+    // or -1.
+    private method find(names: int[], image: NativeImage, start: int, length: int): int {
+        var entryIndex = 0
+        var entry = 0
+        while entry < names.len() {
+            var index = 0
+            while names[entry + index] != 0 && index < length && names[entry + index] == image.byteAt(start + index) {
+                index = index + 1
+            }
+            if names[entry + index] == 0 && index == length { return entryIndex }
+            while names[entry] != 0 { entry = entry + 1 }
+            entry = entry + 1
+            entryIndex = entryIndex + 1
+        }
+        return -1
+    }
+
+    // Length of the type part of `Type.method`, or -1 for a free function.
+    private method typeLength(image: NativeImage, start: int, length: int): int {
+        var index = 0
+        while index < length {
+            if image.byteAt(start + index) == 46 { return index }
+            index = index + 1
+        }
+        return -1
+    }
+
+    // Classifies every function of the image. Returns false when a role the
+    // backend calls is missing (the runtime was not appended).
+    public method resolve(image: NativeImage): bool {
+        let roles = roleNames()
+        let types = runtimeTypes()
+        var offset = image.functionTable()
+        let functionCount = image.u32(offset)
+        offset = offset + 4
+        var functionIndex = 0
+        while functionIndex < functionCount {
+            let nameLength = image.u32(offset)
+            let nameStart = offset + 4
+            functionRole.push(find(roles, image, nameStart, nameLength))
+            let typeLength = typeLength(image, nameStart, nameLength)
+            if typeLength > 0 && find(types, image, nameStart, typeLength) >= 0 {
+                runtimeFunction.push(1)
+            } else {
+                runtimeFunction.push(0)
+            }
+            offset = nameStart + nameLength
+            offset = offset + 12 + image.u32(offset + 8)
+            functionIndex = functionIndex + 1
+        }
+        var role = 0
+        while role < count() {
+            var found = -1
+            var index = 0
+            while index < functionRole.len() {
+                if functionRole[index] == role { found = index }
+                index = index + 1
+            }
+            if found < 0 { return false }
+            roleFunction.push(found)
+            role = role + 1
+        }
+        return true
+    }
+
+    public method functionOf(role: int): int {
+        return roleFunction[role]
+    }
+
+    public method roleOf(functionIndex: int): int {
+        return functionRole[functionIndex]
+    }
+
+    public method isRuntime(functionIndex: int): bool {
+        return runtimeFunction[functionIndex] != 0
+    }
+}

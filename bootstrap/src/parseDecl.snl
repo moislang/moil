@@ -263,6 +263,11 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
     bg.fn_own.push(cx.decl_owner)
     bg.fn_async.push(cx.decl_async)
     bg.fn_pulsar.push(cx.decl_pulsar)
+    bg.fn_static.push(cx.decl_static)
+    if cx.decl_static != 0 && cx.decl_owner < 0 {
+        fail(cx)
+        return
+    }
     if cx.decl_owner < 0 {
         if isWord(src, ns, nl, 4, 109, 97, 105, 110, 0, 0, 0, 0, 0, 0, 0, 0) {
             cx.main_idx = fi
@@ -290,7 +295,7 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
             acceptTok(bg, cx, 24)
         }
     }
-    if cx.decl_owner >= 0 {
+    if cx.decl_owner >= 0 && cx.decl_static == 0 {
         bg.fn_ar.push(arity + 1)
     } else {
         bg.fn_ar.push(arity)

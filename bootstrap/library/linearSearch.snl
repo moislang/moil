@@ -1,0 +1,47 @@
+package snova.library
+
+// Searches over unsorted int arrays.
+class LinearSearch {
+    // First index of target, or -1 when it is absent.
+    public static method indexOf(values: int[], target: int): int {
+        var index = 0
+        while index < values.len() {
+            if values[index] == target { return index }
+            index = index + 1
+        }
+        return -1
+    }
+
+    // Last index of target, or -1 when it is absent.
+    public static method lastIndexOf(values: int[], target: int): int {
+        var index = values.len() - 1
+        while index >= 0 {
+            if values[index] == target { return index }
+            index = index - 1
+        }
+        return -1
+    }
+
+    // Number of occurrences of target.
+    public static method occurrences(values: int[], target: int): int {
+        var found = 0
+        var index = 0
+        while index < values.len() {
+            if values[index] == target { found = found + 1 }
+            index = index + 1
+        }
+        return found
+    }
+
+    // Index of the smallest value, or -1 for an empty array.
+    public static method indexOfMinimum(values: int[]): int {
+        if values.len() == 0 { return -1 }
+        var best = 0
+        var index = 1
+        while index < values.len() {
+            if values[index] < values[best] { best = index }
+            index = index + 1
+        }
+        return best
+    }
+}

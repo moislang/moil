@@ -1,28 +1,28 @@
-# ADR-0002 — Evidência de self-hosting e ponto fixo
+# ADR-0002 — Self-hosting and fixed-point evidence
 
-- **Status:** Aceito
-- **Data:** 2026-11-21
+- **Status:** Accepted
+- **Date:** 2026-11-21
 
-## Contexto
+## Context
 
-“Compila a si mesmo”, igualdade binária, builds reproduzíveis e Diverse Double-Compiling (DDC) são propriedades diferentes. Um bootstrap pode funcionar e ainda não produzir bytes estáveis; repetir builds pela mesma raiz não prova independência.
+"Compiles itself", binary equality, reproducible builds and Diverse Double-Compiling (DDC) are different properties. A bootstrap can work and still not produce stable bytes; repeating builds from the same root does not prove independence.
 
-## Decisão
+## Decision
 
-Registrar separadamente: (1) bootstrap funcional com cadeia de versões; (2) determinismo de artefatos; (3) reprodutibilidade em builds limpos; (4) ponto fixo segundo comparação explícita; e (5) DDC com segunda raiz independente. Documentar toolchain, flags, alvo, normalização permitida e hash de cada artefato.
+Record separately: (1) a working bootstrap with a version chain; (2) artifact determinism; (3) reproducibility in clean builds; (4) a fixed point under an explicit comparison; and (5) DDC with a second, independent root. Document the toolchain, flags, target, allowed normalization and hash of each artifact.
 
-## Consequências
+## Consequences
 
-- Não haverá uma declaração genérica “self-hosted” sem descrever qual gate foi alcançado.
-- Comparação de assembly pode ser necessária quando o formato executável carrega UUID, timestamps ou outras diferenças ambientais.
-- Se não existir segunda raiz independente, DDC fica não comprovado, mesmo que os outros gates passem.
+- There will be no generic "self-hosted" claim without saying which gate was reached.
+- Comparing assembly may be necessary when the executable format carries a UUID, timestamps or other environmental differences.
+- Without a second independent root, DDC remains unproven, even if the other gates pass.
 
-## Reabrir quando
+## Reopen when
 
-O formato de saída ou a cadeia de confiança mudar, ou quando as comparações observadas mostrarem que outra definição de ponto fixo é mais apropriada.
+The output format or the chain of trust changes, or observed comparisons show that another fixed-point definition is more appropriate.
 
-## Evidência inicial
+## Initial evidence
 
-Foi comparada igualdade byte a byte de duas imagens SnBC do seed atual. Isso
-registra um ponto fixo restrito ao subset e à raiz usada; não demonstra
-reprodutibilidade independente nem DDC. Consulte o registro de evidências.
+Byte-for-byte equality of two SnBC images of the current seed was compared.
+This records a fixed point restricted to the subset and to the root used; it
+does not demonstrate independent reproducibility or DDC. See the evidence log.

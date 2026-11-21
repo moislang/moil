@@ -83,7 +83,7 @@ func compileSource(src: int[], image: int[]): int {
         par_fn: [], par_ns: [], par_nl: [], par_ty: [],
         pool_b: [], pool_s: [], pool_n: [],
         allc: [],
-        fn_own: [], fn_async: [], fn_pulsar: [],
+        fn_own: [], fn_async: [], fn_pulsar: [], fn_static: [],
         st_kind: [], fd_init: [],
         va_ns: [], va_nl: [], va_en: [],
         lp_id: [], lp_known: [], lp_pos: [],
@@ -93,7 +93,7 @@ func compileSource(src: int[], image: int[]): int {
     var cx = compilerContext {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
-        owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_owner: -1,
+        owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
         phase: 0, error_phase: 0, error_token: -1, error_line: 1, line: 1
     }
     lexAll(src, bg, cx)
@@ -160,6 +160,7 @@ func main(): int {
         if isImageBytes(src) {
             return runImage(src, 2)
         }
+        if argc == 3 { appendNativeRuntime(src) }
     }
     var image: int[] = []
     if compileSource(src, image) != 0 {
@@ -170,7 +171,12 @@ func main(): int {
         return 1
     }
     if argc == 3 {
-        let unsupported = emitNativeAssembly(image, imagePath())
+        let backend = NativeBackend()
+        let unsupported = backend.emit(image, imagePath())
+        if unsupported < 0 {
+            Console.printline("native runtime missing from image")
+            return 1
+        }
         if unsupported != 0 {
             Console.print("unsupported opcode for native backend: ")
             Console.printline(unsupported)
