@@ -29,6 +29,10 @@ checked yet; see the evidence log.
    compiles the current sources and does not need to change.
 2. When it fails because the sources use a construct the seed cannot compile,
    run `make bootstrap-seed-refresh`, then `make bootstrap-seed-fixed-point`.
-3. Update the provenance table above and add an entry to
+3. On Linux x86-64, also run the new seed on the Snova executor
+   (`SNL_OUTPUT=build/bootstrap/vm-seed.snbc build/bootstrap/snova-bootstrap
+   bootstrap/seed/compiler.snbc run`) and require the same SHA-256, because
+   the `snl` v0.3.0 C VM miscompares some boolean values there (ADR-0009).
+4. Update the provenance table above and add an entry to
    [`evidence.md`](../../docs/roadmap/evidence.md) with the new hash, host and
    `snl` version.
