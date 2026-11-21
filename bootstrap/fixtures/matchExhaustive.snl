@@ -1,0 +1,50 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+enum Signal {
+    Stop,
+    Wait,
+    Go
+}
+
+func every(signal: Signal): int {
+    return match signal {
+        Signal.Stop -> 1
+        Signal.Wait -> 2
+        Signal.Go -> 3
+    }
+}
+
+func wildcard(signal: Signal): int {
+    return match signal {
+        Signal.Go -> 10
+        _ -> 20
+    }
+}
+
+func binding(signal: Signal): int {
+    return match signal {
+        Signal.Stop -> 100
+        other -> 200
+    }
+}
+
+func digits(value: int): int {
+    return match value {
+        1 -> 1000
+        2 -> 2000
+    }
+}
+
+func main(): int {
+    let signal = Signal.Go
+    var total = 0
+    match signal {
+        Signal.Stop -> total = total + 1
+        Signal.Wait -> total = total + 2
+        Signal.Go -> total = total + 4
+    }
+    total = total + every(signal) + wildcard(Signal.Stop) - binding(Signal.Wait) + digits(1)
+    return total - 785
+}

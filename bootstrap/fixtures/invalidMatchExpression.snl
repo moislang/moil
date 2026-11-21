@@ -1,0 +1,15 @@
+package bootstrap.fixture
+
+enum Signal {
+    Stop,
+    Wait,
+    Go
+}
+
+func main(): int {
+    let signal = Signal.Wait
+    return match signal {
+        Signal.Stop -> 1
+        Signal.Go -> 3
+    }
+}

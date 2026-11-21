@@ -1,0 +1,21 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+enum Signal {
+    Stop,
+    Wait,
+    Go
+}
+
+func show(signal: Signal): unit {
+    match signal {
+        Stop -> Console.printline("stop")
+        Wait -> Console.printline("wait")
+    }
+}
+
+func main(): int {
+    show(Signal.Go)
+    return 0
+}

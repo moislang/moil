@@ -104,6 +104,10 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 7 {
+        reportNonExhaustive(src, bg, cx)
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
