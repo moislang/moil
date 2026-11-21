@@ -73,7 +73,11 @@ not support `static` or annotations.
 - The data-structure library in `bootstrap/library/` uses static methods.
   It serves programs compiled by the Snova compiler (SnBC and native), but
   not the compiler itself, until the library has an instance-based API or
-  the compiler is built natively (N3).
+  the compiler is built natively (N3). The migration is incremental:
+  stateless types become fieldless classes created with `Type()` whose
+  methods are instance methods; sibling calls drop the type qualifier.
+  `BinarySearch` and `LinearSearch` are migrated, and
+  `make bootstrap-library-root` builds their fixture with `snl build`.
 - Once the native backend builds the compiler (N3), the root's restrictions
   stop applying, and the rules can be relaxed through a new ADR.
 

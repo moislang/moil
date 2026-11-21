@@ -14,7 +14,7 @@ STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -180,10 +180,11 @@ bootstrap-native-self: bootstrap-build
 
 # Snova data-structure library (bootstrap/library): each fixture is joined
 # with the library in dependency order (the seed resolves a field type only
-# when its class was declared earlier) and must match `snl run-snbc`. The
-# library uses static methods, so for now it serves programs compiled by the
-# Snova compiler, not the compiler built by `snl build` v0.3.0. Each fixture
-# also runs natively and must free every block before exit.
+# when its class was declared earlier) and must match `snl run-snbc`. Most of
+# the library still uses static methods, so it serves programs compiled by the
+# Snova compiler, not the compiler built by `snl build` v0.3.0; the modules
+# migrated to an instance API are gated by `bootstrap-library-root`. Each
+# fixture also runs natively and must free every block before exit.
 LIBRARY_SOURCES := intCell intArray binarySearch linearSearch sorting binaryHeap treeNode binaryTree mapEntry intMap
 LIBRARY_FIXTURES := librarySearch libraryBinaryHeap libraryBinaryTree librarySorting libraryIntMap
 
@@ -206,4 +207,29 @@ bootstrap-library: bootstrap-build
 		cmp $(BUILD_DIR)/$$fixture.native.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		grep -q "live blocks 0, live bytes 0" $(BUILD_DIR)/$$fixture.memory.txt || { echo "$$fixture: memory still live at exit"; exit 1; }; \
 		echo "library native ok: $$fixture (exit $$nativeExit, zero live blocks)"; \
+	done
+
+# Library modules with an instance API (ADR-0007), which `snl build` v0.3.0,
+# the current root, can build. Each fixture is joined with these modules only.
+# The `snl build` executable, `snl run-snbc` and the Snova executor must agree
+# on stdout and exit status for the image compiled by the Snova compiler.
+# Needs no native toolchain, so it runs on every host with `snl`.
+LIBRARY_ROOT_SOURCES := binarySearch linearSearch
+LIBRARY_ROOT_FIXTURES := librarySearch
+
+bootstrap-library-root: bootstrap-build
+	@for fixture in $(LIBRARY_ROOT_FIXTURES); do \
+		joined=$(BUILD_DIR)/$$fixture.root.snl; \
+		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
+		for name in $(LIBRARY_ROOT_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
+		$(SNL) check $$joined > /dev/null || exit 1; \
+		$(SNL) build $$joined -o $(BUILD_DIR)/$$fixture.root > /dev/null || exit 1; \
+		$(BUILD_DIR)/$$fixture.root > $(BUILD_DIR)/$$fixture.root.txt; rootExit=$$?; \
+		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.root.snbc || exit 1; \
+		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.root.snbc > $(BUILD_DIR)/$$fixture.root.ref.txt; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.root.snbc run > $(BUILD_DIR)/$$fixture.root.vm.txt; vmExit=$$?; \
+		test "$$rootExit" -eq "$$referenceExit" -a "$$rootExit" -eq "$$vmExit" || { echo "$$fixture: root $$rootExit ref $$referenceExit vm $$vmExit"; exit 1; }; \
+		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.ref.txt || exit 1; \
+		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.vm.txt || exit 1; \
+		echo "library root ok: $$fixture (exit $$rootExit)"; \
 	done

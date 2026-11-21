@@ -46,6 +46,10 @@ and the rejection of strong cycles. Unsupported opcodes fail with
 `library/` holds data structures and algorithms in Snova (searches,
 sorting, `BinaryHeap`, `BinaryTree`, `IntMap`). `make bootstrap-library`
 runs each fixture on `snl run-snbc`, on the Snova executor and natively.
+`BinarySearch` and `LinearSearch` expose an instance API (ADR-0007), so
+`make bootstrap-library-root` also builds their fixture with `snl build` and
+compares that executable with `snl run-snbc` and the Snova executor; it needs
+no native toolchain.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.

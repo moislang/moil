@@ -3,21 +3,25 @@ package bootstrap.fixture
 import builtin.io.console
 
 // BinarySearch and LinearSearch, including absent targets and an empty array.
+// Both are instance APIs (ADR-0007), so `snl build` v0.3.0 also builds this
+// fixture (`make bootstrap-library-root`).
 func main(): int {
+    let binary = BinarySearch()
+    let linear = LinearSearch()
     let sorted = [2, 3, 3, 5, 8, 13, 21]
-    Console.printline(BinarySearch.indexOf(sorted, 8))
-    Console.printline(BinarySearch.indexOf(sorted, 4))
-    Console.printline(BinarySearch.lowerBound(sorted, 3))
-    Console.printline(BinarySearch.upperBound(sorted, 3))
-    Console.printline(BinarySearch.lowerBound(sorted, 99))
-    Console.printline(BinarySearch.contains(sorted, 21))
+    Console.printline(binary.indexOf(sorted, 8))
+    Console.printline(binary.indexOf(sorted, 4))
+    Console.printline(binary.lowerBound(sorted, 3))
+    Console.printline(binary.upperBound(sorted, 3))
+    Console.printline(binary.lowerBound(sorted, 99))
+    Console.printline(binary.contains(sorted, 21))
     var empty: int[] = []
-    Console.printline(BinarySearch.indexOf(empty, 1))
+    Console.printline(binary.indexOf(empty, 1))
     let unsorted = [9, 4, 7, 4, 1]
-    Console.printline(LinearSearch.indexOf(unsorted, 4))
-    Console.printline(LinearSearch.lastIndexOf(unsorted, 4))
-    Console.printline(LinearSearch.occurrences(unsorted, 4))
-    Console.printline(LinearSearch.indexOfMinimum(unsorted))
-    Console.printline(LinearSearch.indexOfMinimum(empty))
-    return BinarySearch.indexOf(sorted, 13) * 10 + LinearSearch.lastIndexOf(unsorted, 4)
+    Console.printline(linear.indexOf(unsorted, 4))
+    Console.printline(linear.lastIndexOf(unsorted, 4))
+    Console.printline(linear.occurrences(unsorted, 4))
+    Console.printline(linear.indexOfMinimum(unsorted))
+    Console.printline(linear.indexOfMinimum(empty))
+    return binary.indexOf(sorted, 13) * 10 + linear.lastIndexOf(unsorted, 4)
 }
