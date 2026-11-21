@@ -112,6 +112,10 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         reportArity(cx)
         return
     }
+    if cx.error_phase == 10 {
+        reportArgType(cx)
+        return
+    }
     if cx.error_phase == 8 {
         Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
         Console.print(cx.error_line)

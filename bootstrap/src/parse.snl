@@ -243,8 +243,9 @@ func parsePostfix(src: int[], bg: compilerState, cx: compilerContext, lhs: int):
                 }
             } else {
                 if atTok(bg, cx, 17) {
+                    let paren = cx.pos
                     let args = parseArgs(src, bg, cx)
-                    cur = node(bg, 7, 0, cur, args, -1)
+                    cur = node(bg, 7, 0, cur, args, paren)
                 } else {
                     if atTok(bg, cx, 21) && peekKind(bg, cx, 1) == 22 && peekKind(bg, cx, 2) == 17 {
                         bump(cx)
@@ -310,6 +311,27 @@ func findStruct(src: int[], bg: compilerState, s: int, n: int): int {
     return -1
 }
 
+// Array-of-T encoding used by SNV4007 (`push`) and later index element
+// types: a known primitive or unit T becomes T-20; a known struct T
+// (st+1) becomes T+10000. Unknown stays 0.
+func arrayOf(elem: int): int {
+    if elem == 0 { return 0 }
+    if elem < 0 { return elem - 20 }
+    return elem + 10000
+}
+
+func isArrayType(ty: int): bool {
+    if ty <= -21 { return true }
+    if ty >= 10000 { return true }
+    return false
+}
+
+func elementType(ty: int): int {
+    if ty <= -21 { return ty + 20 }
+    if ty >= 10000 { return ty - 10000 }
+    return 0
+}
+
 func typeCode(src: int[], bg: compilerState, s: int, n: int): int {
     if isWord(src, s, n, 3, 105, 110, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return -1 }
     if isWord(src, s, n, 4, 98, 111, 111, 108, 0, 0, 0, 0, 0, 0, 0, 0) { return -2 }
@@ -334,7 +356,7 @@ func parseType(src: int[], bg: compilerState, cx: compilerContext): int {
         bump(cx)
         expectTok(bg, cx, 22)
         scopeTypeSuffix(bg, cx)
-        return 0
+        return arrayOf(code)
     }
     scopeTypeSuffix(bg, cx)
     return code

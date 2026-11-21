@@ -1,0 +1,10 @@
+package bootstrap.fixture
+
+class Box {
+    var value: int
+}
+
+func main(): int {
+    let box = Box("s")
+    return 0
+}

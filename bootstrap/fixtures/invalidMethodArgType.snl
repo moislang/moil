@@ -1,0 +1,14 @@
+package bootstrap.fixture
+
+class Counter {
+    var count: int
+    public method add(amount: int): int {
+        count = count + amount
+        return count
+    }
+}
+
+func main(): int {
+    let counter = Counter(1)
+    return counter.add("x")
+}
