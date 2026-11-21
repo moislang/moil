@@ -124,6 +124,10 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         reportUnaryOrIndexType(cx)
         return
     }
+    if cx.error_phase == 13 {
+        reportNonBoolCondition(cx)
+        return
+    }
     if cx.error_phase == 8 {
         Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
         Console.print(cx.error_line)

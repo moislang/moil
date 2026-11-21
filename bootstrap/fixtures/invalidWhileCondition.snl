@@ -1,0 +1,9 @@
+package bootstrap.fixture
+
+func main(): int {
+    var number = 3
+    while number {
+        number = number - 1
+    }
+    return 0
+}

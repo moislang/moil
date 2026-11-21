@@ -28,6 +28,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4007` | Argument type does not match the parameter (function, static or instance method, positional constructor field, or `push` element type) | `SNOVA0132` | Opening `(` of the call | `invalidArgType`, `invalidMethodArgType`, `invalidConstructorType`, `invalidPushType` |
 | `SNV4008` | Binary, comparison or logical operator applied to known incompatible operand types | `SNOVA0133` | Operator token | `invalidBinaryType`, `invalidCompareType`, `invalidStringOrder`, `invalidBoolOrder`, `warnMismatch` |
 | `SNV4009` | Unary operand of a known incompatible type, or a known non-`int` index | `SNOVA0134` | Operator or opening `[` | `invalidUnaryNeg`, `invalidUnaryNot`, `invalidIndexType` |
+| `SNV4010` | `if`/`while` condition of a known non-`bool` type | `SNOVA0135` | Start of the condition expression | `invalidIfCondition`, `invalidWhileCondition` |
 | `SNW0001` | (unused) Was a warning for `==`/`!=` between known, different types; those cases are now `SNV4008` | `SNOVA0133` rejects them as errors | — | — |
 
 In native mode the Snova runtime is appended to the user source. Line
@@ -55,7 +56,7 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 | Call with the wrong argument count | `SNOVA0131` | `SNV4006` (it used to emit an invalid image) | Closed | — |
 | Constructor with extra argument | `SNOVA0131` | `SNV4006` (it used to be accepted) | Closed | — |
 | Argument of known wrong type (function, constructor, method, `push`) | `SNOVA0132` | `SNV4007` | Closed | — |
-| `if`/`while` condition of known non-`bool` type | `SNOVA0135` | Accepted | Missing check | 2 |
+| `if`/`while` condition of known non-`bool` type | `SNOVA0135` | `SNV4010` | Closed | — |
 | Unary `-` on `string`, `!` on `int` | `SNOVA0134` | `SNV4009` | Closed | — |
 | Binary or ordering operator on known different types, or `<`/`>`/`<=`/`>=` on strings or bools | `SNOVA0133` | `SNV4008` (it used to warn with `SNW0001` only for `==`/`!=`) | Closed | — |
 | Index of known non-`int` type | `SNOVA0134` | `SNV4009` | Closed | — |
