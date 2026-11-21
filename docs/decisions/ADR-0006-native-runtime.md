@@ -72,6 +72,7 @@ paths.
    - **Moves.** Call arguments move into the callee, which releases its
      parameters and locals on `RETURN`. The elements of `NEW_ARRAY` and
      `NEW_OBJECT` and the element of `ARRAY_PUSH` move into the container.
+     `ARRAY_POP` clears the removed slot and transfers its owner to the result.
    - **Borrows.** The backend keeps a static model of the operand stack: every
      slot is either an owner or a borrow of a local. `LOAD_LOCAL` produces a
      borrow and takes no count, because the local keeps the value alive. A
@@ -81,7 +82,8 @@ paths.
      owners at jump targets, so every incoming edge agrees), or a value held
      while its source local is overwritten. The other consumers (field and
      index reads, `ARRAY_LEN`, `PRINT`, comparisons, runtime calls) read the
-     borrow without counting, and release owned operands after use.
+     borrow without counting, and release owned operands after use. `ARRAY_POP`
+     moves the element owner out before releasing the consumed array operand.
    - **Strong cycles.** `SET_FIELD` with an array or object value and
      `ARRAY_PUSH` reject a store that would make the target reachable from
      the stored value: `runtime error: strong reference cycle rejected for
@@ -97,7 +99,7 @@ paths.
    - object: `[field count:8][fields of 16 bytes]`.
 8. **Inline code vs runtime calls.** Int/bool arithmetic and comparison,
    jumps, locals, `GET_FIELD`, `SET_FIELD` (non-container values),
-   `GET_INDEX`, `ARRAY_LEN`, `NEG`, `NOT`, retain and release are inline.
+   `GET_INDEX`, `ARRAY_LEN`, `ARRAY_POP`, `NEG`, `NOT`, retain and release are inline.
    Value equality, concatenation, type errors, allocation, `ARRAY_PUSH`,
    container stores, `PRINT`, files, arguments and environment call the Snova
    runtime. Their semantics and messages copy the Snova SnBC executor, which

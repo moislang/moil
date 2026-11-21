@@ -12,7 +12,7 @@ func opcodeWidth(op: int): int {
         op == 30 || op == 31 || op == 32 || op == 37 || op == 38 ||
         op == 39 || op == 43 || op == 44 { return 4 }
     if op == 4 || op == 45 { return 1 }
-    if op >= 0 && op <= 57 { return 0 }
+    if op >= 0 && op <= 58 { return 0 }
     return -1
 }
 

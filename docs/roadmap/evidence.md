@@ -151,3 +151,10 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-vm bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: assigning a known incompatible value to a known struct field is rejected with `SNV4003` and the field-name byte span. The positive field assignment returns 42; the negative fixture reports span 129..130. Local annotation and assignment diagnostics remain covered.
 - Limitations: this check is limited to direct struct fields with known types; arrays, inherited fields, unknown expressions and other type relations remain unsupported.
+
+## 2026-11-21 — array pop in SnBC and native backends
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-native`, `make bootstrap-vm-self bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
+- Observed result: `ARRAY_POP` removes and returns the final element in both the Snova SnBC executor and the native backend. Integer and string fixtures pass; both backends report `runtime error: pop from empty array` with status 70. Native ownership reporting confirms zero live blocks at exit for successful pop fixtures.
+- Limitations: the native backend supports the existing array layout and ownership model; this change does not add static array element typing or bounds/index assignment.

@@ -77,6 +77,7 @@ class Runtime {
         if code == 8 { Runtime.outputString("field assignment rejected at index ") }
         if code == 9 { Runtime.outputString("out of memory") }
         if code == 10 { Runtime.outputString("strong reference cycle rejected for opcode ") }
+        if code == 11 { Runtime.outputString("pop from empty array") }
         if code == 2 || code == 4 || code == 8 || code == 10 { Runtime.outputInteger(detail) }
         Runtime.outputByte(1, 10)
         System.exit(70)

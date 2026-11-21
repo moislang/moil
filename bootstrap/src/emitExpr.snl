@@ -103,6 +103,12 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
             cx.expr_ty = 0
             return
         }
+        if argc == 0 && isWord(src, ns, nl, 3, 112, 111, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0) {
+            emitExpr(src, bg, cx, code, fat, fb, recv)
+            code.push(58)
+            cx.expr_ty = 0
+            return
+        }
     }
     var fn = -1
     if ck == 4 {

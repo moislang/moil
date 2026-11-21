@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    var values: int[] = []
+    values.pop()
+    return 0
+}

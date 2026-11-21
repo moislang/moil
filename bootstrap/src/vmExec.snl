@@ -93,7 +93,40 @@ func vmHostBytes(vm: vmState, array: vmArray): int[] {
 }
 
 // READ_BYTES (47), WRITE_BYTES (48), ARRAY_LEN (49) e ARRAY_PUSH (50).
+func arrayRemoveLast(array: vmArray): vmCell {
+    let length = array.values.len()
+    let lastIndex = length - 1
+    let result = vmCell { tag: arrayTag(array, lastIndex), value: arrayValue(array, lastIndex) }
+    var values: int[] = []
+    var tags: int[] = []
+    var index = 0
+    while index < lastIndex {
+        values.push(array.values[index])
+        if array.mixed != 0 { tags.push(array.tags[index]) }
+        index = index + 1
+    }
+    array.values = values
+    array.tags = tags
+    return result
+}
+
 func vmArrayOp(vm: vmState, opcode: int): unit {
+    if opcode == 58 {
+        let targetTag = vmTopTag(vm)
+        let targetHandle = vmPop(vm)
+        if vm.failed != 0 { return }
+        if targetTag != 4 {
+            vmFail(vm, 2, opcode)
+            return
+        }
+        if arrayLen(vm.arrays[targetHandle]) == 0 {
+            vmFail(vm, 11, opcode)
+            return
+        }
+        let value = arrayRemoveLast(vm.arrays[targetHandle])
+        vmPush(vm, cellTag(value), cellValue(value))
+        return
+    }
     if opcode == 50 {
         let elementTag = vmTopTag(vm)
         let elementValue = vmPop(vm)

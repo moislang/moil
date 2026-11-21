@@ -5,9 +5,9 @@ COMPILER_BUNDLE := $(BUILD_DIR)/snova-bootstrap
 VM_STAGE_IMAGE := $(BUILD_DIR)/vm-stage.snbc
 VM_DIFF_FIXTURES := numericVm numericFlow hello vmCalls vmComposite staticMethods
 NATIVE_FIXTURES := numericVm numericFlow nativeCalls
-NATIVE_RUNTIME_FIXTURES := hello vmCalls vmComposite vmEquality vmStackOverflow nativeHostIo nativeMemory staticMethods
+NATIVE_RUNTIME_FIXTURES := hello vmCalls vmComposite vmEquality vmStackOverflow nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString
 # Programs that end normally must free every block before exit.
-NATIVE_OWNERSHIP_FIXTURES := hello vmCalls vmComposite vmEquality nativeHostIo nativeMemory staticMethods
+NATIVE_OWNERSHIP_FIXTURES := hello vmCalls vmComposite vmEquality nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString
 SDK_PATH = $(shell xcrun --show-sdk-path)
 SDK_VERSION = $(shell xcrun --show-sdk-version)
 STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
@@ -53,6 +53,13 @@ bootstrap-diagnostics: bootstrap-build
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
 	grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130" $(BUILD_DIR)/field-assignment-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
+	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopEmpty.snbc run > $(BUILD_DIR)/vmArrayPopEmpty.txt; test "$$?" -eq 70
+	grep -Fqx "runtime error: pop from empty array" $(BUILD_DIR)/vmArrayPopEmpty.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopString.snl $(BUILD_DIR)/vmArrayPopString.snbc
+	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopString.snbc run)" = "popped"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt
 	printf 'warning[SNW0001]: comparison between different types at line 10\nwarning[SNW0001]: comparison between different types at line 13\n' | cmp - $(BUILD_DIR)/warn-mismatch.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt
@@ -143,6 +150,10 @@ bootstrap-native: bootstrap-build
 		echo "native cycle rejected: $$fixture"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/nativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
 	grep -Fqx "unsupported opcode for native backend: 42" $(BUILD_DIR)/native-error.txt
+	@fixture=vmArrayPopEmpty; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
+		$(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 70 || exit 1; \
+		grep -Fqx "runtime error: pop from empty array" $(BUILD_DIR)/$$fixture.native.txt
 
 # N3: assemble the compiler's ordered source modules, compile that source to
 # native assembly, then use the generated executable for two further builds.

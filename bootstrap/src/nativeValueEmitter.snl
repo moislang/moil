@@ -156,6 +156,40 @@ class NativeValueEmitter {
         stack.releaseIfOwned(output, origin, "x0", "x1")
     }
 
+    // ARRAY_POP (58) transfers the last element owner from the array to the
+    // result and clears its former slot so array destruction cannot release
+    // the value twice.
+    public method arrayPop(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
+        let origin = stack.popSlot()
+        let arrayPayload = stack.stash(21)
+        let arrayTag = stack.stash(22)
+        output.popPair("x0", "x1")
+        output.line("mov " + arrayPayload + ", x0")
+        output.line("mov " + arrayTag + ", x1")
+        output.line("cmp x1, #4")
+        output.line("b.ne " + label + "_invalid")
+        output.line("ldr x2, [x0]")
+        output.line("cbz x2, " + label + "_empty")
+        output.line("sub x2, x2, #1")
+        output.line("ldr x5, [x0, #16]")
+        output.line("add x5, x5, x2, lsl #4")
+        output.line("ldp x3, x4, [x5]")
+        output.line("stp xzr, xzr, [x5]")
+        output.line("str x2, [x0]")
+        output.line("mov x0, x3")
+        output.line("mov x1, x4")
+        output.pushPair()
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, arrayPayload, arrayTag)
+        let done = output.newLabel()
+        output.line("b " + done)
+        output.label(label + "_invalid")
+        output.callFail(2, 58)
+        output.label(label + "_empty")
+        output.callFail(11, 58)
+        output.label(done)
+    }
+
     // NEG (17) requires an int; NOT (18) is true for a zero payload.
     public method unary(output: NativeAssembly, stack: NativeOwnership, opcode: int, label: string): unit {
         let origin = stack.popSlot()

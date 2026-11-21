@@ -120,7 +120,7 @@ func vmRun(vm: vmState, entryFunction: int): unit {
 
 // Less frequent opcodes, outside the main loop.
 func vmOther(vm: vmState, opcode: int, operand: int, secondOperand: int, functionIndex: int): unit {
-    if opcode == 47 || opcode == 48 || opcode == 49 || opcode == 50 {
+    if opcode == 47 || opcode == 48 || opcode == 49 || opcode == 50 || opcode == 58 {
         vmArrayOp(vm, opcode)
     } else if opcode == 17 || opcode == 18 {
         vmUnary(vm, opcode)

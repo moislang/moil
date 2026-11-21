@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    var values = [10, 20, 42]
+    let removed = values.pop()
+    return removed
+}

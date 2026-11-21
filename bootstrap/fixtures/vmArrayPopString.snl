@@ -1,0 +1,10 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+func main(): int {
+    var values = ["kept", "popped"]
+    let removed = values.pop()
+    Console.printline(removed)
+    return 0
+}

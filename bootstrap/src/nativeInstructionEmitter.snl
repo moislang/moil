@@ -298,6 +298,8 @@ class NativeInstructionEmitter {    public var functionIndex: int
             values.arrayLength(output, stack, label)
         } else if opcode == 50 {
             values.twoValueCall(output, stack, output.rolePushValue(), true)
+        } else if opcode == 58 {
+            values.arrayPop(output, stack, label)
         } else if opcode == 52 {
             stopWith(output, stack, 5, functionIndex)
         } else if opcode == 57 {
