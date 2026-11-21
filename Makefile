@@ -91,6 +91,14 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135' $(BUILD_DIR)/match-expression-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMatchStatement.snl $(BUILD_DIR)/invalidMatchStatement.snbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
 	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Go` at line 12, span 136..141' $(BUILD_DIR)/match-statement-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/immutableBindings.snl $(BUILD_DIR)/immutableBindings.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/immutableBindings.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidImmutableLet.snl $(BUILD_DIR)/invalidImmutableLet.snbc > $(BUILD_DIR)/immutable-let-error.txt; then echo "expected immutable binding failure"; exit 1; fi
+	grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 5, span 68..69" $(BUILD_DIR)/immutable-let-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidImmutableParam.snl $(BUILD_DIR)/invalidImmutableParam.snbc > $(BUILD_DIR)/immutable-param-error.txt; then echo "expected immutable parameter failure"; exit 1; fi
+	grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 4, span 60..61" $(BUILD_DIR)/immutable-param-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidImmutableFor.snl $(BUILD_DIR)/invalidImmutableFor.snbc > $(BUILD_DIR)/immutable-for-error.txt; then echo "expected immutable for binding failure"; exit 1; fi
+	grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 6, span 97..98" $(BUILD_DIR)/immutable-for-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc

@@ -136,7 +136,7 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         code.push(6)
         return
     }
-    if k == 21 {
+    if k == 21 || k == 36 {
         let declaredType = bg.nd[nd]
         if bg.nc[nd] >= 0 {
             emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
@@ -159,7 +159,9 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         }
         var ty = inferredType
         if declaredType != 0 { ty = declaredType }
-        let slot = addLocal(bg, cx, bg.na[nd], bg.nb[nd], ty)
+        var mutable = 1
+        if k == 36 { mutable = 0 }
+        let slot = addLocalWith(bg, cx, bg.na[nd], bg.nb[nd], ty, mutable)
         code.push(9)
         pushU32(code, slot)
         code.push(6)
@@ -226,7 +228,7 @@ func emitFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit
     var i = 0
     while i < bg.par_fn.len() {
         if bg.par_fn[i] == fi {
-            addLocal(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i])
+            addLocalWith(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i], 0)
         }
         i = i + 1
     }

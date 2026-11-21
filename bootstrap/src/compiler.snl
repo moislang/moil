@@ -108,6 +108,16 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         reportNonExhaustive(src, bg, cx)
         return
     }
+    if cx.error_phase == 8 {
+        Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
@@ -133,7 +143,7 @@ func compileSource(src: int[], image: int[]): int {
     var bg = compilerState {
         tk: [], ts: [], tn: [], tv: [], tl: [],
         nk: [], na: [], nb: [], nc: [], nd: [],
-        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [],
+        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [], loc_mut: [],
         fd_st: [], fd_ns: [], fd_nl: [], fd_ty: [],
         st_ns: [], st_nl: [],
         fn_ns: [], fn_nl: [], fn_ar: [], fn_body: [],
