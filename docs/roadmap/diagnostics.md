@@ -32,3 +32,50 @@ Known divergences, all recorded in [evidence.md](evidence.md):
   (`Color.Red`) with bare member names. Because of that it also rejects
   complete qualified matches, and it accepts bare variant names, which it
   treats as bindings. The seed follows the documented rule.
+
+## Gap inventory against `snl check` v0.3.0
+
+Probe corpus: 41 single-function negative programs inside the seed subset,
+each with a single error, checked with `snl check` (and `snl build` when check
+passes) and with the seed. Recorded in [evidence.md](evidence.md) on
+2026-11-21. "Seed now" is the seed's behavior on that date, including
+`SNV4004`/`SNV4005` and statement lines for `SNV3001`.
+
+| Case | Reference | Seed now | Gap | Priority |
+|---|---|---|---|---|
+| Call with too few arguments | `SNOVA0131` | Emits an invalid image (`invalid generated SnBC image`) | Wrong code reaches the validator | 1 |
+| Constructor with extra argument | `SNOVA0131` | Accepted | Missing check | 1 |
+| Argument of known wrong type (function, constructor, `push`) | `SNOVA0132` | Accepted | Parameter types are known; check not wired | 2 |
+| `if`/`while` condition of known non-`bool` type | `SNOVA0135` | Accepted | Missing check | 2 |
+| Unary `-` on `string`, `!` on `int` | `SNOVA0134` | Accepted, fails at run time | Missing check | 2 |
+| Binary or ordering operator on known different types | `SNOVA0133` | Accepted (`SNW0001` only for `==`/`!=`) | Missing check | 2 |
+| Index of known non-`int` type | `SNOVA0134` | Accepted | Missing check | 2 |
+| `return` type mismatch, value returned from `unit` function | `SNOVA0136` | Accepted | Function return types are not tracked | 3 |
+| Initializer from a call of known return type | `SNOVA0138` | Accepted | Same: return types; also blocks `match f()` in `SNV4004` | 3 |
+| Missing return on some path | `SNOVA0142` | Accepted | Needs control-flow analysis | 3 |
+| Undefined name or function | `SNOVA0023` | `SNV3001` at the statement line | Generic code | 4 |
+| Unknown field, method or enum member | `SNOVA0028` | `SNV3001` (field, method); enum member accepted | Generic code; enum member missing | 4 |
+| Call of a non-function | `SNOVA0137` | `SNV3001` at the statement line | Generic code | 4 |
+| `break`/`continue` outside a loop | `SNOVA0139`/`SNOVA0140` | `SNV3001` at the statement line | Generic code | 4 |
+| Duplicate top-level function | `SNOVA0120` | Accepted (first wins) | Missing check | 4 |
+| Private field read outside its class | `SNOVA0143` | Accepted | Missing check | 4 |
+| Unknown type in an annotation | `SNOVA0027` | Accepted (unknown type) | Missing check | 4 |
+| `var x` with no type and no initializer | `SNOVA0100` | Accepted | Missing check | 5 |
+| Array literal with mixed element types | `SNOVA0149` | Accepted | Array element types not tracked | 5 |
+| `for x: T` with the wrong element type | `SNOVA0150` | Accepted | Same | 5 |
+| Empty `while true {}` (warning) | `SNOVA0216` | No warning | Warning not implemented | 5 |
+| Move out of an array element (`let cell = cells[0]`) | `SNOVA0251` at the index expression | `SNV3001` on the next statement that uses `cell` (the field access on an unknown type), not on the move | Borrow checker: future `SNV5002` (SPEC-0002) | Borrow checker |
+| Method call through a local alias of a field (`let local = counter; local.bump()`) | Accepted by `snl check`; `snl build` fails with `SNOVA0400` (cannot lower call to SnBC) | Accepted and lowered | Not a seed gap: `SNOVA0400` is a reference back-end limit. The ownership side belongs to the borrow checker (SPEC-0002) | Borrow checker |
+| Instance method called through its type | Accepted by `snl check`; `snl build` fails with `SNOVA0400` | `SNV3001` at the statement line | Seed rejects earlier; a specific code is optional | 5 |
+| Duplicate `let` in one scope | Accepted | Accepted | None | — |
+
+Reference borrow codes found in `snovac` `src/sema/borrow.h` (tag `v0.3.0`),
+for SPEC-0002: `SNOVA0240` use after move, `0241` use after drop, `0242`
+exclusive borrow conflict, `0243` mutation while shared, `0244` send while
+borrowed, `0245` null dereference, `0246` index out of bounds (static), `0247`
+unsound `defer`, `0248` ownership-checker capacity exceeded (locals, active
+borrows or task captures), `0249` reference rebound to different places across
+branches, `0250` reference rebound across a loop iteration (loop-carried
+borrows unsupported), `0251` move out of an array element or field.
+`SNOVA0400` (`src/bc/emit_bc.h`) is `SNOVA_EMIT_UNSUPPORTED`: the reference
+SnBC emitter cannot lower a construct.

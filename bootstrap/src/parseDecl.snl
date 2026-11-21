@@ -111,7 +111,17 @@ func parseBlock(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 26, 0, -1, head, -1)
 }
 
+// Records the statement's first line on every node it creates, so lowering
+// failures (SNV3001) can report the statement instead of the last line.
 func parseStmt(src: int[], bg: compilerState, cx: compilerContext): int {
+    let saved = bg.parse_line
+    if cx.pos < bg.tl.len() { bg.parse_line = bg.tl[cx.pos] }
+    let nd = parseStmtAt(src, bg, cx)
+    bg.parse_line = saved
+    return nd
+}
+
+func parseStmtAt(src: int[], bg: compilerState, cx: compilerContext): int {
     if cx.failed != 0 { return -1 }
     let k = kindOf(bg, cx)
     if k == 11 || k == 12 { return parseBinding(src, bg, cx) }

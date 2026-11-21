@@ -243,3 +243,13 @@ This file started with no technical results. Entries must record observed facts,
 - Differential: `invalidImmutableLet`, `invalidImmutableParam` and `invalidImmutableFor` are rejected by both compilers on the same line (seed lines 5, 4, 6; spans 68..69, 60..61, 97..98; reference `SNOVA0047` at 5:11, 4:11, 6:14). `immutableBindings` (a `var` reassigned, a field of a `let` object assigned, a push on a `let` array) returns 42 in the Snova VM and in `snl run`.
 - Not verified: `bootstrap-native`, `bootstrap-native-self` and the Mach-O half of `bootstrap-library` need macOS.
 - Limitations: compound assignment (`+=`) and block arm bodies are outside the seed subset, so those reference cases are not covered.
+
+## 2026-11-21 — semantic diagnostic gap inventory and statement lines for SNV3001
+
+- Environment: `snl v0.3.0` official Linux release, `x86_64-unknown-linux-gnu` (shared box); `snovac` source at tag `v0.3.0` for code meanings.
+- Probe: 41 negative programs (one error each) inside the seed subset, run through `snl check`, `snl build` when check passes, and the seed. The result table is the gap inventory in [diagnostics.md](diagnostics.md). Two cases came from the team: a move out of an array element (`SNOVA0251` in check and build) and a method call through a local alias of a field (accepted by check, `SNOVA0400` in build). The seed accepts the alias case and lowers it. On the move case it fails one statement later, with `SNV3001`, because the moved local has an unknown type.
+- Finding: before this change `SNV3001` always reported the last line of the input, because `cx.line` held the lexer's final line during lowering. For example, `let cell = cells[0]` followed by a field use reported the closing line of `main`.
+- Implementation: every node records the first line of the statement that created it (`nline`, set while parsing the statement). `emitStmt` makes that line current while it lowers the statement, so `SNV3001` names the failing statement. `invalidRuntimeArity` now reports line 6 (was 8) and `invalidStaticCall` line 14 (was 15), which are the failing statements. The undefined name, undefined function, unknown field, unknown method, non-callable and `break`/`continue` cases report the reference's line.
+- Commands: `make bootstrap-diagnostics bootstrap-smoke bootstrap-image-check bootstrap-fixed-point bootstrap-vm` (pass), `make bootstrap-vm-self` (pass, about 2 min 28 s), `sh scripts/hooks/validate-planning-docs.sh`, `git diff --check`.
+- Not verified: macOS native gates.
+- Limitations: a failure outside any statement (function signature) still reports the line of the last lowered statement. The function index in `SNV3001` is unchanged.
