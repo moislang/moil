@@ -323,3 +323,37 @@ func reportUnaryOrIndexType(cx: compilerContext): unit {
     Console.print(cx.error_start + 1)
     Console.printline("")
 }
+
+func exprStart(bg: compilerState, nd: int): int {
+    if nd < 0 { return 0 }
+    let k = bg.nk[nd]
+    if k == 1 || k == 2 { return bg.nb[nd] }
+    if k == 3 || k == 4 { return bg.na[nd] }
+    if k == 5 { return tokenStart(bg, bg.nd[nd]) }
+    if k == 6 { return exprStart(bg, bg.nb[nd]) }
+    if k == 7 { return exprStart(bg, bg.nb[nd]) }
+    if k == 9 { return exprStart(bg, bg.nb[nd]) }
+    if k == 10 { return exprStart(bg, bg.nb[nd]) }
+    if k == 11 { return bg.na[nd] }
+    if k == 12 { return exprStart(bg, bg.nb[nd]) }
+    return 0
+}
+
+func checkBoolCondition(src: int[], bg: compilerState, cx: compilerContext, cond: int, ty: int): int {
+    if cx.failed != 0 { return 1 }
+    if ty != 0 && isBoolType(ty) == false {
+        typeFail(src, cx, 13, exprStart(bg, cond))
+        return 1
+    }
+    return 0
+}
+
+func reportNonBoolCondition(cx: compilerContext): unit {
+    Console.print("error[SNV4010]: condition must be bool at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}

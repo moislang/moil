@@ -178,9 +178,10 @@ func parsePrimary(src: int[], bg: compilerState, cx: compilerContext): int {
     if cx.failed != 0 { return -1 }
     let k = kindOf(bg, cx)
     if k == 2 {
+        let start = bg.ts[cx.pos]
         let v = bg.tv[cx.pos]
         bump(cx)
-        return node(bg, 1, v, -1, -1, -1)
+        return node(bg, 1, v, start, -1, -1)
     }
     if k == 3 {
         let s = bg.ts[cx.pos]
@@ -189,12 +190,14 @@ func parsePrimary(src: int[], bg: compilerState, cx: compilerContext): int {
         return node(bg, 3, s, n, -1, -1)
     }
     if k == 4 {
+        let start = bg.ts[cx.pos]
         bump(cx)
-        return node(bg, 2, 1, -1, -1, -1)
+        return node(bg, 2, 1, start, -1, -1)
     }
     if k == 5 {
+        let start = bg.ts[cx.pos]
         bump(cx)
-        return node(bg, 2, 0, -1, -1, -1)
+        return node(bg, 2, 0, start, -1, -1)
     }
     if k == 42 || k == 35 {
         let opToken = cx.pos

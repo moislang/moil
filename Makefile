@@ -151,6 +151,12 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 72..73" $(BUILD_DIR)/unary-not-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidIndexType.snl $(BUILD_DIR)/invalidIndexType.snbc > $(BUILD_DIR)/index-type-error.txt; then echo "expected index type failure"; exit 1; fi
 	grep -Fqx "error[SNV4009]: index must be an integer type at line 5, span 79..80" $(BUILD_DIR)/index-type-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/boolConditions.snl $(BUILD_DIR)/boolConditions.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/boolConditions.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidIfCondition.snl $(BUILD_DIR)/invalidIfCondition.snbc > $(BUILD_DIR)/if-condition-error.txt; then echo "expected non-bool if condition"; exit 1; fi
+	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73" $(BUILD_DIR)/if-condition-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidWhileCondition.snl $(BUILD_DIR)/invalidWhileCondition.snbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
+	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76" $(BUILD_DIR)/while-condition-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
