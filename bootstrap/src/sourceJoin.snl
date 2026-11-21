@@ -97,6 +97,7 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/scopeParse.snl", 0)
     appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
     appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
+    appendFile(output, "bootstrap/src/matchCheck.snl", 0)
     return output
 }
 

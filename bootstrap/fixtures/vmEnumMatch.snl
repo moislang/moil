@@ -1,0 +1,58 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// Unit enum variants (VARIANT 42) and match (IS_VARIANT 43, literal and
+// binding patterns, wildcard). Prints integers only, so `snl run-snbc`
+// v0.3.0 is a valid oracle for stdout and exit status.
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+func weight(color: Color): int {
+    return match color {
+        Color.Red -> 1,
+        Color.Green -> 10,
+        _ -> 100
+    }
+}
+
+func classify(value: int): int {
+    return match value {
+        0 -> 7,
+        1 -> 8,
+        other -> other * 2
+    }
+}
+
+func main(): int {
+    let red = Color.Red
+    let blue = Color.Blue
+    var total = weight(red) + weight(Color.Green) + weight(blue)
+    Console.printline(total)
+    match blue {
+        Color.Blue -> total = total + 1000,
+        _ -> total = total + 5000
+    }
+    match red {
+        Green -> total = total + 9000,
+        _ -> total = total + 3
+    }
+    Console.printline(total)
+    total = total + classify(0) + classify(1) + classify(20)
+    Console.printline(total)
+    var palette = [Color.Red, Color.Blue, Color.Blue]
+    var index = 0
+    var blues = 0
+    while index < palette.len() {
+        blues = blues + match palette[index] {
+            Color.Blue -> 1,
+            _ -> 0
+        }
+        index = index + 1
+    }
+    Console.printline(blues)
+    return total % 256 + blues
+}

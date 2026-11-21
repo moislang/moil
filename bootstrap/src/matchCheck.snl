@@ -1,0 +1,102 @@
+package snova.compiler
+
+import snova.compiler.runtime
+
+// Match exhaustiveness (SNV4004), the rule of snovac's
+// sn_check_match_exhaustiveness: a match whose subject has a known enum type
+// needs a wildcard or binding arm, or a variant pattern for every variant of
+// the enum. Subjects with another or unknown static type are not checked.
+// Variant patterns are compared by member name, as in snovac. A bare name
+// that is not a known variant binds, so it covers every case (the emitter
+// lowers it the same way). The seed has no arm guards.
+func matchArmsCatchAll(src: int[], bg: compilerState, arms: int): int {
+    var cursor = arms
+    while cursor >= 0 {
+        let pat = bg.na[bg.nb[cursor]]
+        if pat < 0 || bg.na[pat] == 1 || bg.na[pat] == 4 { return 1 }
+        cursor = bg.nc[cursor]
+    }
+    return 0
+}
+
+func matchArmsCover(src: int[], bg: compilerState, arms: int, variant: int): int {
+    var cursor = arms
+    while cursor >= 0 {
+        let pat = bg.na[bg.nb[cursor]]
+        if bg.na[pat] == 3 && spanEq(src, bg.va_ns[variant], bg.va_nl[variant], bg.nb[pat], bg.nc[pat]) { return 1 }
+        cursor = bg.nc[cursor]
+    }
+    return 0
+}
+
+func matchCheckExhaustive(src: int[], bg: compilerState, cx: compilerContext, subjectType: int, arms: int, matchToken: int): unit {
+    if cx.failed != 0 || subjectType <= 0 || arms < 0 { return }
+    let st = subjectType - 1
+    if st >= bg.st_kind.len() || bg.st_kind[st] != 3 { return }
+    if matchArmsCatchAll(src, bg, arms) != 0 { return }
+    var variant = 0
+    while variant < bg.va_ns.len() {
+        if bg.va_en[variant] == st && matchArmsCover(src, bg, arms, variant) == 0 {
+            cx.failed = 1
+            cx.error_phase = 7
+            cx.error_token = matchToken
+            cx.error_start = variant
+            return
+        }
+        variant = variant + 1
+    }
+}
+
+func reportNonExhaustive(src: int[], bg: compilerState, cx: compilerContext): unit {
+    let variant = cx.error_start
+    let st = bg.va_en[variant]
+    Console.print("error[SNV4004]: non-exhaustive match on `")
+    printSourceSpan(src, bg.st_ns[st], bg.st_nl[st])
+    Console.print("`: missing variant `")
+    printSourceSpan(src, bg.va_ns[variant], bg.va_nl[variant])
+    Console.print("` at line ")
+    Console.print(bg.tl[cx.error_token])
+    Console.print(", span ")
+    Console.print(bg.ts[cx.error_token])
+    Console.print("..")
+    Console.print(bg.ts[cx.error_token] + bg.tn[cx.error_token])
+    Console.printline("")
+}
+
+// SNV4006: a call's argument count differs from the callee's parameter count
+// (snl check SNOVA0131). `passed` counts the receiver of an instance method,
+// as fn_ar does; `receiver` is 1 then, so messages show source counts.
+// `nameStart` is the byte offset of the called name.
+func arityMismatch(src: int[], bg: compilerState, cx: compilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
+    if cx.failed != 0 || bg.fn_ar[fn] == passed { return 0 }
+    arityFail(src, cx, bg.fn_ar[fn] - receiver, passed - receiver, nameStart)
+    return 1
+}
+
+func arityFail(src: int[], cx: compilerContext, expected: int, found: int, nameStart: int): unit {
+    cx.failed = 1
+    cx.error_phase = 9
+    cx.error_expected = expected
+    cx.error_found = found
+    cx.error_start = nameStart
+    cx.error_line = 1
+    var byteIndex = 0
+    while byteIndex < nameStart {
+        if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+        byteIndex = byteIndex + 1
+    }
+}
+
+func reportArity(cx: compilerContext): unit {
+    Console.print("error[SNV4006]: expected ")
+    Console.print(cx.error_expected)
+    Console.print(" argument(s), found ")
+    Console.print(cx.error_found)
+    Console.print(" at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}

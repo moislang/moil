@@ -124,6 +124,13 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
 }
 
 func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    let saved = cx.line
+    if nd >= 0 && nd < bg.nline.len() && bg.nline[nd] > 0 { cx.line = bg.nline[nd] }
+    emitStmtAt(src, bg, cx, code, fat, fb, nd)
+    if cx.failed == 0 { cx.line = saved }
+}
+
+func emitStmtAt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }
     if nd < 0 {
         fail(cx)
@@ -136,7 +143,7 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         code.push(6)
         return
     }
-    if k == 21 {
+    if k == 21 || k == 36 {
         let declaredType = bg.nd[nd]
         if bg.nc[nd] >= 0 {
             emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
@@ -159,7 +166,9 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         }
         var ty = inferredType
         if declaredType != 0 { ty = declaredType }
-        let slot = addLocal(bg, cx, bg.na[nd], bg.nb[nd], ty)
+        var mutable = 1
+        if k == 36 { mutable = 0 }
+        let slot = addLocalWith(bg, cx, bg.na[nd], bg.nb[nd], ty, mutable)
         code.push(9)
         pushU32(code, slot)
         code.push(6)
@@ -226,7 +235,7 @@ func emitFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit
     var i = 0
     while i < bg.par_fn.len() {
         if bg.par_fn[i] == fi {
-            addLocal(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i])
+            addLocalWith(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i], 0)
         }
         i = i + 1
     }
@@ -258,7 +267,9 @@ func emitUnit(src: int[], bg: compilerState, cx: compilerContext): unit {
         if cx.failed != 0 { return }
         emitFunc(src, bg, cx, fi)
         if cx.failed != 0 {
-            cx.error_token = fi
+            // SNV3001 reports the function index; typed diagnostics (phase
+            // 4 and above) keep their own token or span.
+            if cx.error_phase < 4 { cx.error_token = fi }
             return
         }
         fi = fi + 1
