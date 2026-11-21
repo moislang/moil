@@ -36,7 +36,16 @@
   escapes (ADR-0006, decision 6).
 - Type checks live inside the emitters (`emitExpr.snl`, `emit.snl`;
   `SNV4001`–`SNV4003` printed by `compiler.snl`). There is no separate
-  semantic pass.
+  semantic pass on master. Irineu's open PRs add `SNV4004` (non-exhaustive
+  `match`, [snl#4](https://github.com/snovalang/snl/pull/4), in its own
+  `matchCheck.snl` called from lowering), `SNV4005` (assignment to an
+  immutable binding, [snl#7](https://github.com/snovalang/snl/pull/7)) and
+  `SNV4006` (argument count, [snl#9](https://github.com/snovalang/snl/pull/9)).
+- The seed's reaction to a move out of an array element is understood
+  ([snl#8](https://github.com/snovalang/snl/pull/8), gap inventory): for
+  `let cell = cells[0]` the reference reports `SNOVA0251` at the index
+  expression, while the seed fails one statement later with `SNV3001`,
+  because the moved local has an unknown type. `SNV5002` closes that gap.
 - Probes (see `evidence.md`, "probes for the library and borrow-checker
   specifications"), comparing `snl check` v0.3.0 with the seed:
 
@@ -64,8 +73,10 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
 1. **Diagnostic namespace.** The seed keeps its own codes, one block per
    phase. In `bootstrap/src/compiler.snl` today: `SNV1xxx` lexer
    (`SNV1001`), `SNV2xxx` parser (`SNV2001`), `SNV3xxx` lowering
-   (`SNV3001`), `SNV4xxx` types (`SNV4001`–`SNV4003`), and `SNW0001` for the
-   comparison warning. The borrow checker gets a new block, `SNV5xxx`.
+   (`SNV3001`), `SNV4xxx` types (`SNV4001`–`SNV4003` on master;
+   `SNV4004`–`SNV4006` are taken by snl#4, #7 and #9), and `SNW0001` for the
+   comparison warning. The borrow checker gets a new block, `SNV5xxx`, so
+   its codes cannot collide with the semantic ones.
    Reference codes (`SNOVA02xx`) never appear in seed output, so the prefix
    always says which compiler produced an error.
 2. **Placement.** The checker is a separate pass between analysis and
@@ -83,7 +94,13 @@ Two new errors, each with the binding's byte span, in the format of
 | `SNV5001` | `use of a moved value at line L, span S..E` |
 | `SNV5002` | `cannot move a value out of a field or array element at line L, span S..E` |
 
-Correspondence with the reference, used by the differential:
+The single source for the correspondence between seed codes and
+`snl check` codes is `docs/roadmap/diagnostics.md`, created by
+[snl#4](https://github.com/snovalang/snl/pull/4) and not yet on master. Its
+header already reserves `SNV5xxx` for this checker. B1 and B2 each add their
+row to that table when they land; this specification keeps no table of its
+own. Mirrored excerpt, for reading only (the table in `diagnostics.md`
+wins on any difference):
 
 | Seed | `snl check` v0.3.0 | Meaning |
 |---|---|---|
@@ -116,8 +133,10 @@ No new syntax in B1–B2.
 - **B1 — use after move** (`SNV5001`): create `borrowCheck.snl`, add it to
   `ownSource()` in `sourceJoin.snl`, and call it from the driver after
   parsing and before emission; straight-line code first, then `if`/`while`
-  joins.
-- **B2 — move out of a field or element** (`SNV5002`), in the same pass.
+  joins. Add the `SNV5001` row to `diagnostics.md`.
+- **B2 — move out of a field or element** (`SNV5002`), in the same pass;
+  add its row to `diagnostics.md` and turn the snl#8 inventory entry for
+  `let cell = cells[0]` into a closed gap.
 - **B3 — shared borrows `&expr`.** Only if a compiler or library module
   needs them; the parser and the backend must both accept them first.
 - **B4 — faster copies for N3.** The backend uses the frontend facts to skip
@@ -142,8 +161,9 @@ No new syntax in B1–B2.
   (`make bootstrap-vm`) and natively (`make bootstrap-native`).
 - Differential: every fixture has the same accept/reject outcome under
   `snl check` and the seed. A rejection matches when the seed's `SNV5xxx`
-  code maps to the reference's `SNOVA02xx` code through the correspondence
-  table and both point at the same source position (line and span).
+  code maps to the reference's `SNOVA02xx` code through the table in
+  `diagnostics.md`, and the position agrees by that file's rule: the same
+  line, and the seed span starts at the byte of the reference column.
 - Compiling the compiler's own sources emits no diagnostics;
   `make bootstrap-fixed-point bootstrap-vm-self bootstrap-native-self` pass.
 - B1–B2 are analysis only and the emitters are untouched (decision 2): the
@@ -151,6 +171,20 @@ No new syntax in B1–B2.
   byte-for-byte unchanged.
 - B4 keeps zero live blocks and the constant peak of `nativeMemory`, and
   reports N3 compile time before and after on the same host.
+
+## Reference borrow codes
+
+[snl#8](https://github.com/snovalang/snl/pull/8) read the meanings in
+`snovac` v0.3.0 (`src/sema/borrow.h`): `SNOVA0240` use after move, `0241`
+use after drop, `0242` exclusive borrow conflict, `0243` mutation while
+shared, `0244` send while borrowed, `0245` null dereference, `0246` static
+index out of bounds, `0247` unsound `defer`, `0248` ownership-checker
+capacity exceeded, `0249` reference rebound to different places across
+branches, `0250` reference rebound across a loop iteration (loop-carried
+borrows unsupported), `0251` move out of an array element or field.
+`SNOVA0400` is the reference SnBC emitter's "cannot lower" error, a back-end
+limit rather than an ownership rule. Only `0240` and `0251` are in scope for
+B1–B2; `0242`, `0243`, `0249` and `0250` become relevant only with B3.
 
 ## Weak references
 
@@ -181,13 +215,12 @@ until they are repeated on `aarch64-apple-darwin`.
 
 ## Open questions
 
-1. **Reassigning a moved local:** reject it like the reference, or accept it
-   as a re-initialisation? (Yuri)
+1. **Reassigning a moved `var` local:** reject it like the reference, or
+   accept it as a re-initialisation? (Yuri) Assigning to a `let` local is
+   already rejected by `SNV4005` (snl#7), so the question only concerns
+   `var`.
 2. **Weak references:** is there a concrete need (a cyclic structure in the
    compiler or the library) that justifies the ADR now? (Yuri)
 3. **Do loops, methods and `return` match the reference?** B0 must probe
    them; the reference contract does not cover every case in the subset.
 4. **Is B3 needed at all** while no compiler module uses `&`?
-5. **The `SNOVA0248`–`SNOVA0250` codes** cited by ADR-0006 (range
-   `SNOVA0240`–`0251`) were not found in the reference sources available on
-   this host; their meaning needs checking in Yuri's `snovac` checkout.

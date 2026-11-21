@@ -45,9 +45,15 @@ executor and natively.
   - `BinaryHeap` fails first with `SNOVA0400 cannot lower call to SnBC`,
     because it calls methods on a local alias of its `storage` field;
   - `let cell = cells[index]` inside a method is rejected by `snl check` with
-    `SNOVA0251` (move out of an array element or field). The seed also
-    rejected that probe, with `SNV3001` at the line of `main`'s `return`;
-    lowering lines are not exact yet, so the cause is unconfirmed.
+    `SNOVA0251` (move out of an array element or field). The seed rejects
+    it one statement later, with `SNV3001` on the first use of the moved
+    local, whose type is unknown; the gap inventory in
+    [snl#8](https://github.com/snovalang/snl/pull/8) explains this and fixes
+    the `SNV3001` line, which used to point at the end of the input.
+  - A method call through a local alias of a field is accepted by
+    `snl check` and by the seed, but `snl build` fails with `SNOVA0400`, the
+    reference SnBC emitter's "cannot lower" error (snl#8). Only the root
+    build enforces this rule, so the library gates must run `snl build`.
 - The fixtures create objects with literals (`IntMap { ... }`,
   `BinaryHeap { storage: IntArray { ... } }`), and the root rejects method
   calls on literal-created objects (ADR-0007).
