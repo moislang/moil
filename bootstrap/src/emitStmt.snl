@@ -50,44 +50,51 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     }
     if k == 5 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let operandType = cx.expr_ty
+        let start = tokenStart(bg, bg.nd[nd])
         if bg.na[nd] == 35 {
+            if operandType != 0 && isIntType(operandType) == false {
+                typeFail(src, cx, 12, start)
+                return
+            }
             code.push(17)
+            cx.expr_ty = -1
         } else {
             if bg.na[nd] == 42 {
+                if operandType != 0 && isBoolType(operandType) == false {
+                    typeFail(src, cx, 12, start)
+                    return
+                }
                 code.push(18)
+                cx.expr_ty = -2
             } else {
                 fail(cx)
             }
         }
-        cx.expr_ty = 0
         return
     }
     if k == 6 {
+        let start = tokenStart(bg, bg.nd[nd])
         if bg.na[nd] == 43 {
-            emitAnd(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+            emitAnd(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
             return
         }
         if bg.na[nd] == 44 {
-            emitOr(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+            emitOr(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
             return
         }
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
         let leftType = cx.expr_ty
         emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
         let rightType = cx.expr_ty
-        if bg.na[nd] == 28 || bg.na[nd] == 29 {
-            if leftType != 0 && rightType != 0 && leftType != rightType {
-                bg.warningCodes.push(1)
-                bg.warningLines.push(bg.tl[bg.nd[nd]])
-            }
-        }
+        if checkBinaryTypes(src, cx, bg.na[nd], leftType, rightType, start) != 0 { return }
         let op = binOp(bg.na[nd])
         if op < 0 {
             fail(cx)
             return
         }
         code.push(op)
-        cx.expr_ty = 0
+        cx.expr_ty = binaryExprType(bg.na[nd], leftType, rightType)
         return
     }
     if k == 7 {
@@ -103,9 +110,20 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     }
     if k == 9 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let recvType = cx.expr_ty
         emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        let indexType = cx.expr_ty
+        if indexType != 0 && isIntType(indexType) == false {
+            typeFail(src, cx, 12, tokenStart(bg, bg.nd[nd]))
+            cx.error_found = 1
+            return
+        }
         code.push(40)
-        cx.expr_ty = 0
+        if isArrayType(recvType) {
+            cx.expr_ty = elementType(recvType)
+        } else {
+            cx.expr_ty = 0
+        }
         return
     }
     if k == 10 {

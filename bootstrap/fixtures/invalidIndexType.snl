@@ -1,0 +1,6 @@
+package bootstrap.fixture
+
+func main(): int {
+    let xs = [1, 2]
+    return xs["a"]
+}

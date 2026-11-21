@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    let text = "x"
+    let value = -text
+    return 0
+}
