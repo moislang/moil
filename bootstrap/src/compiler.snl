@@ -116,8 +116,16 @@ public func compileBytes(src: int[], image: int[]): int {
 
 func main(): int {
     let argc = cliArgumentCount()
+    if argc == 1 {
+        if validateImage(readSource(sourcePath())) == 0 {
+            Console.printline("invalid SnBC image")
+            return 1
+        }
+        Console.printline("valid SnBC image")
+        return 0
+    }
     if argc != 0 && argc < 2 {
-        Console.printline("usage: snl <input.snl> <output.snbc>")
+        Console.printline("usage: snl <input.snl> <output.snbc> | snl <image.snbc>")
         return 2
     }
     var src: int[] = []
@@ -128,6 +136,10 @@ func main(): int {
     }
     var image: int[] = []
     if compileSource(src, image) != 0 {
+        return 1
+    }
+    if validateImage(image) == 0 {
+        Console.printline("invalid generated SnBC image")
         return 1
     }
     writeImageFile(imagePath(), image)

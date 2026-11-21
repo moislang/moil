@@ -5,7 +5,7 @@ STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -30,3 +30,9 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "lexical error at line 4" $(BUILD_DIR)/lexical-error.txt
 	@if $(COMPILER_NATIVE) bootstrap/fixtures/invalidParse.snl $(BUILD_DIR)/invalidParse.snbc > $(BUILD_DIR)/parse-error.txt; then echo "expected parse failure"; exit 1; fi
 	grep -Fqx "parse error at line 5" $(BUILD_DIR)/parse-error.txt
+
+bootstrap-image-check: bootstrap-self-host
+	test "$$( $(COMPILER_NATIVE) $(STAGE1_IMAGE))" = "valid SnBC image"
+	head -c 8 $(STAGE1_IMAGE) > $(BUILD_DIR)/truncated.snbc
+	@if $(COMPILER_NATIVE) $(BUILD_DIR)/truncated.snbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
+	grep -Fqx "invalid SnBC image" $(BUILD_DIR)/image-error.txt

@@ -14,7 +14,9 @@ bootstrap operation; there is no separate joiner executable.
 
 Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
 invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
-own modules and reads the output path from `SNL_OUTPUT`.
+own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument
+validates the canonical image structure. `make bootstrap-image-check` exercises
+both a valid self-compiled image and a truncated one.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.
