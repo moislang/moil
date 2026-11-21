@@ -253,3 +253,13 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-smoke bootstrap-image-check bootstrap-fixed-point bootstrap-vm` (pass), `make bootstrap-vm-self` (pass, about 2 min 28 s), `sh scripts/hooks/validate-planning-docs.sh`, `git diff --check`.
 - Not verified: macOS native gates.
 - Limitations: a failure outside any statement (function signature) still reports the line of the last lowered statement. The function index in `SNV3001` is unchanged.
+
+## 2026-11-21 — call argument counts (SNV4006)
+
+- Environment: `snl v0.3.0` official Linux release, `x86_64-unknown-linux-gnu` (shared box).
+- Probe (reference): `snl check` reports `SNOVA0131` ("expected N argument(s), found M") for function calls, instance method calls and constructor calls with extra arguments. Before this change the seed emitted a function call with too few arguments, and the validator then rejected the image (`invalid generated SnBC image`). A constructor with an extra argument was accepted.
+- Implementation: every user call site (function, static method, instance method through a local or an implicit receiver, async call, `defer`, `pulsar`) compares the argument count with the callee's parameter count before lowering (`fn_ar` includes the receiver; messages show source counts). A positional constructor fails when it has more arguments than the class has fields; fewer arguments still take the field initializers or defaults. The diagnostic is `error[SNV4006]: expected N argument(s), found M at line L, span a..b` at the called name. It corresponds to `SNOVA0131` ([diagnostics.md](diagnostics.md)).
+- Differential: `invalidCallArity`, `invalidMethodArity` and `invalidConstructorArity` are rejected by both compilers with the same counts on the same line (seed lines 8, 13, 9; reference 8:15, 13:23, 9:22).
+- Commands: `make bootstrap-diagnostics bootstrap-smoke bootstrap-image-check bootstrap-fixed-point bootstrap-vm` (pass), `make bootstrap-vm-self` (pass), the Linux part of `bootstrap-library` and native emission of six native fixtures (pass), `sh scripts/hooks/validate-planning-docs.sh`, `git diff --check`.
+- Not verified: macOS native gates.
+- Limitations: calls through `Runtime.*` keep their own `SNV3001` check. Whether the reference requires every field in a positional constructor is not probed, so the seed only rejects extra arguments.

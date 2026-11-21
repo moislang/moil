@@ -114,6 +114,7 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     if ck == 4 {
         fn = findFunc(src, bg, ns, nl)
     }
+    if fn >= 0 && arityMismatch(src, bg, cx, fn, consCount(bg, args), 0, ns) != 0 { return }
     emitForward(src, bg, cx, code, fat, fb, args, 0)
     if fn >= 0 {
         code.push(33)

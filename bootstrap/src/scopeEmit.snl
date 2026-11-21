@@ -140,7 +140,7 @@ func scopeArgAt(bg: compilerState, c: int, k: int): int {
     return bg.nb[cur]
 }
 
-func scopeEmitCtor(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], st: int, args: int): unit {
+func scopeEmitCtor(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], st: int, args: int, nameStart: int): unit {
     var i = 0
     var argi = 0
     var nfields = 0
@@ -160,6 +160,10 @@ func scopeEmitCtor(src: int[], bg: compilerState, cx: compilerContext, code: int
             nfields = nfields + 1
         }
         i = i + 1
+    }
+    if argi < argc {
+        arityFail(src, cx, nfields, argc, nameStart)
+        return
     }
     let si = internSpan(src, bg.st_ns[st], bg.st_nl[st], bg)
     code.push(36)
@@ -205,6 +209,7 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
                             fail(cx)
                             return 1
                         }
+                        if arityMismatch(src, bg, cx, m, consCount(bg, args), 0, ns) != 0 { return 1 }
                         emitForward(src, bg, cx, code, fat, fb, args, 0)
                         scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
                         cx.expr_ty = 0
@@ -223,6 +228,7 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
                             fail(cx)
                             return 1
                         }
+                        if arityMismatch(src, bg, cx, m, consCount(bg, args) + 1, 1, ns) != 0 { return 1 }
                         emitExpr(src, bg, cx, code, fat, fb, recv)
                         emitForward(src, bg, cx, code, fat, fb, args, 0)
                         scopeCallOp(code, m, consCount(bg, args) + 1, bg.fn_async[m])
@@ -241,6 +247,7 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
     let fn = findFunc(src, bg, ns, nl)
     if fn >= 0 {
         if bg.fn_async[fn] == 0 { return 0 }
+        if arityMismatch(src, bg, cx, fn, consCount(bg, args), 0, ns) != 0 { return 1 }
         emitForward(src, bg, cx, code, fat, fb, args, 0)
         scopeCallOp(code, fn, consCount(bg, args), 1)
         cx.expr_ty = 0
@@ -248,7 +255,7 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
     }
     let st = findStruct(src, bg, ns, nl)
     if st >= 0 && bg.st_kind[st] != 3 {
-        scopeEmitCtor(src, bg, cx, code, fat, fb, st, args)
+        scopeEmitCtor(src, bg, cx, code, fat, fb, st, args, ns)
         return 1
     }
     if scopeVariantEn(src, bg, ns, nl) >= 0 && consCount(bg, args) == 0 {
@@ -259,12 +266,14 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
     if cx.owner >= 0 {
         let m = scopeFindMethod(src, bg, cx.owner, ns, nl)
         if m >= 0 && bg.fn_static[m] != 0 {
+            if arityMismatch(src, bg, cx, m, consCount(bg, args), 0, ns) != 0 { return 1 }
             emitForward(src, bg, cx, code, fat, fb, args, 0)
             scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
             cx.expr_ty = 0
             return 1
         }
         if m >= 0 {
+            if arityMismatch(src, bg, cx, m, consCount(bg, args) + 1, 1, ns) != 0 { return 1 }
             code.push(8)
             pushU32(code, 0)
             emitForward(src, bg, cx, code, fat, fb, args, 0)
