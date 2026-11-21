@@ -41,3 +41,11 @@ Este arquivo começa vazio de resultados técnicos. As entradas devem registrar 
 - Resultado observado: imports entre pacotes e projeto multi-arquivo passaram no check; smoke e diagnósticos passaram; o joiner em Snova gerou a unidade seed, que compilou as fontes e atingiu igualdade byte a byte.
 - SHA-256 das imagens SnBC stage 1 e 2: `6dab7126700e6416ade1ba2df110ea8486dc6cae989954d484330a0919c42740`.
 - Limitações: o seed ainda não carrega módulos/imports por conta própria; o joiner temporário remove cabeçalhos para auto-compilar. O runtime de execução continua sendo o do `snl`; compatibilidade ampla e backend standalone não foram demonstrados.
+
+## 2026-11-21 — I/O por caminhos e montagem interna do bootstrap
+
+- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Comandos: `make bootstrap-fixed-point`, `make bootstrap-smoke`, `make bootstrap-diagnostics`.
+- Resultado observado: o binário do projeto multi-arquivo aceitou caminhos de entrada/saída por argumentos; sem argumentos, compilou suas próprias fontes a partir de `sourceJoin.snl` e usou `SNL_OUTPUT`. O SnBC gerado repetiu a compilação sem o joiner externo e as duas imagens coincidiram byte a byte. Smoke e diagnósticos passaram com a nova CLI.
+- SHA-256 das duas imagens SnBC: `4d00222c46e427a3308bf1f7ede3935d8a6744222f7d074a2f7ac115b2482716`.
+- Limitações: `runtime.snl` encapsula as chamadas de argumentos, ambiente e bytes, mas essas primitivas e a execução de SnBC ainda vêm do runtime de referência. A montagem interna lista os módulos do próprio compilador; imports gerais, semântica completa, backend nativo em Snova e compatibilidade integral com `snovac` permanecem pendentes.

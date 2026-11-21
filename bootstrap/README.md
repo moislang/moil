@@ -7,11 +7,14 @@ It is the first in-repository compiler source, not a complete replacement for
 ## Build chain
 
 Run `make bootstrap-fixed-point` with the installed `snl` toolchain. The target
-uses `tools/join.snl` to combine source modules, checks the multi-file project
-and natively builds the Snova compiler, asks that compiler to compile its own
-joined source to SnBC, then asks the generated
-compiler to compile the same source again. It succeeds only if both SnBC images
-match byte for byte.
+builds the multi-file project, asks the Snova compiler to compile its own
+sources, then asks the generated compiler to do the same. Both SnBC images must
+match byte for byte. The compiler's `sourceJoin.snl` handles this internal
+bootstrap operation; there is no separate joiner executable.
+
+Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
+invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
+own modules and reads the output path from `SNL_OUTPUT`.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.
@@ -20,9 +23,8 @@ Run `make bootstrap-diagnostics` to check lexer and parser failures include a
 phase and source line.
 
 `snl` is the temporary seed and supplies the existing runtime. The compiler
-logic being developed here is in `.snl`; no C or C++ implementation is added to
-this repository. The generated SnBC compiler still runs on `snl`'s runtime, so
-this is not yet a standalone Snova compiler distribution.
+and its I/O facade are in `.snl`. The generated SnBC compiler still runs through
+the previous toolchain, so this is not yet a standalone distribution.
 
 ## Current subset
 
@@ -35,9 +37,9 @@ file stays below 400 lines.
 The seed recognizes and lowers a small imperative subset: functions, structs,
 integer and string literals, local bindings, calls, arithmetic and comparison,
 short circuit operators, `if`, `while`, and basic returns. Its lexer, parser,
-scope lowering and SnBC writer are split into package modules in `src/`. The
-temporary joiner strips each package declaration and combines those parts for
-the current single-file seed interface.
+scope lowering, SnBC writer and runtime facade are split into package modules
+in `src/`. The compiler internally flattens its own modules for the current
+single-source seed interface.
 
 The seed reports failure for constructs outside its subset. It is not a
 drop-in `snovac`, does not implement the complete Snovalang type system or CLI,

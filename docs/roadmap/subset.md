@@ -6,12 +6,12 @@ estágio anterior conseguir compilá-la.
 
 | Área | Seed atual | Próximo gate |
 |---|---|---|
-| Fontes do compilador | Módulos `.snl` camelCase; check do projeto multi-arquivo e imports públicos entre pacotes | Ensinar o seed a carregar/importar arquivos sem o joiner temporário |
+| Fontes do compilador | Módulos `.snl` camelCase; build de projeto; montagem interna das próprias fontes | Resolver imports e compilar projetos gerais diretamente no compilador Snova |
 | Frontend | Lexer/parser do subset com diagnóstico de fase e linha | Diagnósticos estáveis com span e diferencial versionado com referência |
 | Semântica | Resolução local necessária ao subset | Tipos e diagnósticos compatíveis por marcos |
 | IR e backend | Lowering para SnBC | Backend nativo implementado em Snova e artefato executável standalone |
-| Runtime | Usa funções do runtime já existente | Reimplementar em Snova; manter apenas fronteiras ABI/OS mínimas |
-| CLI | Entrada/saída fixas `in.snl` e `out.snbc` | Argumentos, flags, diagnósticos e projeto compatíveis gradualmente |
+| Runtime | Fachada Snova para argumentos, ambiente e I/O; operações de OS ainda fornecidas pelo runtime anterior | Implementar executor SnBC e fronteiras ABI/OS sem lógica de compilador em C |
+| CLI | Caminhos de entrada e saída por argumentos; modo interno de bootstrap por `SNL_OUTPUT` | Flags, diagnósticos e projeto compatíveis com `snovac` |
 | Self-compilation | Seed Snova compila seu source para SnBC; imagem seguinte coincide | Repetir o ciclo após cada extensão e registrar os hashes |
 | Compatibilidade total | Não demonstrada | Corpus `snovac` com resultados diferenciais e lacunas explicitadas |
 

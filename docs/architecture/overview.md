@@ -8,9 +8,10 @@ O compilador é a única peça pública de produto. Seu frontend, semântica,
 backend, runtime e driver devem ser desenvolvidos em Snova. A raiz `snl`
 instalada é temporária; C/C++ não serão uma implementação paralela. O código
 atual está em módulos `.snl` importáveis no projeto `bootstrap/src/`, com APIs
-públicas pequenas. O seed ainda usa o joiner em Snova para gerar uma unidade
-temporária; ensinar o seed a ler módulos diretamente é o próximo gate de
-arquitetura. As demais lacunas estão em `docs/roadmap/subset.md`.
+públicas pequenas. O build nativo usa esses módulos diretamente. Para se
+auto-compilar, o seed ainda monta internamente uma unidade de fonte; resolver
+imports entre arquivos arbitrários é o próximo gate de arquitetura. As demais
+lacunas estão em `docs/roadmap/subset.md`.
 
 ## Estratégia: bootstrap por subconjuntos cumulativos
 

@@ -1,4 +1,4 @@
-package snova.bootstrap.tools
+package snova.compiler.runtime
 
 func isPackageLine(data: int[], start: int, end: int): bool {
     if end - start < 8 { return false }
@@ -38,7 +38,7 @@ func appendFile(output: int[], path: string, keep_imports: int): unit {
     }
 }
 
-func main(): int {
+public func ownSource(): int[] {
     var output: int[] = []
     output.push(112)
     output.push(97)
@@ -71,12 +71,13 @@ func main(): int {
     appendFile(output, "bootstrap/src/emit.snl", 0)
     appendFile(output, "bootstrap/src/emitExpr.snl", 0)
     appendFile(output, "bootstrap/src/emitStmt.snl", 0)
+    appendFile(output, "bootstrap/src/runtime.snl", 0)
+    appendFile(output, "bootstrap/src/sourceJoin.snl", 0)
     appendFile(output, "bootstrap/src/compiler.snl", 0)
     appendFile(output, "bootstrap/src/api.snl", 0)
     appendFile(output, "bootstrap/src/apiConsumer.snl", 0)
     appendFile(output, "bootstrap/src/scopeParse.snl", 0)
     appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
     appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
-    write_bytes("build/bootstrap/compiler.snl", output)
-    return 0
+    return output
 }

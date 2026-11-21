@@ -1,11 +1,12 @@
 package snova.compiler
 
 import builtin.io.console
+import builtin.runtime
 
 // Snova compiler for the slice this file is written in.
 // The Snova joiner combines this package source with compiler.snl for the seed.
 //
-// It reads in.snl and writes canonical SnBC to out.snbc. The lowering matches
+// It reads a source path and writes canonical SnBC. The lowering matches
 // emit-snbc: source order of functions, local high-water, first-use string
 // pool, short-circuit jumps, and the const-unit epilogue. A program outside
 // the slice returns 1 and writes no image.

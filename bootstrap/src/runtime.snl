@@ -1,0 +1,24 @@
+package snova.compiler.runtime
+
+import builtin.runtime
+
+public func sourcePath(): string {
+    return Runtime.argument(0)
+}
+
+public func imagePath(): string {
+    if Runtime.argumentCount() > 1 { return Runtime.argument(1) }
+    return Runtime.environment("SNL_OUTPUT")
+}
+
+public func cliArgumentCount(): int {
+    return Runtime.argumentCount()
+}
+
+public func readSource(path: string): int[] {
+    return read_bytes(path)
+}
+
+public func writeImageFile(path: string, image: int[]): unit {
+    write_bytes(path, image)
+}

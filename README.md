@@ -23,8 +23,6 @@ Este repositório desenvolve um compilador Snovalang escrito em Snova. O compila
 - C/C++ não é usado para implementar o compilador neste repositório. O `snl` instalado é somente a raiz transitória do bootstrap inicial.
 - Self-hosting, ponto fixo, reprodutibilidade e DDC são afirmações distintas, cada uma com evidência própria.
 
-## Estado
-
 ## Bootstrap atual
 
-O diretório `bootstrap/src/` contém módulos Snova no pacote `snova.compiler`. A API pública em `api.snl` é importada e verificada por `apiConsumer.snl`; os arquivos usam `camelCase` e permanecem abaixo de 400 linhas. `make bootstrap-check` verifica o projeto multi-arquivo e o seed; `make bootstrap-smoke`, `make bootstrap-diagnostics` e `make bootstrap-fixed-point` cobrem execução e auto compilação do subset. O seed ainda usa o runtime do `snl` e um joiner temporário porque não compila projetos multi-arquivo por conta própria. Isso não equivale à reescrita completa nem à compatibilidade com `snovac`. Consulte o [registro de evidências](docs/roadmap/evidence.md) e a [matriz de subset](docs/roadmap/subset.md).
+O diretório `bootstrap/src/` contém o compilador e seu módulo de I/O em Snova. `make bootstrap-build` gera `build/bootstrap/snova-bootstrap`; execute esse binário com `<input.snl> <output.snbc>`. `make bootstrap-fixed-point` constrói o projeto multi-arquivo, compila as próprias fontes e compara duas imagens SnBC consecutivas. A montagem das próprias fontes está em `sourceJoin.snl`, dentro do compilador. O executor SnBC, as chamadas de OS e o backend nativo ainda dependem da toolchain anterior; a substituição completa do `snovac` permanece pendente. Consulte o [registro de evidências](docs/roadmap/evidence.md) e a [matriz de subset](docs/roadmap/subset.md).

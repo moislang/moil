@@ -1,5 +1,21 @@
 package snova.compiler
 
+func isArgumentCount(src: int[], start: int, count: int): bool {
+    if count != 13 { return false }
+    return src[start] == 97 && src[start + 1] == 114 && src[start + 2] == 103 &&
+        src[start + 3] == 117 && src[start + 4] == 109 && src[start + 5] == 101 &&
+        src[start + 6] == 110 && src[start + 7] == 116 && src[start + 8] == 67 &&
+        src[start + 9] == 111 && src[start + 10] == 117 && src[start + 11] == 110 &&
+        src[start + 12] == 116
+}
+
+func runtimeCallId(src: int[], start: int, count: int): int {
+    if isWord(src, start, count, 11, 101, 110, 118, 105, 114, 111, 110, 109, 101, 110, 116, 0) { return 5 }
+    if isArgumentCount(src, start, count) { return 6 }
+    if isWord(src, start, count, 8, 97, 114, 103, 117, 109, 101, 110, 116, 0, 0, 0, 0) { return 7 }
+    return 0
+}
+
 func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int): unit {
     if callee < 0 {
         fail(cx)
@@ -15,6 +31,23 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     if ck == 10 {
         ns = bg.nc[callee]
         nl = bg.nd[callee]
+        let recv = bg.nb[callee]
+        if recv >= 0 && bg.nk[recv] == 4 && isWord(src, bg.na[recv], bg.nb[recv], 7, 82, 117, 110, 116, 105, 109, 101, 0, 0, 0, 0, 0) {
+            let callId = runtimeCallId(src, ns, nl)
+            if callId != 0 {
+                let argc = consCount(bg, args)
+                if (callId == 6 && argc != 0) || (callId != 6 && argc != 1) {
+                    fail(cx)
+                    return
+                }
+                emitForward(src, bg, cx, code, fat, fb, args, 0)
+                code.push(57)
+                pushU32(code, callId)
+                pushU32(code, argc)
+                if callId == 6 { cx.expr_ty = -1 } else { cx.expr_ty = -3 }
+                return
+            }
+        }
     }
     if ck == 4 || ck == 10 {
         let which = namePrint(src, ns, nl)

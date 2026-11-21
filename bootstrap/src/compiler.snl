@@ -1,5 +1,7 @@
 package snova.compiler
 
+import snova.compiler.runtime
+
 func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]): unit {
     image.push(83)
     image.push(78)
@@ -36,7 +38,7 @@ func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]
 
 func reportFailure(bg: compilerState, cx: compilerContext): unit {
     if cx.error_phase == 1 {
-        Console.print("lexical error in in.snl at line ")
+        Console.print("lexical error at line ")
         Console.print(cx.error_line)
         Console.printline("")
         return
@@ -46,12 +48,12 @@ func reportFailure(bg: compilerState, cx: compilerContext): unit {
         if cx.error_token >= 0 && cx.error_token < bg.tl.len() {
             line = bg.tl[cx.error_token]
         }
-        Console.print("parse error in in.snl at line ")
+        Console.print("parse error at line ")
         Console.print(line)
         Console.printline("")
         return
     }
-    Console.printline("unsupported construct or invalid lowering in in.snl")
+    Console.printline("unsupported construct or invalid lowering")
 }
 
 func compileSource(src: int[], image: int[]): int {
@@ -113,11 +115,21 @@ public func compileBytes(src: int[], image: int[]): int {
 }
 
 func main(): int {
-    let src = read_bytes("in.snl")
+    let argc = cliArgumentCount()
+    if argc != 0 && argc < 2 {
+        Console.printline("usage: snl <input.snl> <output.snbc>")
+        return 2
+    }
+    var src: int[] = []
+    if argc == 0 {
+        src = ownSource()
+    } else {
+        src = readSource(sourcePath())
+    }
     var image: int[] = []
     if compileSource(src, image) != 0 {
         return 1
     }
-    write_bytes("out.snbc", image)
+    writeImageFile(imagePath(), image)
     return 0
 }
