@@ -49,6 +49,10 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 4, span 54..55" $(BUILD_DIR)/typed-let-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidTypedAssignment.snl $(BUILD_DIR)/invalidTypedAssignment.snbc > $(BUILD_DIR)/typed-assignment-error.txt; then echo "expected typed assignment mismatch"; exit 1; fi
 	grep -Fqx "error[SNV4002]: assignment type does not match local binding at line 5, span 70..71" $(BUILD_DIR)/typed-assignment-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/fieldAssignment.snl $(BUILD_DIR)/fieldAssignment.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
+	grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130" $(BUILD_DIR)/field-assignment-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt
 	printf 'warning[SNW0001]: comparison between different types at line 10\nwarning[SNW0001]: comparison between different types at line 13\n' | cmp - $(BUILD_DIR)/warn-mismatch.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt

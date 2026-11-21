@@ -210,9 +210,22 @@ func emitAssign(src: int[], bg: compilerState, cx: compilerContext, code: int[],
             fail(cx)
             return
         }
+        let fieldType = fieldTypeAt(src, bg, st, bg.nc[lhs], bg.nd[lhs])
+        if fieldType != 0 && rhs_ty != 0 && fieldType != rhs_ty {
+            cx.failed = 1
+            cx.error_phase = 6
+            cx.error_start = bg.nc[lhs]
+            cx.error_line = 1
+            var byteIndex = 0
+            while byteIndex < bg.nc[lhs] {
+                if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+                byteIndex = byteIndex + 1
+            }
+            return
+        }
         code.push(38)
         pushU32(code, fi)
-        cx.expr_ty = fieldTypeAt(src, bg, st, bg.nc[lhs], bg.nd[lhs])
+        cx.expr_ty = fieldType
         return
     }
     fail(cx)

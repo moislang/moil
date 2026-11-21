@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+struct box {
+    public var value: int
+}
+
+func main(): int {
+    let item = box { value: 1 }
+    item.value = "wrong"
+    return 0
+}

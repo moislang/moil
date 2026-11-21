@@ -144,3 +144,10 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: assignment to a local with known type now rejects a known incompatible right-hand type using `SNV4002` and reports the binding identifier's byte span. Assignments where either side has unknown type retain the current subset behavior. Existing valid typed binding and earlier diagnostics remain gated.
 - Limitations: assignment checks cover local variables only; fields, arrays, parameters, function returns and full subtype/nullable compatibility are not implemented.
+
+## 2026-11-21 — field assignment type compatibility
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-vm bootstrap-fixed-point bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
+- Observed result: assigning a known incompatible value to a known struct field is rejected with `SNV4003` and the field-name byte span. The positive field assignment returns 42; the negative fixture reports span 129..130. Local annotation and assignment diagnostics remain covered.
+- Limitations: this check is limited to direct struct fields with known types; arrays, inherited fields, unknown expressions and other type relations remain unsupported.
