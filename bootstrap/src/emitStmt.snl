@@ -124,6 +124,13 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
 }
 
 func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    let saved = cx.line
+    if nd >= 0 && nd < bg.nline.len() && bg.nline[nd] > 0 { cx.line = bg.nline[nd] }
+    emitStmtAt(src, bg, cx, code, fat, fb, nd)
+    if cx.failed == 0 { cx.line = saved }
+}
+
+func emitStmtAt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }
     if nd < 0 {
         fail(cx)

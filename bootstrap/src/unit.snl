@@ -38,6 +38,10 @@ struct compilerState {
     // 1 for `var` locals and compiler temporaries, 0 for `let`, parameters
     // and `for`/`match` bindings (immutable, SNV4005 on assignment)
     public var loc_mut: int[]
+    // source line of the statement that created each node (0 outside
+    // statements); parse_line is the line of the statement being parsed
+    public var nline: int[]
+    public var parse_line: int
     public var fd_st: int[]
     public var fd_ns: int[]
     public var fd_nl: int[]
@@ -194,6 +198,7 @@ func node(bg: compilerState, k: int, a: int, b: int, c: int, d: int): int {
     bg.nb.push(b)
     bg.nc.push(c)
     bg.nd.push(d)
+    bg.nline.push(bg.parse_line)
     return id
 }
 
