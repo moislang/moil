@@ -57,3 +57,11 @@ Este arquivo começa vazio de resultados técnicos. As entradas devem registrar 
 - Resultado observado: `imageReader.snl` aceitou a imagem produzida pelo compilador, rejeitou uma imagem truncada e foi compilado como parte do próprio compilador na geração seguinte. As imagens de estágio 1 e 2 coincidiram byte a byte.
 - SHA-256 de ambas as imagens: `8ecf10657461d96e7033ed391ba1fdfd60400579e503e36ff7d5dd5cec4952cd`.
 - Limitações: a validação cobre estrutura, tamanhos e índices principais; ainda não valida instruções/opcodes, não executa SnBC em Snova e não substitui o runtime ou backend de referência.
+
+## 2026-11-21 — validação de instruções SnBC em Snova
+
+- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Comandos: `make bootstrap-fixed-point`, `make bootstrap-image-check`, `make bootstrap-smoke`; imagens derivadas de `stage1.snbc` com opcode inválido e salto fora da imagem foram rejeitadas pelo compilador Snova.
+- Resultado observado: `imageCode.snl` verificou limites das instruções, último opcode, índices de strings/locais/funções, aridade, chamadas de runtime, saltos e opcodes ainda sem implementação; as imagens de estágio 1 e 2 coincidiram byte a byte.
+- SHA-256 de ambas as imagens: `d85c9e395f93e2b16d8156dc47589f619b8d6693f6d935b79ddbc00b8100d3ee`.
+- Limitações: este validador não executa bytecode, não prova paridade para todo corpus e ainda usa o runtime anterior para construir/executar as imagens de estágio.

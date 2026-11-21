@@ -10,7 +10,7 @@ estágio anterior conseguir compilá-la.
 | Frontend | Lexer/parser do subset com diagnóstico de fase e linha | Diagnósticos estáveis com span e diferencial versionado com referência |
 | Semântica | Resolução local necessária ao subset | Tipos e diagnósticos compatíveis por marcos |
 | IR e backend | Lowering para SnBC | Backend nativo implementado em Snova e artefato executável standalone |
-| Runtime | Fachada Snova para argumentos, ambiente e I/O; leitor estrutural da imagem SnBC; operações de OS ainda fornecidas pelo runtime anterior | Validar opcodes e implementar executor SnBC em Snova, depois as fronteiras ABI/OS |
+| Runtime | Fachada Snova para argumentos, ambiente e I/O; validador de imagem, opcodes, operandos e referências SnBC; operações de OS ainda fornecidas pelo runtime anterior | Implementar executor SnBC em Snova e depois as fronteiras ABI/OS |
 | CLI | Caminhos de entrada e saída por argumentos; modo interno de bootstrap por `SNL_OUTPUT` | Flags, diagnósticos e projeto compatíveis com `snovac` |
 | Self-compilation | Seed Snova compila seu source para SnBC; imagem seguinte coincide | Repetir o ciclo após cada extensão e registrar os hashes |
 | Compatibilidade total | Não demonstrada | Corpus `snovac` com resultados diferenciais e lacunas explicitadas |

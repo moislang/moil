@@ -73,6 +73,7 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/emitStmt.snl", 0)
     appendFile(output, "bootstrap/src/runtime.snl", 0)
     appendFile(output, "bootstrap/src/imageReader.snl", 0)
+    appendFile(output, "bootstrap/src/imageCode.snl", 0)
     appendFile(output, "bootstrap/src/sourceJoin.snl", 0)
     appendFile(output, "bootstrap/src/compiler.snl", 0)
     appendFile(output, "bootstrap/src/api.snl", 0)

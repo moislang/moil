@@ -43,6 +43,10 @@ public func validateImage(data: int[]): int {
     }
     let functionCount = readU32(data, cursor)
     if cursor.valid == 0 || functionCount == 0 || mainIndex >= functionCount { return 0 }
+    var arities: int[] = []
+    var locals: int[] = []
+    var codeStarts: int[] = []
+    var codeLengths: int[] = []
     index = 0
     while index < functionCount {
         let nameLength = readU32(data, cursor)
@@ -50,11 +54,21 @@ public func validateImage(data: int[]): int {
         let arity = readU32(data, cursor)
         let localCount = readU32(data, cursor)
         let codeLength = readU32(data, cursor)
-        if cursor.valid == 0 || localCount < arity { return 0 }
+        if cursor.valid == 0 || localCount < arity || localCount > 256 || codeLength == 0 { return 0 }
+        arities.push(arity)
+        locals.push(localCount)
+        codeStarts.push(cursor.offset)
+        codeLengths.push(codeLength)
         skipBytes(data, cursor, codeLength)
         if cursor.valid == 0 { return 0 }
         index = index + 1
     }
     if cursor.offset != data.len() { return 0 }
+    if arities[mainIndex] != 0 { return 0 }
+    index = 0
+    while index < functionCount {
+        if validateCode(data, codeStarts[index], codeLengths[index], stringCount, arities, locals[index]) == 0 { return 0 }
+        index = index + 1
+    }
     return 1
 }
