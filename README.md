@@ -13,6 +13,7 @@ This repository develops a Snovalang compiler written in Snova. The compiler is 
 7. [Compiler bibliography](docs/research/compiler-literature.md)
 8. Claude Code subagents in `.claude/agents/`
 9. [Current compiler subset](docs/roadmap/subset.md)
+10. [Feature specifications](docs/specs/README.md)
 
 ## Principles
 
