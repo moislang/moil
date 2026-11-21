@@ -13,12 +13,12 @@ the compiler's own fixed point and must never be edited by hand.
 
 | Field | Value |
 |---|---|
-| Source revision | `2fba2df` (`master`) plus the ADR-0009 slice, which does not change `bootstrap/src/` |
+| Source revision | `600ed17` (`master`, after snl#4, #7, #8 and #9; first refresh, see the evidence log) |
 | Producing command | `make bootstrap-seed-refresh` (runs `make bootstrap-fixed-point`, copies `build/bootstrap/stage1.snbc`) |
 | Producing root | `snl v0.3.0`, official `snovac-linux-x86_64.tar.gz` release (archive SHA-256 `f7d39f967407cdedc522b6bb1d21c199b188789dc27b00ba9e7100bc419ed8f8`) |
 | Host | `x86_64-unknown-linux-gnu` |
-| Size | 142693 bytes |
-| SHA-256 | `8cb80e985dbf2f5d087098fa02960e184d38ac540ffc39d936201404c5f730ad` (also in `compiler.snbc.sha256`) |
+| Size | 148729 bytes |
+| SHA-256 | `cf64d0d31cb50b124af68b7f2dc78b9788f011a149528d36bef7ee4430397706` (also in `compiler.snbc.sha256`) |
 
 Equality with the image produced on `aarch64-apple-darwin` has not been
 checked yet; see the evidence log.
