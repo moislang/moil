@@ -1,0 +1,82 @@
+package snova.bootstrap.tools
+
+func isPackageLine(data: int[], start: int, end: int): bool {
+    if end - start < 8 { return false }
+    if data[start] != 112 || data[start + 1] != 97 || data[start + 2] != 99 || data[start + 3] != 107 { return false }
+    if data[start + 4] != 97 || data[start + 5] != 103 || data[start + 6] != 101 || data[start + 7] != 32 { return false }
+    return true
+}
+
+func isImportLine(data: int[], start: int, end: int): bool {
+    if end - start < 7 { return false }
+    if data[start] != 105 || data[start + 1] != 109 || data[start + 2] != 112 { return false }
+    if data[start + 3] != 111 || data[start + 4] != 114 || data[start + 5] != 116 || data[start + 6] != 32 { return false }
+    return true
+}
+
+func appendFile(output: int[], path: string, keep_imports: int): unit {
+    let part = read_bytes(path)
+    var i = 0
+    while i < part.len() {
+        let start = i
+        while i < part.len() && part[i] != 10 {
+            i = i + 1
+        }
+        let end = i
+        var skip = 0
+        if isPackageLine(part, start, end) { skip = 1 }
+        if keep_imports == 0 && isImportLine(part, start, end) { skip = 1 }
+        if skip == 0 {
+            var j = start
+            while j < end {
+                output.push(part[j])
+                j = j + 1
+            }
+            if i < part.len() { output.push(10) }
+        }
+        if i < part.len() { i = i + 1 }
+    }
+}
+
+func main(): int {
+    var output: int[] = []
+    output.push(112)
+    output.push(97)
+    output.push(99)
+    output.push(107)
+    output.push(97)
+    output.push(103)
+    output.push(101)
+    output.push(32)
+    output.push(115)
+    output.push(110)
+    output.push(111)
+    output.push(118)
+    output.push(97)
+    output.push(46)
+    output.push(99)
+    output.push(111)
+    output.push(109)
+    output.push(112)
+    output.push(105)
+    output.push(108)
+    output.push(101)
+    output.push(114)
+    output.push(10)
+    output.push(10)
+    appendFile(output, "bootstrap/src/unit.snl", 1)
+    appendFile(output, "bootstrap/src/lex.snl", 0)
+    appendFile(output, "bootstrap/src/parse.snl", 0)
+    appendFile(output, "bootstrap/src/parseDecl.snl", 0)
+    appendFile(output, "bootstrap/src/emit.snl", 0)
+    appendFile(output, "bootstrap/src/emitExpr.snl", 0)
+    appendFile(output, "bootstrap/src/emitStmt.snl", 0)
+    appendFile(output, "bootstrap/src/compiler.snl", 0)
+    appendFile(output, "bootstrap/src/api.snl", 0)
+    appendFile(output, "bootstrap/src/apiConsumer.snl", 0)
+    appendFile(output, "bootstrap/src/scopeParse.snl", 0)
+    appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
+    appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
+    write_bytes("build/bootstrap/compiler.snl", output)
+    return 0
+}

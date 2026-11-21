@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh scripts/hooks/validate-planning-docs.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

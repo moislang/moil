@@ -1,0 +1,123 @@
+package snova.compiler
+
+func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]): unit {
+    image.push(83)
+    image.push(78)
+    image.push(66)
+    image.push(67)
+    pushU32(image, 1)
+    pushU32(image, cx.main_idx)
+    pushU32(image, bg.pool_n.len())
+    var i = 0
+    while i < bg.pool_n.len() {
+        pushU32(image, bg.pool_n[i])
+        var j = 0
+        while j < bg.pool_n[i] {
+            image.push(bg.pool_b[bg.pool_s[i] + j])
+            j = j + 1
+        }
+        i = i + 1
+    }
+    pushU32(image, bg.fn_ns.len())
+    i = 0
+    while i < bg.fn_ns.len() {
+        scopeWriteFnName(src, bg, image, i)
+        pushU32(image, bg.fn_ar[i])
+        pushU32(image, bg.fn_loc[i])
+        pushU32(image, bg.fn_len[i])
+        var j = 0
+        while j < bg.fn_len[i] {
+            image.push(bg.allc[bg.fn_off[i] + j])
+            j = j + 1
+        }
+        i = i + 1
+    }
+}
+
+func reportFailure(bg: compilerState, cx: compilerContext): unit {
+    if cx.error_phase == 1 {
+        Console.print("lexical error in in.snl at line ")
+        Console.print(cx.error_line)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 2 {
+        var line = 1
+        if cx.error_token >= 0 && cx.error_token < bg.tl.len() {
+            line = bg.tl[cx.error_token]
+        }
+        Console.print("parse error in in.snl at line ")
+        Console.print(line)
+        Console.printline("")
+        return
+    }
+    Console.printline("unsupported construct or invalid lowering in in.snl")
+}
+
+func compileSource(src: int[], image: int[]): int {
+    var bg = compilerState {
+        tk: [], ts: [], tn: [], tv: [], tl: [],
+        nk: [], na: [], nb: [], nc: [], nd: [],
+        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [],
+        fd_st: [], fd_ns: [], fd_nl: [], fd_ty: [],
+        st_ns: [], st_nl: [],
+        fn_ns: [], fn_nl: [], fn_ar: [], fn_body: [],
+        fn_off: [], fn_len: [], fn_loc: [],
+        par_fn: [], par_ns: [], par_nl: [], par_ty: [],
+        pool_b: [], pool_s: [], pool_n: [],
+        allc: [],
+        fn_own: [], fn_async: [], fn_pulsar: [],
+        st_kind: [], fd_init: [],
+        va_ns: [], va_nl: [], va_en: [],
+        lp_id: [], lp_known: [], lp_pos: [],
+        brk_at: [], brk_lv: [], cont_at: [], cont_lv: []
+    }
+    var cx = compilerContext {
+        pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
+        no_struct: 0, loc_base: 0, main_idx: 0,
+        owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_owner: -1,
+        phase: 0, error_phase: 0, error_token: -1, error_line: 1, line: 1
+    }
+    lexAll(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(bg, cx)
+        return 1
+    }
+    parseFile(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(bg, cx)
+        return 1
+    }
+    if bg.fn_ns.len() == 0 {
+        fail(cx)
+        reportFailure(bg, cx)
+        return 1
+    }
+    cx.phase = 3
+    emitUnit(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(bg, cx)
+        return 1
+    }
+    if bg.fn_loc.len() != bg.fn_ns.len() {
+        fail(cx)
+        reportFailure(bg, cx)
+        return 1
+    }
+    writeImage(src, bg, cx, image)
+    return 0
+}
+
+public func compileBytes(src: int[], image: int[]): int {
+    return compileSource(src, image)
+}
+
+func main(): int {
+    let src = read_bytes("in.snl")
+    var image: int[] = []
+    if compileSource(src, image) != 0 {
+        return 1
+    }
+    write_bytes("out.snbc", image)
+    return 0
+}

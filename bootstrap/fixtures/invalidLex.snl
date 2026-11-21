@@ -1,0 +1,5 @@
+package bootstrap.fixture
+
+func main(): int {
+    return @
+}

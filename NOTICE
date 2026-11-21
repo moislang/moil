@@ -1,0 +1,6 @@
+snl — Snovalang self-hosted compiler
+Copyright 2026 Snovalang contributors
+
+The initial compiler seed in bootstrap/ was copied from snovalang/snovac,
+revision 2b5048aaf221527e22ea844f858b5d0f33f149c9, and remains under Apache
+License 2.0. See bootstrap/NOTICE and bootstrap/LICENSE.

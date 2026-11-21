@@ -1,0 +1,9 @@
+flowchart TB
+  CLI[CLI / projetos] --> LEX[Lexer]
+  LEX --> PARSE[Parser e AST]
+  PARSE --> SEMA[Resolução e semântica]
+  SEMA --> IR[IR validada]
+  IR --> TARGET[Backend do alvo]
+  TARGET --> BIN[Assembly / objeto / executável]
+  RUNTIME[Runtime em Snovalang] --> TARGET
+  ABI[Assembly de fronteira ABI/OS] --> RUNTIME

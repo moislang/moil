@@ -1,0 +1,11 @@
+flowchart LR
+  H[snl instalado como raiz transitória] --> K[Seed Snova no subset atual]
+  K --> C1[Build nativo do seed]
+  C1 --> C2[Seed compila suas fontes para SnBC]
+  C2 --> R[Runtime atual executa SnBC]
+  R --> FP[Comparar imagens SnBC sucessivas]
+  FP --> C3[Expandir subset em Snova]
+  C3 --> C2
+  C3 --> CN[Compilador Snova completo]
+  CN --> SELF[Compila suas próprias fontes]
+  SELF --> DDC[DDC com raiz independente]

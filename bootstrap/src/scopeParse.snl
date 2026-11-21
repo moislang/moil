@@ -1,0 +1,368 @@
+package snova.compiler
+
+// Scope lowering for the self-hosted compiler. Concatenated after compiler.snl.
+// Token kinds: 47 break, 48 continue, 49 null, 50 class, 51 enum, 52 trait,
+// 53 match, 54 async, 55 await, 56 pulsar, 57 for, 58 defer, 59 in,
+// 60 method, 61 private, 62 arrow, 63 question.
+
+func classifyScope(src: int[], s: int, n: int): int {
+    if isWord(src, s, n, 5, 98, 114, 101, 97, 107, 0, 0, 0, 0, 0, 0, 0) { return 47 }
+    if isWord(src, s, n, 8, 99, 111, 110, 116, 105, 110, 117, 101, 0, 0, 0, 0) { return 48 }
+    if isWord(src, s, n, 4, 110, 117, 108, 108, 0, 0, 0, 0, 0, 0, 0, 0) { return 49 }
+    if isWord(src, s, n, 5, 99, 108, 97, 115, 115, 0, 0, 0, 0, 0, 0, 0) { return 50 }
+    if isWord(src, s, n, 4, 101, 110, 117, 109, 0, 0, 0, 0, 0, 0, 0, 0) { return 51 }
+    if isWord(src, s, n, 5, 116, 114, 97, 105, 116, 0, 0, 0, 0, 0, 0, 0) { return 52 }
+    if isWord(src, s, n, 5, 109, 97, 116, 99, 104, 0, 0, 0, 0, 0, 0, 0) { return 53 }
+    if isWord(src, s, n, 5, 97, 115, 121, 110, 99, 0, 0, 0, 0, 0, 0, 0) { return 54 }
+    if isWord(src, s, n, 5, 97, 119, 97, 105, 116, 0, 0, 0, 0, 0, 0, 0) { return 55 }
+    if isWord(src, s, n, 6, 112, 117, 108, 115, 97, 114, 0, 0, 0, 0, 0, 0) { return 56 }
+    if isWord(src, s, n, 3, 102, 111, 114, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 57 }
+    if isWord(src, s, n, 5, 100, 101, 102, 101, 114, 0, 0, 0, 0, 0, 0, 0) { return 58 }
+    if isWord(src, s, n, 2, 105, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 59 }
+    if isWord(src, s, n, 6, 109, 101, 116, 104, 111, 100, 0, 0, 0, 0, 0, 0) { return 60 }
+    if isWord(src, s, n, 7, 112, 114, 105, 118, 97, 116, 101, 0, 0, 0, 0, 0) { return 61 }
+    return 1
+}
+
+func scopeTypeSuffix(bg: compilerState, cx: compilerContext): unit {
+    if atTok(bg, cx, 63) { bump(cx) }
+}
+
+func scopeModAsync(bg: compilerState, cx: compilerContext): bool {
+    if kindOf(bg, cx) != 54 { return false }
+    let n = peekKind(bg, cx, 1)
+    if n == 9 { return true }
+    if n == 60 { return true }
+    if n == 56 { return true }
+    return false
+}
+
+func scopeModPulsar(bg: compilerState, cx: compilerContext): bool {
+    if kindOf(bg, cx) != 56 { return false }
+    let n = peekKind(bg, cx, 1)
+    if n == 9 { return true }
+    if n == 60 { return true }
+    if n == 54 { return true }
+    return false
+}
+
+func scopeTakeMods(src: int[], bg: compilerState, cx: compilerContext): unit {
+    cx.decl_async = 0
+    cx.decl_pulsar = 0
+    cx.decl_owner = -1
+    var go = 1
+    while go == 1 {
+        if cx.failed != 0 {
+            go = 0
+        } else {
+            if atTok(bg, cx, 10) || atTok(bg, cx, 61) {
+                bump(cx)
+            } else {
+                if scopeModAsync(bg, cx) {
+                    bump(cx)
+                    cx.decl_async = 1
+                } else {
+                    if scopeModPulsar(bg, cx) {
+                        bump(cx)
+                        cx.decl_pulsar = 1
+                    } else {
+                        go = 0
+                    }
+                }
+            }
+        }
+    }
+}
+
+func scopeSkipToBrace(bg: compilerState, cx: compilerContext): unit {
+    if atTok(bg, cx, 23) {
+        var go = 1
+        while go == 1 {
+            if cx.failed != 0 { go = 0 }
+            else {
+                if atTok(bg, cx, 19) || kindOf(bg, cx) == 0 {
+                    go = 0
+                } else {
+                    bump(cx)
+                }
+            }
+        }
+    }
+}
+
+func scopeParseField(src: int[], bg: compilerState, cx: compilerContext, st: int): unit {
+    if atTok(bg, cx, 11) || atTok(bg, cx, 12) { bump(cx) }
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return
+    }
+    let fs = bg.ts[cx.pos]
+    let fl = bg.tn[cx.pos]
+    bump(cx)
+    expectTok(bg, cx, 23)
+    let ty = parseType(src, bg, cx)
+    var init = -1
+    if atTok(bg, cx, 27) {
+        bump(cx)
+        init = parseExpr(src, bg, cx, 1)
+    }
+    acceptTok(bg, cx, 24)
+    acceptTok(bg, cx, 25)
+    bg.fd_st.push(st)
+    bg.fd_ns.push(fs)
+    bg.fd_nl.push(fl)
+    bg.fd_ty.push(ty)
+    bg.fd_init.push(init)
+}
+
+func scopeParseTypeBody(src: int[], bg: compilerState, cx: compilerContext, st: int): unit {
+    expectTok(bg, cx, 19)
+    var go = 1
+    while go == 1 {
+        if cx.failed != 0 {
+            go = 0
+        } else {
+            if atTok(bg, cx, 20) || kindOf(bg, cx) == 0 {
+                go = 0
+            } else {
+                scopeTakeMods(src, bg, cx)
+                cx.decl_owner = st
+                if atTok(bg, cx, 60) || atTok(bg, cx, 9) {
+                    parseFunc(src, bg, cx)
+                } else {
+                    if atTok(bg, cx, 11) || atTok(bg, cx, 12) || kindOf(bg, cx) == 1 {
+                        scopeParseField(src, bg, cx, st)
+                    } else {
+                        fail(cx)
+                        go = 0
+                    }
+                }
+            }
+        }
+    }
+    expectTok(bg, cx, 20)
+}
+
+func scopeParseClass(src: int[], bg: compilerState, cx: compilerContext, kind: int): unit {
+    bump(cx)
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return
+    }
+    let ns = bg.ts[cx.pos]
+    let nl = bg.tn[cx.pos]
+    bump(cx)
+    let st = bg.st_ns.len()
+    bg.st_ns.push(ns)
+    bg.st_nl.push(nl)
+    bg.st_kind.push(kind)
+    scopeSkipToBrace(bg, cx)
+    scopeParseTypeBody(src, bg, cx, st)
+}
+
+func scopeParseEnum(src: int[], bg: compilerState, cx: compilerContext): unit {
+    bump(cx)
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return
+    }
+    let ns = bg.ts[cx.pos]
+    let nl = bg.tn[cx.pos]
+    bump(cx)
+    let st = bg.st_ns.len()
+    bg.st_ns.push(ns)
+    bg.st_nl.push(nl)
+    bg.st_kind.push(3)
+    scopeSkipToBrace(bg, cx)
+    expectTok(bg, cx, 19)
+    var go = 1
+    while go == 1 {
+        if cx.failed != 0 {
+            go = 0
+        } else {
+            if atTok(bg, cx, 20) || kindOf(bg, cx) == 0 {
+                go = 0
+            } else {
+                if atTok(bg, cx, 60) || atTok(bg, cx, 9) || atTok(bg, cx, 10) || atTok(bg, cx, 61) {
+                    scopeTakeMods(src, bg, cx)
+                    cx.decl_owner = st
+                    parseFunc(src, bg, cx)
+                } else {
+                    if kindOf(bg, cx) != 1 {
+                        fail(cx)
+                        go = 0
+                    } else {
+                        bg.va_ns.push(bg.ts[cx.pos])
+                        bg.va_nl.push(bg.tn[cx.pos])
+                        bg.va_en.push(st)
+                        bump(cx)
+                        acceptTok(bg, cx, 25)
+                    }
+                }
+            }
+        }
+    }
+    expectTok(bg, cx, 20)
+}
+
+func parseScopeDecl(src: int[], bg: compilerState, cx: compilerContext): int {
+    if atTok(bg, cx, 50) {
+        scopeParseClass(src, bg, cx, 1)
+        return 1
+    }
+    if atTok(bg, cx, 52) {
+        scopeParseClass(src, bg, cx, 2)
+        return 1
+    }
+    if atTok(bg, cx, 51) {
+        scopeParseEnum(src, bg, cx)
+        return 1
+    }
+    return 0
+}
+
+func scopeVariantEn(src: int[], bg: compilerState, s: int, n: int): int {
+    var i = 0
+    while i < bg.va_ns.len() {
+        if spanEq(src, bg.va_ns[i], bg.va_nl[i], s, n) { return bg.va_en[i] }
+        i = i + 1
+    }
+    return -1
+}
+
+func scopeParsePattern(src: int[], bg: compilerState, cx: compilerContext): int {
+    if kindOf(bg, cx) == 2 {
+        let lit = parsePrimary(src, bg, cx)
+        return node(bg, 33, 2, lit, -1, -1)
+    }
+    if kindOf(bg, cx) == 1 && bg.tn[cx.pos] == 1 && src[bg.ts[cx.pos]] == 95 {
+        bump(cx)
+        return node(bg, 33, 1, 0, 0, -1)
+    }
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return node(bg, 33, 1, 0, 0, -1)
+    }
+    var s = bg.ts[cx.pos]
+    var n = bg.tn[cx.pos]
+    bump(cx)
+    if atTok(bg, cx, 26) {
+        bump(cx)
+        if kindOf(bg, cx) != 1 {
+            fail(cx)
+            return node(bg, 33, 1, 0, 0, -1)
+        }
+        s = bg.ts[cx.pos]
+        n = bg.tn[cx.pos]
+        bump(cx)
+        return node(bg, 33, 3, s, n, -1)
+    }
+    if scopeVariantEn(src, bg, s, n) >= 0 {
+        return node(bg, 33, 3, s, n, -1)
+    }
+    return node(bg, 33, 4, s, n, -1)
+}
+
+func scopeParseArms(src: int[], bg: compilerState, cx: compilerContext): int {
+    expectTok(bg, cx, 19)
+    var head = -1
+    var go = 1
+    while go == 1 {
+        if cx.failed != 0 {
+            go = 0
+        } else {
+            if atTok(bg, cx, 20) || kindOf(bg, cx) == 0 {
+                go = 0
+            } else {
+                let pat = scopeParsePattern(src, bg, cx)
+                expectTok(bg, cx, 62)
+                let val = parseExpr(src, bg, cx, 1)
+                acceptTok(bg, cx, 25)
+                let arm = node(bg, 34, pat, val, -1, -1)
+                head = node(bg, 13, 0, arm, head, -1)
+            }
+        }
+    }
+    expectTok(bg, cx, 20)
+    return head
+}
+
+func scopeParseMatch(src: int[], bg: compilerState, cx: compilerContext, as_stmt: int): int {
+    bump(cx)
+    let saved = cx.no_struct
+    cx.no_struct = 1
+    let sub = parseExpr(src, bg, cx, 1)
+    cx.no_struct = saved
+    let arms = scopeParseArms(src, bg, cx)
+    if as_stmt == 1 {
+        return node(bg, 30, 0, sub, arms, -1)
+    }
+    return node(bg, 17, 0, sub, arms, -1)
+}
+
+func parseScopePrimary(src: int[], bg: compilerState, cx: compilerContext): int {
+    if kindOf(bg, cx) == 49 {
+        bump(cx)
+        return node(bg, 15, 0, -1, -1, -1)
+    }
+    if kindOf(bg, cx) == 55 {
+        bump(cx)
+        let inner = parseExpr(src, bg, cx, 12)
+        return node(bg, 16, 0, inner, -1, -1)
+    }
+    if kindOf(bg, cx) == 53 {
+        return scopeParseMatch(src, bg, cx, 0)
+    }
+    return -2
+}
+
+func scopeParseFor(src: int[], bg: compilerState, cx: compilerContext): int {
+    bump(cx)
+    acceptTok(bg, cx, 11)
+    acceptTok(bg, cx, 12)
+    if kindOf(bg, cx) != 1 {
+        fail(cx)
+        return -1
+    }
+    let ns = bg.ts[cx.pos]
+    let nl = bg.tn[cx.pos]
+    bump(cx)
+    if atTok(bg, cx, 23) {
+        bump(cx)
+        parseType(src, bg, cx)
+    }
+    expectTok(bg, cx, 59)
+    let iter = parseExpr(src, bg, cx, 1)
+    let body = parseBlock(src, bg, cx)
+    return node(bg, 29, ns, nl, iter, body)
+}
+
+func parseScopeStmt(src: int[], bg: compilerState, cx: compilerContext): int {
+    let k = kindOf(bg, cx)
+    if k == 47 {
+        bump(cx)
+        acceptTok(bg, cx, 24)
+        return node(bg, 27, 0, -1, -1, -1)
+    }
+    if k == 48 {
+        bump(cx)
+        acceptTok(bg, cx, 24)
+        return node(bg, 28, 0, -1, -1, -1)
+    }
+    if k == 57 { return scopeParseFor(src, bg, cx) }
+    if k == 53 { return scopeParseMatch(src, bg, cx, 1) }
+    if k == 58 {
+        bump(cx)
+        let e = parseExpr(src, bg, cx, 1)
+        acceptTok(bg, cx, 24)
+        return node(bg, 31, 0, e, -1, -1)
+    }
+    if k == 56 {
+        bump(cx)
+        let e = parseExpr(src, bg, cx, 1)
+        acceptTok(bg, cx, 24)
+        return node(bg, 32, 0, e, -1, -1)
+    }
+    return -2
+}
+

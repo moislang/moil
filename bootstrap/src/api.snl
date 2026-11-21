@@ -1,0 +1,7 @@
+package snova.compiler.api
+
+import snova.compiler
+
+public func compileSourceBytes(src: int[], image: int[]): int {
+    return compileBytes(src, image)
+}
