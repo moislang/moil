@@ -1,6 +1,6 @@
 # SPEC-0001 — Instance-based library API
 
-- **Status:** Proposed; linking decided; slice 1 is in review as
+- **Status:** Proposed; linking and first-stage visibility decided; slice 1 is in review as
   [snl#3](https://github.com/snovalang/snl/pull/3) (draft)
 - **Date:** 2026-11-21
 - **Phase:** P4, incremental growth
@@ -63,6 +63,25 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    when its class was declared earlier, as noted in the `Makefile`). The
    compiler does not use a package import for the library, because general
    import resolution in the seed has no owner in the backlog.
+2. **How the first stage sees the library** (decided by Inhegas, based on
+   Mike's probe in [snl#6](https://github.com/snovalang/snl/pull/6), branch
+   `mike/probe-library-root-visibility`). `snl build --project bootstrap/src`
+   does not see `bootstrap/library/`, and `snl` v0.3.0 rejects several
+   project roots or input files (`SNOVA0050 package not found`). It also
+   lowers every visible module, used or not: with all of master's
+   `bootstrap/library/` visible, every route failed (19 × `SNOVA0400` on
+   calls, plus field and assignment lowering errors). For slices 2–6 the
+   first stage therefore builds from a staging directory generated under
+   `build/`, holding `bootstrap/src/*.snl` plus an explicit list of the
+   library modules already migrated. The list grows one slice at a time and
+   keeps the same order as `ownSource()` in `sourceJoin.snl`; if the two
+   lists diverge, the fixed point fails. In the probe, the staging directory
+   with the two instance searches of snl#3 built, and the self-compilation
+   image stayed `8cb80e98…f730ad`, equal to the baseline. Alternatives
+   rejected for now: a symbolic link (exposes the whole library, unreliable
+   on Windows checkouts) and a path dependency (`snl get`, which adds
+   `mod.sns`/`mod.lock` and a cache in `$SNOVA_HOME`, and also exposes every
+   module). Probe the path dependency again once every module is migrated.
 
 ## Proposed surface
 
@@ -113,11 +132,15 @@ the fixture's expected stdout and exit status.
    instance methods reached through rule 4; constructors are positional;
    fixtures `libraryBinaryTree` and `libraryIntMap`.
 6. **First compiler use**: the migrated library files are added to
-   `ownSource()` in `sourceJoin.snl` (decision 1), one compiler module uses a
-   migrated type, and the static API is gone (`LIBRARY_ROOT_*` equals
+   `ownSource()` in `sourceJoin.snl` (decision 1) and to the staging list
+   (decision 2), one compiler module uses a migrated type, and the static API is gone (`LIBRARY_ROOT_*` equals
    `LIBRARY_*`).
 
 ## Acceptance criteria
+
+Artifacts are compared as SnBC images, never as `snl build` executables
+(see "Known issue" below). The executable is only run, and its stdout and
+exit status are compared.
 
 For every slice:
 
@@ -133,15 +156,26 @@ For every slice:
 - `subset.md` (Library row), ADR-0007 consequences and `evidence.md` are
   updated in the same change.
 
-Slice 6 additionally requires `make bootstrap-fixed-point`,
-`make bootstrap-vm-self` and `make bootstrap-native-self` with the library
-inside the compiler sources, and records the new stage hashes.
+From slice 2 on, `make bootstrap-build` builds from the staging directory
+(decision 2), and the stage1 SnBC image does not change while the compiler
+does not call the library. Slice 6 additionally requires
+`make bootstrap-fixed-point`, `make bootstrap-vm-self` and
+`make bootstrap-native-self` with the library inside the compiler sources,
+and records the new stage hashes.
+
+**Known issue.** Two `snl build` runs on the same inputs produce executables
+that differ by one byte, baseline included, while the SnBC images are
+identical (snl#6). Until executable reproducibility is solved, together with
+the Mach-O reproducibility and normalization gate in `subset.md`, only SnBC
+hashes count as evidence. The Linux x86-64 CI runner in preparation also
+compares only SnBC images (stage1 against stage2 with `cmp`).
 
 ## Evidence to record
 
 Per slice: revision, host, `snl` version and binary or archive hash, the
 commands above, stdout/exit per engine, the SHA-256 of each
-`<fixture>.root.snbc`, and what was not run (the native half on Linux).
+`<fixture>.root.snbc` and of stage1 (never of an executable), the staging
+list used, and what was not run (the native half on Linux).
 Linux results are auxiliary until the Mac run: the `snl v0.3.0` Linux C VM
 miscompares some `x == false` expressions (see `evidence.md`), so the Snova
 executor is the independent side of the differential there.
@@ -171,14 +205,9 @@ executor is the independent side of the differential there.
 1. **Stateful collaborators (slice 4):** should `BinaryHeap` own
    `cells`/`size` directly or receive an `IntArray` parameter per call? The
    first keeps the API small; the second keeps `IntArray` reusable.
-2. **How the root sees the library (slice 6):** decision 1 covers the
-   seed's self-compilation. The first stage still runs
-   `snl build --project bootstrap/src`, which does not include
-   `bootstrap/library/`. Does the root build need the project path widened,
-   or another mechanism? Needs a probe before slice 6.
-3. **Which compiler module is the first user** (for example, a map in name
+2. **Which compiler module is the first user** (for example, a map in name
    resolution), and does it need a non-int key type, which the library does
    not offer?
-4. **Full list of array builtin names** the root intercepts (ADR-0007 lists
+3. **Full list of array builtin names** the root intercepts (ADR-0007 lists
    `push`, `pop`, `len`, `get`, ...): needs a probe before slices 3–5 name
    new methods.
