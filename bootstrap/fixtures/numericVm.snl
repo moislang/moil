@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+func main(): int {
+    let six = 6
+    var count = 7
+    count = count + 1
+    if count == 8 {
+        return six * count
+    }
+    return 0
+}

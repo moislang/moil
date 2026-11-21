@@ -18,6 +18,12 @@ own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument
 validates the canonical image structure, opcodes and instruction references. `make bootstrap-image-check` exercises
 both a valid self-compiled image and a truncated one.
 
+The internal three-argument invocation `<image.snbc> vm numeric` executes a
+single-function numeric SnBC image through the Snova VM. Run
+`make bootstrap-vm-numeric` to compare its return value with `snl run-snbc`.
+This executor currently supports integer and boolean stack operations, locals,
+branches, return and halt. The command is a development gate, not the final CLI.
+
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.
 

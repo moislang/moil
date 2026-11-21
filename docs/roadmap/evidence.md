@@ -65,3 +65,10 @@ Este arquivo começa vazio de resultados técnicos. As entradas devem registrar 
 - Resultado observado: `imageCode.snl` verificou limites das instruções, último opcode, índices de strings/locais/funções, aridade, chamadas de runtime, saltos e opcodes ainda sem implementação; as imagens de estágio 1 e 2 coincidiram byte a byte.
 - SHA-256 de ambas as imagens: `d85c9e395f93e2b16d8156dc47589f619b8d6693f6d935b79ddbc00b8100d3ee`.
 - Limitações: este validador não executa bytecode, não prova paridade para todo corpus e ainda usa o runtime anterior para construir/executar as imagens de estágio.
+
+## 2026-11-21 — executor numérico SnBC em Snova
+
+- Ambiente: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Comandos: `make bootstrap-vm-numeric bootstrap-fixed-point bootstrap-image-check bootstrap-smoke` e `git diff --check`.
+- Resultado observado: `vmStack.snl` e `vmNumeric.snl` executaram duas imagens geradas pelo seed. Ambas retornaram `48`, igual ao código de saída de `snl run-snbc` para as mesmas imagens. Os casos cobrem locais, aritmética, comparação, desvio condicional e laço. O fixed point restrito continuou byte a byte igual; SHA-256 das duas imagens: `ce8b1d0daf76aad72e1ffb43622d7963a6ad219e2a46e69eec0c3e0af645e724`.
+- Limitações: o executor aceita apenas uma função e valores numéricos/booleanos; não executa strings, chamadas, objetos, arrays, I/O ou a imagem do próprio compilador. A geração nativa e as primitivas de I/O ainda dependem do runtime anterior. Este resultado não constitui substituição integral do `snovac`.

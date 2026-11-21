@@ -5,7 +5,7 @@ STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm-numeric
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -36,3 +36,11 @@ bootstrap-image-check: bootstrap-self-host
 	head -c 8 $(STAGE1_IMAGE) > $(BUILD_DIR)/truncated.snbc
 	@if $(COMPILER_NATIVE) $(BUILD_DIR)/truncated.snbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
 	grep -Fqx "invalid SnBC image" $(BUILD_DIR)/image-error.txt
+
+bootstrap-vm-numeric: bootstrap-build
+	$(COMPILER_NATIVE) bootstrap/fixtures/numericVm.snl $(BUILD_DIR)/numericVm.snbc
+	test "$$( $(COMPILER_NATIVE) $(BUILD_DIR)/numericVm.snbc vm numeric)" = "48"
+	@$(SNL) run-snbc $(BUILD_DIR)/numericVm.snbc; test "$$?" -eq 48
+	$(COMPILER_NATIVE) bootstrap/fixtures/numericFlow.snl $(BUILD_DIR)/numericFlow.snbc
+	test "$$( $(COMPILER_NATIVE) $(BUILD_DIR)/numericFlow.snbc vm numeric)" = "48"
+	@$(SNL) run-snbc $(BUILD_DIR)/numericFlow.snbc; test "$$?" -eq 48

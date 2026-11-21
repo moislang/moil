@@ -1,0 +1,14 @@
+package bootstrap.fixture
+
+func main(): int {
+    var total = 0
+    var index = 0
+    while index < 4 {
+        total = total + 3
+        index = index + 1
+    }
+    if total != 12 {
+        return 99
+    }
+    return total * 4
+}
