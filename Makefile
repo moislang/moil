@@ -3,11 +3,11 @@ BUILD_DIR ?= build/bootstrap
 # `snl build` gera SnBC e empacota a VM C do snl; não é código de máquina.
 COMPILER_BUNDLE := $(BUILD_DIR)/snova-bootstrap
 VM_STAGE_IMAGE := $(BUILD_DIR)/vm-stage.snbc
-VM_DIFF_FIXTURES := numericVm numericFlow hello vmCalls vmComposite staticMethods
+VM_DIFF_FIXTURES := numericVm numericFlow hello vmCalls vmComposite staticMethods vmEnumMatch
 NATIVE_FIXTURES := numericVm numericFlow nativeCalls
-NATIVE_RUNTIME_FIXTURES := hello vmCalls vmComposite vmEquality vmStackOverflow nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString
+NATIVE_RUNTIME_FIXTURES := hello vmCalls vmComposite vmEquality vmStackOverflow nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString vmEnumMatch vmVariantValue vmMatchNoArm
 # Programs that end normally must free every block before exit.
-NATIVE_OWNERSHIP_FIXTURES := hello vmCalls vmComposite vmEquality nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString
+NATIVE_OWNERSHIP_FIXTURES := hello vmCalls vmComposite vmEquality nativeHostIo nativeMemory staticMethods vmArrayPop vmArrayPopString vmEnumMatch vmVariantValue
 SDK_PATH = $(shell xcrun --show-sdk-path)
 SDK_VERSION = $(shell xcrun --show-sdk-version)
 STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
@@ -92,6 +92,12 @@ bootstrap-vm: bootstrap-build
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmStackOverflow.snl $(BUILD_DIR)/vmStackOverflow.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmStackOverflow.snbc run > $(BUILD_DIR)/vmStackOverflow.vm.txt; test "$$?" -eq 70
 	grep -Fqx "runtime error: Stack overflow" $(BUILD_DIR)/vmStackOverflow.vm.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/vmVariantValue.snl $(BUILD_DIR)/vmVariantValue.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.snbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
+	test "$$(tr '\n' ' ' < $(BUILD_DIR)/vmVariantValue.vm.txt)" = "true false true Red Amber "
+	$(COMPILER_BUNDLE) bootstrap/fixtures/vmMatchNoArm.snl $(BUILD_DIR)/vmMatchNoArm.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
+	grep -Fqx "runtime error: bodyless routine trapped" $(BUILD_DIR)/vmMatchNoArm.vm.txt
 
 # A VM Snova executa a imagem do compilador, que compila as próprias fontes;
 # a imagem resultante deve ser igual à stage1. Leva alguns minutos porque a
@@ -149,7 +155,7 @@ bootstrap-native: bootstrap-build
 		printf 'tree ok\nruntime error: strong reference cycle rejected for opcode 50\n' | cmp - $(BUILD_DIR)/$$fixture.native.txt || exit 1; \
 		echo "native cycle rejected: $$fixture"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/nativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
-	grep -Fqx "unsupported opcode for native backend: 42" $(BUILD_DIR)/native-error.txt
+	grep -Fqx "unsupported opcode for native backend: 54" $(BUILD_DIR)/native-error.txt
 	@fixture=vmArrayPopEmpty; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 70 || exit 1; \
