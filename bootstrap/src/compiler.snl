@@ -1,6 +1,7 @@
 package snova.compiler
 
 import snova.compiler.runtime
+import snova.compiler.backend
 
 func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]): unit {
     image.push(83)
@@ -56,6 +57,20 @@ func reportFailure(bg: compilerState, cx: compilerContext): unit {
     Console.printline("unsupported construct or invalid lowering")
 }
 
+// Warnings não interrompem a compilação. SNW0001: `==`/`!=` entre operandos
+// cujos tipos estáticos são conhecidos e diferentes.
+func reportWarnings(bg: compilerState): unit {
+    var index = 0
+    while index < bg.warningCodes.len() {
+        Console.print("warning[SNW000")
+        Console.print(bg.warningCodes[index])
+        Console.print("]: comparison between different types at line ")
+        Console.print(bg.warningLines[index])
+        Console.printline("")
+        index = index + 1
+    }
+}
+
 func compileSource(src: int[], image: int[]): int {
     var bg = compilerState {
         tk: [], ts: [], tn: [], tv: [], tl: [],
@@ -72,7 +87,8 @@ func compileSource(src: int[], image: int[]): int {
         st_kind: [], fd_init: [],
         va_ns: [], va_nl: [], va_en: [],
         lp_id: [], lp_known: [], lp_pos: [],
-        brk_at: [], brk_lv: [], cont_at: [], cont_lv: []
+        brk_at: [], brk_lv: [], cont_at: [], cont_lv: [],
+        warningCodes: [], warningLines: []
     }
     var cx = compilerContext {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
@@ -106,12 +122,20 @@ func compileSource(src: int[], image: int[]): int {
         reportFailure(bg, cx)
         return 1
     }
+    reportWarnings(bg)
     writeImage(src, bg, cx, image)
     return 0
 }
 
 public func compileBytes(src: int[], image: int[]): int {
     return compileSource(src, image)
+}
+
+// O modo de execução é reconhecido pelo magic SNBC no primeiro argumento.
+// O segundo argumento é a palavra reservada `run`; os seguintes são do programa.
+func isImageBytes(data: int[]): bool {
+    if data.len() < 4 { return false }
+    return data[0] == 83 && data[1] == 78 && data[2] == 66 && data[3] == 67
 }
 
 func main(): int {
@@ -124,21 +148,8 @@ func main(): int {
         Console.printline("valid SnBC image")
         return 0
     }
-    if argc == 3 {
-        var result: int[] = []
-        if runNumericImage(readSource(sourcePath()), result) == 0 {
-            Console.printline("unsupported numeric SnBC image")
-            return 1
-        }
-        var i = 0
-        while i < result.len() {
-            Console.printline(result[i])
-            i = i + 1
-        }
-        return 0
-    }
     if argc != 0 && argc < 2 {
-        Console.printline("usage: snl <input.snl> <output.snbc> | snl <image.snbc>")
+        Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native | snl <image.snbc> [run [args...]]")
         return 2
     }
     var src: int[] = []
@@ -146,6 +157,9 @@ func main(): int {
         src = ownSource()
     } else {
         src = readSource(sourcePath())
+        if isImageBytes(src) {
+            return runImage(src, 2)
+        }
     }
     var image: int[] = []
     if compileSource(src, image) != 0 {
@@ -154,6 +168,15 @@ func main(): int {
     if validateImage(image) == 0 {
         Console.printline("invalid generated SnBC image")
         return 1
+    }
+    if argc == 3 {
+        let unsupported = emitNativeAssembly(image, imagePath())
+        if unsupported != 0 {
+            Console.print("unsupported opcode for native backend: ")
+            Console.printline(unsupported)
+            return 1
+        }
+        return 0
     }
     writeImageFile(imagePath(), image)
     return 0

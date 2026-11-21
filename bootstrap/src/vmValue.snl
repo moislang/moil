@@ -1,0 +1,198 @@
+package snova.compiler.runtime
+
+// Valores do executor SnBC: cada valor é um par (tag, value).
+// tag 0 unit, 1 int, 2 bool, 3 string (value = handle em strings),
+// 4 array (value = índice em arrays), 5 objeto (value = índice em objectStart),
+// 6 null. O subset do seed não tem atribuição por índice, por isso toda
+// posição mutável é uma célula (struct) alterada via parâmetro tipado.
+struct vmCell {
+    public var tag: int
+    public var value: int
+}
+
+// Array do convidado. Enquanto mixed == 0 todos os elementos são int e tags
+// fica vazio; o primeiro elemento de outro tipo materializa as tags.
+struct vmArray {
+    public var mixed: int
+    public var tags: int[]
+    public var values: int[]
+}
+
+// Quadro salvo de uma função chamadora: o executor é iterativo e não usa a
+// pilha de chamadas do host para chamadas do convidado.
+struct vmFrameRecord {
+    public var functionIndex: int
+    public var base: int
+    public var floor: int
+    public var resume: int
+}
+
+struct vmState {
+    public var data: int[]
+    public var functionFirst: int[]
+    public var functionLength: int[]
+    public var instructionOpcode: int[]
+    public var instructionOperand: int[]
+    public var instructionSecondOperand: int[]
+    public var functionArity: int[]
+    public var functionLocals: int[]
+    public var poolHandles: int[]
+    public var strings: string[]
+    public var stringSpans: vmCell[]
+    public var stringBytes: int[]
+    public var text: string[]
+    public var stack: vmCell[]
+    public var frames: vmFrameRecord[]
+    public var resumeFunction: int
+    public var resumeBase: int
+    public var resumeFloor: int
+    public var resumeInstruction: int
+    public var arrays: vmArray[]
+    public var objectStart: int[]
+    public var objectFieldCount: int[]
+    public var fields: vmCell[]
+    public var stackTop: int
+    public var floor: int
+    public var depth: int
+    public var returnTag: int
+    public var returnValue: int
+    public var halted: int
+    public var failed: int
+    public var failureDetail: int
+    public var argumentBase: int
+    public var mainIndex: int
+}
+
+func cellSet(cell: vmCell, tag: int, value: int): unit {
+    cell.tag = tag
+    cell.value = value
+}
+
+func cellCopy(target: vmCell, source: vmCell): unit {
+    target.tag = source.tag
+    target.value = source.value
+}
+
+func frameSave(record: vmFrameRecord, functionIndex: int, base: int, floor: int, resume: int): unit {
+    record.functionIndex = functionIndex
+    record.base = base
+    record.floor = floor
+    record.resume = resume
+}
+
+func frameRestore(record: vmFrameRecord, vm: vmState): unit {
+    vm.resumeFunction = record.functionIndex
+    vm.resumeBase = record.base
+    vm.resumeFloor = record.floor
+    vm.resumeInstruction = record.resume
+}
+
+func cellTag(cell: vmCell): int {
+    return cell.tag
+}
+
+func cellValue(cell: vmCell): int {
+    return cell.value
+}
+
+func vmFail(vm: vmState, failureCode: int, failureDetail: int): unit {
+    if vm.failed == 0 {
+        vm.failed = failureCode
+        vm.failureDetail = failureDetail
+    }
+}
+
+func vmGrow(vm: vmState): unit {
+    vm.stack.push(vmCell { tag: 0, value: 0 })
+}
+
+func vmPush(vm: vmState, tag: int, value: int): unit {
+    if vm.stackTop == vm.stack.len() {
+        vm.stack.push(vmCell { tag: tag, value: value })
+    } else {
+        cellSet(vm.stack[vm.stackTop], tag, value)
+    }
+    vm.stackTop = vm.stackTop + 1
+}
+
+func vmTopTag(vm: vmState): int {
+    if vm.stackTop <= vm.floor {
+        vmFail(vm, 1, 0)
+        return 0
+    }
+    return cellTag(vm.stack[vm.stackTop - 1])
+}
+
+func vmPop(vm: vmState): int {
+    if vm.stackTop <= vm.floor {
+        vmFail(vm, 1, 0)
+        return 0
+    }
+    vm.stackTop = vm.stackTop - 1
+    return cellValue(vm.stack[vm.stackTop])
+}
+
+func arrayLen(array: vmArray): int {
+    return array.values.len()
+}
+
+func arrayTag(array: vmArray, index: int): int {
+    if array.mixed == 0 { return 1 }
+    return array.tags[index]
+}
+
+func arrayValue(array: vmArray, index: int): int {
+    return array.values[index]
+}
+
+func arrayPush(array: vmArray, tag: int, value: int): unit {
+    if array.mixed == 0 && tag != 1 {
+        var index = 0
+        while index < array.values.len() {
+            array.tags.push(1)
+            index = index + 1
+        }
+        array.mixed = 1
+    }
+    if array.mixed != 0 { array.tags.push(tag) }
+    array.values.push(value)
+}
+
+func vmNewArray(vm: vmState, count: int): int {
+    if count > vm.stackTop - vm.floor {
+        vmFail(vm, 1, 0)
+        return 0
+    }
+    var array = vmArray { mixed: 0, tags: [], values: [] }
+    let first = vm.stackTop - count
+    var index = 0
+    while index < count {
+        arrayPush(array, cellTag(vm.stack[first + index]), cellValue(vm.stack[first + index]))
+        index = index + 1
+    }
+    vm.stackTop = first
+    vm.arrays.push(array)
+    return vm.arrays.len() - 1
+}
+
+func vmBytesArray(vm: vmState, bytes: int[]): int {
+    vm.arrays.push(vmArray { mixed: 0, tags: [], values: bytes })
+    return vm.arrays.len() - 1
+}
+
+func vmNewObject(vm: vmState, count: int): int {
+    if count > vm.stackTop - vm.floor {
+        vmFail(vm, 1, 0)
+        return 0
+    }
+    let first = vm.stackTop - count
+    vm.objectStart.push(vm.fields.len())
+    vm.objectFieldCount.push(count)
+    var index = 0
+    while index < count {
+        vm.fields.push(vmCell { tag: cellTag(vm.stack[first + index]), value: cellValue(vm.stack[first + index]) })
+        index = index + 1
+    }
+    vm.stackTop = first
+    return vm.objectStart.len() - 1
+}

@@ -1,0 +1,28 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+struct counter {
+    public var label: string
+    public var hits: int
+    public var items: int[]
+}
+
+func record(target: counter, amount: int): unit {
+    target.hits = target.hits + amount
+    target.items.push(amount)
+}
+
+func main(): int {
+    var tally = counter { label: "tally", hits: 0, items: [] }
+    record(tally, 5)
+    record(tally, 7)
+    var values = [10, 20, 30]
+    values.push(40)
+    Console.print(tally.label + ":")
+    Console.printline(tally.hits)
+    Console.printline(values[3] + values.len())
+    Console.printline(tally.items[1] == 7)
+    Console.printline(tally.items.len() > 5)
+    return tally.hits + tally.items.len()
+}

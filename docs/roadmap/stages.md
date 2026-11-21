@@ -17,8 +17,10 @@ O roadmap é uma sequência de gates. Não se inicia a fase seguinte enquanto a 
 ## Estado atual
 
 O seed Snova foi integrado em `bootstrap/src/`. Há evidência local de check,
-build nativo, execução de um programa gerado, diagnósticos positivos/negativos,
-compilação do source pelo seed e igualdade de duas imagens SnBC. Isso fecha um
+build pelo `snl build` (SnBC empacotado com a VM C, não código de máquina), execução de um programa gerado, diagnósticos positivos/negativos,
+compilação do source pelo seed, igualdade de duas imagens SnBC e execução da
+imagem do compilador pelo executor SnBC escrito em Snova, reproduzindo a mesma
+imagem. O backend nativo é a próxima fronteira (ADR-0005, proposto). Isso fecha um
 ciclo inicial restrito; não fecha compatibilidade nem substitui `snovac`. A sequência de expansão e os limites estão em
 [`subset.md`](subset.md) e os comandos reproduzíveis em `Makefile`.
 

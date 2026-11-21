@@ -71,6 +71,8 @@ struct compilerState {
     public var brk_lv: int[]
     public var cont_at: int[]
     public var cont_lv: int[]
+    public var warningCodes: int[]
+    public var warningLines: int[]
 }
 
 struct compilerContext {

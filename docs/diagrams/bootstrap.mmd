@@ -1,9 +1,12 @@
 flowchart LR
   H[snl instalado como raiz transitória] --> K[Seed Snova no subset atual]
-  K --> C1[Build nativo do seed]
+  K --> C1[snl build: SnBC + VM C empacotada]
   C1 --> C2[Seed compila suas fontes para SnBC]
   C2 --> R[Runtime atual executa SnBC]
   R --> FP[Comparar imagens SnBC sucessivas]
+  C2 --> VM[Executor SnBC em Snova roda a imagem do compilador]
+  VM --> FP
+  CN --> NAT[Backend nativo aarch64 em Snova - proposto]
   FP --> C3[Expandir subset em Snova]
   C3 --> C2
   C3 --> CN[Compilador Snova completo]

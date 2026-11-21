@@ -1,0 +1,8 @@
+package bootstrap.fixture
+
+import builtin.runtime
+
+func main(): int {
+    Runtime.writeText("build/bootstrap/never.txt")
+    return 0
+}

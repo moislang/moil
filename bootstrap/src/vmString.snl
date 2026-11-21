@@ -1,0 +1,88 @@
+package snova.compiler.runtime
+
+import builtin.runtime
+
+// Strings do convidado guardam a string do host (para impressão e caminhos)
+// e seus bytes em vm.stringBytes. stringSpans[handle] usa tag = início e
+// value = tamanho; tag -1 indica bytes ainda desconhecidos (string vinda do
+// host). O `==` de strings do host compara identidade no snl v0.3.0, por isso
+// a igualdade do convidado compara bytes.
+func vmNewString(vm: vmState, text: string): int {
+    vm.strings.push(text)
+    vm.stringSpans.push(vmCell { tag: -1, value: 0 })
+    return vm.strings.len() - 1
+}
+
+func vmNewStringFrom(vm: vmState, text: string, source: int[], start: int, length: int): int {
+    vm.strings.push(text)
+    vm.stringSpans.push(vmCell { tag: vm.stringBytes.len(), value: length })
+    var index = 0
+    while index < length {
+        vm.stringBytes.push(source[start + index])
+        index = index + 1
+    }
+    return vm.strings.len() - 1
+}
+
+// Fronteira provisória: converte uma string do host em bytes gravando-a num
+// arquivo de rascunho e relendo seus bytes. Substituir quando o runtime
+// oferecer conversão direta.
+func vmScratchPath(): string {
+    return "/tmp/snova-vm-string.bin"
+}
+
+func vmStringStart(vm: vmState, handle: int): int {
+    let known = cellTag(vm.stringSpans[handle])
+    if known >= 0 { return known }
+    let path = vmScratchPath()
+    Runtime.writeText(path, vm.strings[handle])
+    let bytes = read_bytes(path)
+    let start = vm.stringBytes.len()
+    var index = 0
+    while index < bytes.len() {
+        vm.stringBytes.push(bytes[index])
+        index = index + 1
+    }
+    cellSet(vm.stringSpans[handle], start, bytes.len())
+    return start
+}
+
+func vmStringLength(vm: vmState, handle: int): int {
+    vmStringStart(vm, handle)
+    return cellValue(vm.stringSpans[handle])
+}
+
+func vmStringsEqual(vm: vmState, leftHandle: int, rightHandle: int): bool {
+    if leftHandle == rightHandle { return true }
+    let length = vmStringLength(vm, leftHandle)
+    if length != vmStringLength(vm, rightHandle) { return false }
+    let leftStart = vmStringStart(vm, leftHandle)
+    let rightStart = vmStringStart(vm, rightHandle)
+    var index = 0
+    while index < length {
+        if vm.stringBytes[leftStart + index] != vm.stringBytes[rightStart + index] { return false }
+        index = index + 1
+    }
+    return true
+}
+
+func vmConcatStrings(vm: vmState, leftHandle: int, rightHandle: int): int {
+    let leftLength = vmStringLength(vm, leftHandle)
+    let rightLength = vmStringLength(vm, rightHandle)
+    let leftStart = vmStringStart(vm, leftHandle)
+    let rightStart = vmStringStart(vm, rightHandle)
+    let start = vm.stringBytes.len()
+    var index = 0
+    while index < leftLength {
+        vm.stringBytes.push(vm.stringBytes[leftStart + index])
+        index = index + 1
+    }
+    index = 0
+    while index < rightLength {
+        vm.stringBytes.push(vm.stringBytes[rightStart + index])
+        index = index + 1
+    }
+    vm.strings.push(vm.strings[leftHandle] + vm.strings[rightHandle])
+    vm.stringSpans.push(vmCell { tag: start, value: leftLength + rightLength })
+    return vm.strings.len() - 1
+}

@@ -1,0 +1,16 @@
+package bootstrap.fixture
+
+func main(): int {
+    let label = "seven"
+    var matches = 0
+    if label == "seven" {
+        matches = matches + 1
+    }
+    if 7 != 8 {
+        matches = matches + 2
+    }
+    if true == (1 < 2) {
+        matches = matches + 4
+    }
+    return matches
+}

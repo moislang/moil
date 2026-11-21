@@ -1,0 +1,106 @@
+package snova.compiler.backend
+
+import builtin.runtime
+
+func nativeInstruction(unit: nativeUnit, image: int[], functionIndex: int, codeStart: int, offset: int): int {
+    let opcode = image[codeStart + offset]
+    let operandAt = codeStart + offset + 1
+    let nextOffset = offset + 1 + nativeOperandWidth(opcode)
+    unit.lines.push(nativeLabel(functionIndex, offset) + ":")
+    if opcode == 1 {
+        let low = nativeU32(image, operandAt)
+        let high = nativeSigned32(nativeU32(image, operandAt + 4))
+        nativeLoadConstant(unit, high * 4294967296 + low)
+        nativePush(unit)
+    } else if opcode == 4 || opcode == 5 {
+        var flag = 0
+        if opcode == 4 { flag = image[operandAt] }
+        nativeLine(unit, "mov x0, #" + nativeDecimal(flag))
+        nativePush(unit)
+    } else if opcode == 6 {
+        nativeLine(unit, "add sp, sp, #16")
+    } else if opcode == 7 {
+        nativeLine(unit, "ldr x0, [sp]")
+        nativePush(unit)
+    } else if opcode == 8 {
+        nativeLocalAddress(unit, nativeU32(image, operandAt))
+        nativeLine(unit, "ldr x0, [x10]")
+        nativePush(unit)
+    } else if opcode == 9 {
+        nativeLine(unit, "ldr x0, [sp]")
+        nativeLocalAddress(unit, nativeU32(image, operandAt))
+        nativeLine(unit, "str x0, [x10]")
+    } else if opcode >= 12 && opcode <= 16 || opcode >= 19 && opcode <= 29 {
+        nativeBinary(unit, opcode)
+    } else if opcode == 17 || opcode == 18 {
+        nativePop(unit, "x0")
+        if opcode == 17 {
+            nativeLine(unit, "neg x0, x0")
+        } else {
+            nativeLine(unit, "cmp x0, #0")
+            nativeLine(unit, "cset x0, eq")
+        }
+        nativePush(unit)
+    } else if opcode == 30 || opcode == 31 || opcode == 32 {
+        let target = nativeLabel(functionIndex, nextOffset + nativeSigned32(nativeU32(image, operandAt)))
+        if opcode == 30 {
+            nativeLine(unit, "b " + target)
+        } else {
+            nativePop(unit, "x0")
+            if opcode == 31 { nativeLine(unit, "cbz x0, " + target) } else { nativeLine(unit, "cbnz x0, " + target) }
+        }
+    } else if opcode == 33 {
+        let argumentCount = nativeU32(image, operandAt + 4)
+        nativeLine(unit, "bl " + nativeSymbol(nativeU32(image, operandAt)))
+        if argumentCount > 0 { nativeLine(unit, "add sp, sp, #" + nativeDecimal(16 * argumentCount)) }
+        nativePush(unit)
+    } else if opcode == 35 {
+        nativeEpilogue(unit)
+    } else if opcode == 46 || opcode == 52 {
+        var status = 0
+        if opcode == 52 { status = 70 }
+        nativeLine(unit, "mov x0, #" + nativeDecimal(status))
+        nativeLine(unit, "bl _exit")
+    } else if opcode != 0 {
+        unit.failedOpcode = opcode
+    }
+    return nextOffset
+}
+
+// Emite assembly para a imagem já validada e grava em outputPath.
+// Retorna 0 em sucesso ou o primeiro opcode não suportado.
+public func emitNativeAssembly(image: int[], outputPath: string): int {
+    var unit = nativeUnit { lines: [], failedOpcode: 0 }
+    let mainIndex = nativeU32(image, 8)
+    var offset = 16
+    var poolIndex = 0
+    while poolIndex < nativeU32(image, 12) {
+        offset = offset + 4 + nativeU32(image, offset)
+        poolIndex = poolIndex + 1
+    }
+    let functionCount = nativeU32(image, offset)
+    offset = offset + 4
+    unit.lines.push("    .section __TEXT,__text,regular,pure_instructions")
+    unit.lines.push("    .globl _main")
+    unit.lines.push("    .p2align 2")
+    unit.lines.push("_main:")
+    nativeLine(unit, "b " + nativeSymbol(mainIndex))
+    var functionIndex = 0
+    while functionIndex < functionCount && unit.failedOpcode == 0 {
+        offset = offset + 4 + nativeU32(image, offset)
+        let arity = nativeU32(image, offset)
+        let localCount = nativeU32(image, offset + 4)
+        let codeLength = nativeU32(image, offset + 8)
+        let codeStart = offset + 12
+        nativePrologue(unit, functionIndex, arity, localCount)
+        var codeOffset = 0
+        while codeOffset < codeLength && unit.failedOpcode == 0 {
+            codeOffset = nativeInstruction(unit, image, functionIndex, codeStart, codeOffset)
+        }
+        offset = codeStart + codeLength
+        functionIndex = functionIndex + 1
+    }
+    if unit.failedOpcode != 0 { return unit.failedOpcode }
+    Runtime.writeText(outputPath, nativeJoin(unit.lines))
+    return 0
+}

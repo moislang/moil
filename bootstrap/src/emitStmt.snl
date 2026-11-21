@@ -12,13 +12,13 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     if k == 1 {
         code.push(1)
         pushI64(code, bg.na[nd])
-        cx.expr_ty = 0
+        cx.expr_ty = -1
         return
     }
     if k == 2 {
         code.push(4)
         code.push(bg.na[nd])
-        cx.expr_ty = 0
+        cx.expr_ty = -2
         return
     }
     if k == 3 {
@@ -27,7 +27,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         let si = internBytes(tmp, bg)
         code.push(3)
         pushU32(code, si)
-        cx.expr_ty = 0
+        cx.expr_ty = -3
         return
     }
     if k == 4 {
@@ -72,7 +72,15 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
             return
         }
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let leftType = cx.expr_ty
         emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        let rightType = cx.expr_ty
+        if bg.na[nd] == 28 || bg.na[nd] == 29 {
+            if leftType != 0 && rightType != 0 && leftType != rightType {
+                bg.warningCodes.push(1)
+                bg.warningLines.push(bg.tl[bg.nd[nd]])
+            }
+        }
         let op = binOp(bg.na[nd])
         if op < 0 {
             fail(cx)

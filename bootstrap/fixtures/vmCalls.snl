@@ -1,0 +1,23 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+func fibonacci(position: int): int {
+    if position < 2 {
+        return position
+    }
+    return fibonacci(position - 1) + fibonacci(position - 2)
+}
+
+func addThree(first: int, second: int, third: int): int {
+    let partial = first + second
+    return partial + third
+}
+
+func main(): int {
+    let sequence = fibonacci(15)
+    Console.printline(sequence)
+    let sum = addThree(1, 2, 3)
+    Console.printline(sum)
+    return sequence % 200 + sum
+}

@@ -18,19 +18,41 @@ own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument
 validates the canonical image structure, opcodes and instruction references. `make bootstrap-image-check` exercises
 both a valid self-compiled image and a truncated one.
 
-The internal three-argument invocation `<image.snbc> vm numeric` executes a
-single-function numeric SnBC image through the Snova VM. Run
-`make bootstrap-vm-numeric` to compare its return value with `snl run-snbc`.
-This executor currently supports integer and boolean stack operations, locals,
-branches, return and halt. The command is a development gate, not the final CLI.
+`<image.snbc> run [args...]` executes an SnBC image through the executor
+written in Snova (`src/vm*.snl`). The mode is recognised by the `SNBC` magic of
+the first argument; arguments after `run` belong to the program. The executor
+is iterative (256-frame limit), predecodes instructions, and supports typed
+values, calls, arrays, objects, byte-backed strings with value equality, file
+I/O and the runtime API used by the compiler. Run `make bootstrap-vm` for the
+stdout/exit-code differential against `snl run-snbc`, and
+`make bootstrap-vm-self` to have the Snova executor run the compiler image and
+reproduce `stage1.snbc` byte for byte (it takes minutes: the Snova executor
+itself runs on the C VM bundled by `snl build`). Design, intentional
+divergences and the provisional string boundary are in
+`docs/decisions/ADR-0004-snova-snbc-executor.md`. This is a development
+command, not the final CLI.
+
+`<input.snl> <output.s> native` runs the native backend slice N1
+(`src/native*.snl`): the validated SnBC image becomes aarch64-apple-darwin
+assembly for the numeric subset (functions, locals, arithmetic, comparisons,
+branches, calls, return, halt). `make bootstrap-native` assembles and links it
+with the system `as`/`ld` and checks that the executable exit code matches the
+Snova executor and `snl run-snbc`. Other opcodes fail with
+`unsupported opcode for native backend: N`.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/hello.snl` through the generated SnBC image.
 
 Run `make bootstrap-diagnostics` to check lexer and parser failures include a
-phase and source line.
+phase and source line, and that `==`/`!=` between operands whose static types
+are known and different (for example a string literal and an integer, or a
+struct and an integer) prints `warning[SNW0001]: comparison between different
+types at line N` without stopping compilation. Unknown types (calls, indexing)
+do not warn.
 
-`snl` is the temporary seed and supplies the existing runtime. The compiler
+`snl` is the temporary seed and supplies the existing runtime. Its `snl build`
+output bundles SnBC with the C VM of `snl`; it is not machine code (see
+`docs/decisions/ADR-0005-native-backend.md`). The compiler
 and its I/O facade are in `.snl`. The generated SnBC compiler still runs through
 the previous toolchain, so this is not yet a standalone distribution.
 
@@ -43,7 +65,9 @@ and names follow the project's `camelCase` convention. Every compiler source
 file stays below 400 lines.
 
 The seed recognizes and lowers a small imperative subset: functions, structs,
-integer and string literals, local bindings, calls, arithmetic and comparison,
+integer and string literals, local bindings, calls, the `Runtime`
+methods `environment`, `argumentCount`, `argument`, `writeText`, `fileExists` and
+`readText`, arithmetic and comparison,
 short circuit operators, `if`, `while`, and basic returns. Its lexer, parser,
 scope lowering, SnBC writer and runtime facade are split into package modules
 in `src/`. The compiler internally flattens its own modules for the current

@@ -1,0 +1,9 @@
+package bootstrap.fixture
+
+func descend(level: int): int {
+    return descend(level + 1) + 1
+}
+
+func main(): int {
+    return descend(0)
+}

@@ -1,0 +1,67 @@
+package snova.compiler.runtime
+
+// Caminhos rápidos do laço de execução. Cada helper recebe as células da
+// pilha como parâmetros tipados, o que permite ler e gravar campos com uma
+// única chamada de host por instrução no caso comum.
+func cellLoadField(top: vmCell, vm: vmState, field: int): unit {
+    if top.tag == 5 && field < vm.objectFieldCount[top.value] {
+        cellCopy(top, vm.fields[vm.objectStart[top.value] + field])
+        return
+    }
+    top.tag = 0
+    top.value = 0
+}
+
+func cellStoreField(target: vmCell, value: vmCell, vm: vmState, field: int): bool {
+    if target.tag != 5 || field >= vm.objectFieldCount[target.value] { return false }
+    cellCopy(vm.fields[vm.objectStart[target.value] + field], value)
+    return true
+}
+
+func cellFromArray(target: vmCell, array: vmArray, index: int): unit {
+    if index < 0 || index >= array.values.len() {
+        target.tag = 0
+        target.value = 0
+        return
+    }
+    if array.mixed == 0 {
+        target.tag = 1
+    } else {
+        target.tag = array.tags[index]
+    }
+    target.value = array.values[index]
+}
+
+func cellLoadIndex(target: vmCell, index: vmCell, vm: vmState): unit {
+    if target.tag == 4 && index.tag == 1 {
+        cellFromArray(target, vm.arrays[target.value], index.value)
+        return
+    }
+    target.tag = 0
+    target.value = 0
+}
+
+// Aritmética e comparação entre inteiros (ou booleanos, nas comparações)
+// gravadas na célula do operando esquerdo. Retorna false quando os tipos
+// exigem o caminho geral de vmBinary.
+func cellArith(left: vmCell, right: vmCell, opcode: int): bool {
+    let leftValue = left.value
+    let rightValue = right.value
+    if opcode == 24 || opcode == 25 {
+        if left.tag != right.tag || left.tag > 2 { return false }
+        var equal = leftValue == rightValue
+        if opcode == 25 { equal = equal == false }
+        left.tag = 2
+        if equal { left.value = 1 } else { left.value = 0 }
+        return true
+    }
+    if left.tag != 1 && left.tag != 2 || right.tag != 1 && right.tag != 2 { return false }
+    if opcode >= 26 {
+        left.tag = 2
+        left.value = vmCompare(opcode, leftValue, rightValue)
+        return true
+    }
+    left.tag = 1
+    left.value = vmIntBinary(opcode, leftValue, rightValue)
+    return true
+}

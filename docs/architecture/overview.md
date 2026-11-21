@@ -8,7 +8,7 @@ O compilador é a única peça pública de produto. Seu frontend, semântica,
 backend, runtime e driver devem ser desenvolvidos em Snova. A raiz `snl`
 instalada é temporária; C/C++ não serão uma implementação paralela. O código
 atual está em módulos `.snl` importáveis no projeto `bootstrap/src/`, com APIs
-públicas pequenas. O build nativo usa esses módulos diretamente. Para se
+públicas pequenas. O `snl build` usa esses módulos diretamente e produz um executável que empacota SnBC com a VM C do `snl` (não é código de máquina do programa; ver ADR-0005). Para se
 auto-compilar, o seed ainda monta internamente uma unidade de fonte; resolver
 imports entre arquivos arbitrários é o próximo gate de arquitetura. As demais
 lacunas estão em `docs/roadmap/subset.md`.

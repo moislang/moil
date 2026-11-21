@@ -283,6 +283,7 @@ func parseExpr(src: int[], bg: compilerState, cx: compilerContext, min_bp: int):
             if bp == 0 || bp < min_bp {
                 go = 0
             } else {
+                let operatorToken = cx.pos
                 bump(cx)
                 var next = bp + 1
                 if k == 27 {
@@ -292,7 +293,7 @@ func parseExpr(src: int[], bg: compilerState, cx: compilerContext, min_bp: int):
                 if k == 27 {
                     lhs = node(bg, 12, 0, lhs, rhs, -1)
                 } else {
-                    lhs = node(bg, 6, k, lhs, rhs, -1)
+                    lhs = node(bg, 6, k, lhs, rhs, operatorToken)
                 }
             }
         }

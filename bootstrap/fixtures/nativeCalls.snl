@@ -1,0 +1,26 @@
+package bootstrap.fixture
+
+func fibonacci(position: int): int {
+    if position < 2 {
+        return position
+    }
+    return fibonacci(position - 1) + fibonacci(position - 2)
+}
+
+func mix(first: int, second: int, third: int): int {
+    let product = first * second
+    let quotient = product / third
+    let remainder = product % third
+    let shifted = (quotient << 2) >> 1
+    if remainder == 0 || first > 100 {
+        return shifted - 0 - first
+    }
+    return shifted + remainder + (7 / 0) + (7 % 0)
+}
+
+func main(): int {
+    let sequence = fibonacci(15)
+    let mixed = mix(9, 7, 4)
+    let negative = -5
+    return (sequence + mixed + negative) % 256
+}

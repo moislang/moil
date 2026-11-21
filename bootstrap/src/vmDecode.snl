@@ -1,0 +1,47 @@
+package snova.compiler.runtime
+
+// Pré-decodificação: cada instrução SnBC vira uma entrada em instructionOpcode/instructionOperand/
+// instructionSecondOperand, e os saltos passam a apontar para o índice da instrução de
+// destino. O laço de execução não decodifica bytes nem calcula larguras.
+func vmDecodeOperand(data: int[], operandAt: int, opcode: int): int {
+    if opcode == 1 { return vmConstInt(data, operandAt) }
+    if opcode == 4 || opcode == 45 { return data[operandAt] }
+    if opcodeWidth(opcode) >= 4 { return codeU32(data, operandAt) }
+    return 0
+}
+
+func vmDecodeFunction(vm: vmState, codeStart: int, codeLength: int): unit {
+    let firstInstruction = vm.instructionOpcode.len()
+    var instructionAt: int[] = []
+    var offset = 0
+    var instructionCount = 0
+    while offset < codeLength {
+        let width = opcodeWidth(vm.data[codeStart + offset])
+        instructionAt.push(firstInstruction + instructionCount)
+        var operandByte = 0
+        while operandByte < width {
+            instructionAt.push(-1)
+            operandByte = operandByte + 1
+        }
+        instructionCount = instructionCount + 1
+        offset = offset + 1 + width
+    }
+    offset = 0
+    while offset < codeLength {
+        let opcode = vm.data[codeStart + offset]
+        let width = opcodeWidth(opcode)
+        let nextOffset = offset + 1 + width
+        var first = vmDecodeOperand(vm.data, codeStart + offset + 1, opcode)
+        var second = 0
+        if width == 8 && opcode != 1 { second = codeU32(vm.data, codeStart + offset + 5) }
+        if opcode == 30 || opcode == 31 || opcode == 32 {
+            first = instructionAt[nextOffset + vmSigned32(first)]
+        }
+        vm.instructionOpcode.push(opcode)
+        vm.instructionOperand.push(first)
+        vm.instructionSecondOperand.push(second)
+        offset = nextOffset
+    }
+    vm.functionFirst.push(firstInstruction)
+    vm.functionLength.push(instructionCount)
+}
