@@ -123,3 +123,10 @@ This file started with no technical results. Entries must record observed facts,
 - Observed result: the transitional `snl` seed emitted assembly for the ordered compiler modules plus the Snova native runtime. The linked native compiler compiled the same source, and the next linked native compiler repeated the build. Both assembly comparisons passed byte-for-byte.
 - SHA-256 of the fixed-point compiler assembly: `796443bb0543c3f0b19b12f2b82bb80b9fd7347b90833929bcb43575a0c6cf82` (same hash for all three emissions in the direct run).
 - Scope: native self-compilation and an assembly fixed point are demonstrated for this source order and host. Mach-O UUID/signature normalization, clean-environment reproducibility, independent DDC, general import resolution, and replacement of `snovac` are not demonstrated. The bootstrap still uses `snl` for its first compiler and `as`/`ld` to link every native stage.
+
+## 2026-11-21 — stable frontend and lowering diagnostics
+
+- Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-diagnostics bootstrap-fixed-point`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
+- Observed result: lexical failures report `SNV1001` with a byte span, parser failures report `SNV2001` with the failing token span (including zero-width EOF spans), and lowering failures report `SNV3001` with line and function index. Positive warning fixtures remained unchanged. Diagnostic fixtures assert the complete output strings.
+- Limitations: lowering span is not yet exact and the function index is not a stable symbol identity; semantic analysis still lacks structured diagnostics. Byte offsets are within the single input buffer, not mapped through source files because general import loading is not implemented.

@@ -37,24 +37,48 @@ func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]
     }
 }
 
-func reportFailure(bg: compilerState, cx: compilerContext): unit {
+func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
     if cx.error_phase == 1 {
-        Console.print("lexical error at line ")
+        Console.print("error[SNV1001]: lexical error at line ")
         Console.print(cx.error_line)
+        Console.print(", span ")
+        var start = 0
+        var line = 1
+        while start < src.len() && line < cx.error_line {
+            if src[start] == 10 { line = line + 1 }
+            start = start + 1
+        }
+        var end = start
+        while end < src.len() && src[end] != 10 { end = end + 1 }
+        Console.print(start)
+        Console.print("..")
+        Console.print(end)
         Console.printline("")
         return
     }
     if cx.error_phase == 2 {
-        var line = 1
+        var errorLine = 1
+        var start = 0
+        var end = 0
         if cx.error_token >= 0 && cx.error_token < bg.tl.len() {
-            line = bg.tl[cx.error_token]
+            errorLine = bg.tl[cx.error_token]
+            start = bg.ts[cx.error_token]
+            end = start + bg.tn[cx.error_token]
         }
-        Console.print("parse error at line ")
-        Console.print(line)
+        Console.print("error[SNV2001]: parse error at line ")
+        Console.print(errorLine)
+        Console.print(", span ")
+        Console.print(start)
+        Console.print("..")
+        Console.print(end)
         Console.printline("")
         return
     }
-    Console.printline("unsupported construct or invalid lowering")
+    Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
+    Console.print(cx.error_line)
+    Console.print(", function #")
+    Console.print(cx.error_token)
+    Console.printline("")
 }
 
 // Warnings do not stop compilation. SNW0001: `==`/`!=` between operands
@@ -98,43 +122,28 @@ func compileSource(src: int[], image: int[]): int {
     }
     lexAll(src, bg, cx)
     if cx.failed != 0 {
-        reportFailure(bg, cx)
+        reportFailure(src, bg, cx)
         return 1
     }
     parseFile(src, bg, cx)
     if cx.failed != 0 {
-        reportFailure(bg, cx)
+        reportFailure(src, bg, cx)
         return 1
     }
     if bg.fn_ns.len() == 0 {
         fail(cx)
-        reportFailure(bg, cx)
+        reportFailure(src, bg, cx)
         return 1
     }
     cx.phase = 3
     emitUnit(src, bg, cx)
     if cx.failed != 0 {
-        Console.print("lowering failed in function #")
-        Console.print(cx.error_token)
-        if cx.error_token >= 0 && cx.error_token < bg.fn_ns.len() {
-            Console.print(" at line ")
-            var token = 0
-            while token < bg.ts.len() {
-                if bg.ts[token] == bg.fn_ns[cx.error_token] {
-                    Console.print(bg.tl[token])
-                    token = bg.ts.len()
-                } else {
-                    token = token + 1
-                }
-            }
-        }
-        Console.printline("")
-        reportFailure(bg, cx)
+        reportFailure(src, bg, cx)
         return 1
     }
     if bg.fn_loc.len() != bg.fn_ns.len() {
         fail(cx)
-        reportFailure(bg, cx)
+        reportFailure(src, bg, cx)
         return 1
     }
     reportWarnings(bg)

@@ -36,13 +36,13 @@ bootstrap-smoke: bootstrap-build
 
 bootstrap-diagnostics: bootstrap-build
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidLex.snl $(BUILD_DIR)/invalidLex.snbc > $(BUILD_DIR)/lexical-error.txt; then echo "expected lexical failure"; exit 1; fi
-	grep -Fqx "lexical error at line 4" $(BUILD_DIR)/lexical-error.txt
+	grep -Fqx "error[SNV1001]: lexical error at line 4, span 46..58" $(BUILD_DIR)/lexical-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidParse.snl $(BUILD_DIR)/invalidParse.snbc > $(BUILD_DIR)/parse-error.txt; then echo "expected parse failure"; exit 1; fi
-	grep -Fqx "parse error at line 5" $(BUILD_DIR)/parse-error.txt
+	grep -Fqx "error[SNV2001]: parse error at line 5, span 59..59" $(BUILD_DIR)/parse-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidRuntimeArity.snl $(BUILD_DIR)/invalidRuntimeArity.snbc > $(BUILD_DIR)/runtime-arity-error.txt; then echo "expected runtime arity failure"; exit 1; fi
-	grep -Fqx "unsupported construct or invalid lowering" $(BUILD_DIR)/runtime-arity-error.txt
+	grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 8, function #0" $(BUILD_DIR)/runtime-arity-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidStaticCall.snl $(BUILD_DIR)/invalidStaticCall.snbc > $(BUILD_DIR)/static-call-error.txt; then echo "expected static call failure"; exit 1; fi
-	grep -Fqx "unsupported construct or invalid lowering" $(BUILD_DIR)/static-call-error.txt
+	grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 15, function #1" $(BUILD_DIR)/static-call-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt
 	printf 'warning[SNW0001]: comparison between different types at line 10\nwarning[SNW0001]: comparison between different types at line 13\n' | cmp - $(BUILD_DIR)/warn-mismatch.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt
