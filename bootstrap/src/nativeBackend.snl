@@ -9,7 +9,9 @@ import builtin.runtime
 // Object model rules while `snl build` v0.3.0 is the transitional root
 // (probes in docs/roadmap/evidence.md): objects are created with
 // constructors, methods are called only on locals, parameters or siblings
-// (never on a field), and there are no static methods.
+// (never on a field), there are no static methods, and no array is shared
+// between two fields: the root releases an array when a field that holds it
+// is reassigned, which would leave the other field dangling.
 class NativeBackend {
     // Returns 0 on success, the first unsupported opcode, or -1 when the
     // native runtime is missing from the image.
@@ -17,16 +19,20 @@ class NativeBackend {
         var roleFunction: int[] = []
         var functionRole: int[] = []
         var runtimeFunction: int[] = []
+        var roleCopy: int[] = []
         var lines: string[] = []
         var slots: NativeSlot[] = []
         var targets: int[] = []
+        var offsets: int[] = []
+        var depths: int[] = []
         let image = NativeImage(bytes)
         let roles = NativeRoles(roleFunction, functionRole, runtimeFunction)
-        let output = NativeAssembly(lines, 0, roleFunction)
-        let stack = NativeOwnership(slots, 0, 0, 1, targets, targets, targets)
+        let output = NativeAssembly(lines, 0, roleCopy)
+        let stack = NativeOwnership(slots, 0, 0, 1, targets, offsets, depths)
         let values = NativeValueEmitter()
         let boundary = NativeBoundary()
         if roles.resolve(image) == false { return -1 }
+        output.useRoles(roles)
         let failed = translate(image, roles, output, stack, values, boundary)
         if failed != 0 { return failed }
         Runtime.writeText(outputPath, output.text())

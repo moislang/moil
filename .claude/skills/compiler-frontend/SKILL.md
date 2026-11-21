@@ -1,26 +1,26 @@
 ---
 name: compiler-frontend
-description: Projetar ou implementar lexer, parser, AST e diagnósticos compatíveis com a linguagem Snovalang.
+description: Design or implement a lexer, parser, AST and diagnostics compatible with the Snovalang language.
 ---
 
-# Frontend de compilador
+# Compiler frontend
 
-## Princípios
+## Principles
 
-- A especificação executável do compilador de referência é observada com fixtures, sem editar `../snovac`.
-- Lexer, parser e AST têm contratos e testes de fase separados; erros mantêm código, span e posição de origem.
-- Preserve determinismo e comportamento UTF-8/bytes conforme a especificação medida.
-- Parser escolhe técnica simples que caiba no subset do estágio; não introduza framework/gerador antes de justificativa.
-- O código-fonte do frontend deve continuar dentro do subconjunto compilável pelo predecessor.
+- The executable specification of the reference compiler is observed through fixtures, without editing `../snovac`.
+- Lexer, parser and AST have separate contracts and phase tests; errors keep a code, a span and the source position.
+- Keep determinism and UTF-8/byte behavior as measured in the specification.
+- The parser uses a simple technique that fits the stage's subset; do not introduce a framework/generator without justification.
+- Frontend source must stay inside the subset the predecessor can compile.
 
-## Procedimento
+## Procedure
 
-1. Defina tokens, escapes, comentários, precedência, associatividade, recuperação de erros e AST mínima.
-2. Crie fixtures de fronteira: entrada vazia, fim de arquivo, unicode, tokens inválidos, precedência e nesting.
-3. Compare lex/parse/dump e diagnósticos com a referência; classifique as diferenças antes de mudar o contrato.
-4. Só depois expanda para declarações, tipos, patterns, módulos ou sintaxe contextual.
-5. Registre mudanças de linguagem na matriz de subset e aplique gate de bootstrap.
+1. Define tokens, escapes, comments, precedence, associativity, error recovery and the minimal AST.
+2. Create boundary fixtures: empty input, end of file, unicode, invalid tokens, precedence and nesting.
+3. Compare lex/parse/dump and diagnostics with the reference; classify differences before changing the contract.
+4. Only then expand to declarations, types, patterns, modules or contextual syntax.
+5. Record language changes in the subset matrix and apply the bootstrap gate.
 
-## Revisão
+## Review
 
-Verifique escapes, overflow numérico, offsets, mensagens estáveis, recuperação após erro e se fixtures cobrem parse válido e inválido.
+Check escapes, numeric overflow, offsets, stable messages, recovery after errors and whether fixtures cover valid and invalid parses.

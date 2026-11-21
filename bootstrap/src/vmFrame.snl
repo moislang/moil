@@ -1,10 +1,10 @@
 package snova.compiler.runtime
 
-// Executa a imagem pré-decodificada de forma iterativa. Locais da função
-// corrente ocupam stack[base .. base + locais - 1] e a pilha de operandos
-// começa logo acima. CALL salva o quadro chamador em vm.frames; RETURN o
-// restaura. A profundidade é limitada por vmFrameLimit(), sem depender da
-// pilha de chamadas do host. Os opcodes mais frequentes vêm primeiro.
+// Runs the predecoded image iteratively. The current function's locals take
+// stack[base .. base + locals - 1] and the operand stack starts right above.
+// CALL saves the calling frame in vm.frames; RETURN restores it. Depth is
+// limited by vmFrameLimit(), independent of the host call stack. The most
+// frequent opcodes come first.
 func vmRun(vm: vmState, entryFunction: int): unit {
     var functionIndex = entryFunction
     var base = 0
@@ -118,7 +118,7 @@ func vmRun(vm: vmState, entryFunction: int): unit {
     vmFail(vm, 7, functionIndex)
 }
 
-// Opcodes menos frequentes, fora do laço principal.
+// Less frequent opcodes, outside the main loop.
 func vmOther(vm: vmState, opcode: int, operand: int, secondOperand: int, functionIndex: int): unit {
     if opcode == 47 || opcode == 48 || opcode == 49 || opcode == 50 {
         vmArrayOp(vm, opcode)

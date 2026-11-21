@@ -94,8 +94,6 @@ public func ownSource(): int[] {
     appendFile(output, "bootstrap/src/nativeBackend.snl", 0)
     appendFile(output, "bootstrap/src/sourceJoin.snl", 0)
     appendFile(output, "bootstrap/src/compiler.snl", 0)
-    appendFile(output, "bootstrap/src/api.snl", 0)
-    appendFile(output, "bootstrap/src/apiConsumer.snl", 0)
     appendFile(output, "bootstrap/src/scopeParse.snl", 0)
     appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
     appendFile(output, "bootstrap/src/scopeMatch.snl", 0)

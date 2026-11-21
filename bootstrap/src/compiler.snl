@@ -57,8 +57,8 @@ func reportFailure(bg: compilerState, cx: compilerContext): unit {
     Console.printline("unsupported construct or invalid lowering")
 }
 
-// Warnings não interrompem a compilação. SNW0001: `==`/`!=` entre operandos
-// cujos tipos estáticos são conhecidos e diferentes.
+// Warnings do not stop compilation. SNW0001: `==`/`!=` between operands
+// whose static types are known and different.
 func reportWarnings(bg: compilerState): unit {
     var index = 0
     while index < bg.warningCodes.len() {
@@ -127,12 +127,8 @@ func compileSource(src: int[], image: int[]): int {
     return 0
 }
 
-public func compileBytes(src: int[], image: int[]): int {
-    return compileSource(src, image)
-}
-
-// O modo de execução é reconhecido pelo magic SNBC no primeiro argumento.
-// O segundo argumento é a palavra reservada `run`; os seguintes são do programa.
+// Run mode is recognized by the SNBC magic of the first argument. The
+// second argument is the reserved word `run`; the rest belong to the program.
 func isImageBytes(data: int[]): bool {
     if data.len() < 4 { return false }
     return data[0] == 83 && data[1] == 78 && data[2] == 66 && data[3] == 67

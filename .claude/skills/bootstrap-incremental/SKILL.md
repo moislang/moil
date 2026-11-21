@@ -1,47 +1,48 @@
 ---
 name: bootstrap-incremental
-description: Planejar ou implementar um estágio do compilador self-hosted sem criar desnível entre o seed e a linguagem usada pelo próximo estágio.
+description: Plan or implement a stage of the self-hosted compiler without creating a gap between the seed and the language used by the next stage.
 ---
 
-# Bootstrap incremental Snovalang
+# Incremental Snovalang bootstrap
 
-## Quando usar
+## When to use
 
-Use ao planejar probes do `snl`, escolher subset, desenhar seed, implementar uma feature do compilador, adicionar uma etapa de bootstrap ou avaliar evidência de self-hosting.
+Use when planning `snl` probes, choosing a subset, designing the seed, implementing a compiler feature, adding a bootstrap step or evaluating self-hosting evidence.
 
-Use também as skills especializadas conforme a fase: `bootstrap-stage`, `compiler-frontend`, `semantic-ir`, `backend-runtime`, `conformance-determinism` e `self-hosting-research`.
+Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-frontend`, `semantic-ir`, `backend-runtime`, `conformance-determinism` and `self-hosting-research`.
 
-## Restrições
+## Constraints
 
-- Trabalhe apenas no checkout atual; `../snovac` é referência somente leitura.
-- Priorize `.snl`/`.sns`. Use assembly apenas em fronteiras justificadas e nunca C como implementação paralela sem decisão explícita.
-- Não presuma que a versão, sintaxe ou runtime instalado correspondem à documentação histórica. Registre a versão antes das sondas.
-- Não chame um build de DDC se a segunda raiz não for independente.
+- Work only in the current checkout; `../snovac` is a read-only reference.
+- Prefer `.snl`/`.sns`. Use assembly only at justified boundaries, and never C as a parallel implementation without an explicit decision.
+- Do not assume that the installed version, syntax or runtime matches historical documentation. Record the version before the probes.
+- Do not call a build DDC if the second root is not independent.
+- Compiler code must build with both the seed and the current root; follow the object-model rules of ADR-0007.
 
-## Procedimento
+## Procedure
 
-1. **Identifique o estágio.** Leia `docs/roadmap/stages.md`, `docs/roadmap/evidence.md`, ADRs e matriz atual do subset.
-2. **Meça a capacidade necessária.** Faça probe mínimo e isolado para cada recurso do `snl` do qual o próximo estágio depende. Registre comando, versão e saída.
-3. **Defina o subconjunto.** Liste construções aceitas/rejeitadas, semântica, limites e fixtures. Garanta que fontes do estágio N+1 só usem recursos compiláveis por N.
-4. **Escolha o menor caminho vertical.** Seed → artefato executável → teste funcional. Adie recursos sem dependência direta.
-5. **Defina contratos.** Tipos, ownership, erros/diagnósticos, spans, formatos de IR/artefato, ABI e determinismo.
-6. **Organize os módulos.** Use arquivos `.snl` em `camelCase`, pacotes/imports explícitos entre módulos, APIs públicas pequenas e arquivos abaixo de 400 linhas quando possível.
-7. **Implemente por cortes.** Cada corte inclui comportamento positivo e negativo e pode ser compilado pelo predecessor existente.
-8. **Compare com referência.** Quando aplicável, rode corpus diferencial e agrupe divergências por fase; não aceite só “compila”.
-9. **Registre evidência.** Atualize `evidence.md` com ambiente, comandos, resultados, hashes e limitações.
-10. **Avalie a afirmação correta.** Diga separadamente se bootstrap, self-compilation, fixed point, reprodutibilidade ou DDC foram demonstrados.
+1. **Identify the stage.** Read `docs/roadmap/stages.md`, `docs/roadmap/evidence.md`, the ADRs and the current subset matrix.
+2. **Measure the required capability.** Run a minimal, isolated probe for each `snl` feature the next stage depends on. Record command, version and output.
+3. **Define the subset.** List accepted/rejected constructs, semantics, limits and fixtures. Make sure the sources of stage N+1 only use features that N can compile.
+4. **Choose the smallest vertical path.** Seed → executable artifact → functional test. Postpone features without a direct dependency.
+5. **Define contracts.** Types, ownership, errors/diagnostics, spans, IR/artifact formats, ABI and determinism.
+6. **Organize the modules.** Use `camelCase` `.snl` files, PascalCase types, explicit packages/imports between modules, small public APIs and files under 400 lines when possible.
+7. **Implement in slices.** Each slice includes positive and negative behavior and can be compiled by the existing predecessor.
+8. **Compare with the reference.** When applicable, run a differential corpus and group divergences by phase; do not accept "it compiles" alone.
+9. **Record evidence.** Update `evidence.md` with environment, commands, results, hashes and limitations.
+10. **Make the correct claim.** State separately whether bootstrap, self-compilation, fixed point, reproducibility or DDC was demonstrated.
 
-## Checklist de revisão
+## Review checklist
 
-- [ ] O estágio anterior constrói integralmente o próximo?
-- [ ] Todas as capacidades do host têm probes atuais?
-- [ ] Há casos aceitos, rejeitados e diagnósticos com posição?
-- [ ] O assembly introduzido tem contrato e não duplica lógica de alto nível?
-- [ ] Arquivos e APIs mantêm o limite de tamanho e o padrão `camelCase`?
-- [ ] Saída e ordenação são determinísticas?
-- [ ] A evidência distingue execução, cross-compile, fixed point e DDC?
-- [ ] `../snovac` permaneceu intocado?
+- [ ] Does the previous stage fully build the next one?
+- [ ] Do all host capabilities have current probes?
+- [ ] Are there accepted and rejected cases, and diagnostics with positions?
+- [ ] Does any new assembly have a contract, without duplicating high-level logic?
+- [ ] Do files and APIs keep the size limit and the naming conventions?
+- [ ] Are output and ordering deterministic?
+- [ ] Does the evidence distinguish execution, cross-compilation, fixed point and DDC?
+- [ ] Was `../snovac` left untouched?
 
-## Saída esperada ao planejar
+## Expected output when planning
 
-Entregue: estágio e objetivo; subset predecessor/sucessor; probes; arquivos previstos; contratos; critérios de aceite; riscos e dependências; evidência necessária. Não transforme itens futuros em funcionalidades já disponíveis.
+Deliver: stage and goal; predecessor/successor subset; probes; planned files; contracts; acceptance criteria; risks and dependencies; required evidence. Do not present future items as available features.

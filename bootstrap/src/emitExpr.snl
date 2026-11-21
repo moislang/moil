@@ -19,7 +19,7 @@ func runtimeCallId(src: int[], start: int, count: int): int {
     return 0
 }
 
-// Aridade dos métodos de Runtime aceitos pelo seed (ids do runtime SnBC).
+// Arity of the Runtime methods the seed accepts (SnBC runtime call ids).
 func runtimeCallArity(callId: int): int {
     if callId == 6 { return 0 }
     if callId == 4 { return 2 }

@@ -16,8 +16,16 @@ package snova.compiler.backend
 class NativeAssembly {
     public var lines: string[]
     public var labelSerial: int
-    // role -> function index: the same array NativeRoles.resolve fills
+    // role -> function index, copied from NativeRoles after resolve
     public var roleFunction: int[]
+
+    public method useRoles(roles: NativeRoles): unit {
+        var role = 0
+        while role < roles.roleFunction.len() {
+            roleFunction.push(roles.roleFunction[role])
+            role = role + 1
+        }
+    }
 
     public method line(text: string): unit {
         lines.push("    " + text)

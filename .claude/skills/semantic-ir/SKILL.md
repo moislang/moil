@@ -1,30 +1,30 @@
 ---
 name: semantic-ir
-description: Planejar semântica, resolução de nomes/tipos e IR intermediária com invariantes explícitas.
+description: Plan semantics, name/type resolution and an intermediate representation with explicit invariants.
 ---
 
-# Semântica e representação intermediária
+# Semantics and intermediate representation
 
-## Semântica
+## Semantics
 
-Separe descoberta de símbolos, resolução, inferência/checking de tipos, validação de controle e lowering. Defina ordem e recuperação após erro. Tipos e diagnósticos devem ser tipados, estáveis e testáveis. Não imite um comportamento do compilador de referência sem fixture que o demonstre.
+Separate symbol discovery, resolution, type inference/checking, control validation and lowering. Define the order and recovery after errors. Types and diagnostics must be typed, stable and testable. Do not imitate a behavior of the reference compiler without a fixture that demonstrates it.
 
 ## IR
 
-Antes de adicionar IR, registre quais problemas ela resolve frente a AST tipada direta. Se introduzida, defina:
+Before adding an IR, record which problems it solves compared with a direct typed AST. If introduced, define:
 
-- valores, blocos, terminadores, parâmetros e convenção de retorno;
-- tipos suportados e representação de valores;
-- invariantes verificáveis antes/depois de cada lowering;
-- ownership/lifetime e origem dos spans;
-- serialização determinística se a IR sair do processo.
+- values, blocks, terminators, parameters and the return convention;
+- supported types and value representation;
+- invariants checkable before/after each lowering;
+- ownership/lifetime and the origin of spans;
+- deterministic serialization if the IR leaves the process.
 
-## Fluxo
+## Flow
 
-1. Escreva semântica observável e exemplos positivos/negativos.
-2. Defina diagnóstico e localize fase responsável.
-3. Escolha a menor representação que suporte o estágio atual.
-4. Implemente validações de invariantes e casos de divergência.
-5. Garanta que o predecessor compila todo o código novo.
+1. Write observable semantics and positive/negative examples.
+2. Define the diagnostic and locate the responsible phase.
+3. Choose the smallest representation that supports the current stage.
+4. Implement invariant checks and divergence cases.
+5. Make sure the predecessor compiles all new code.
 
-Não introduza generics completos, closures, exceções, otimizações ou CFG SSA apenas por simetria com outro compilador. Justifique pelo próximo marco.
+Do not introduce full generics, closures, exceptions, optimizations or an SSA CFG only for symmetry with another compiler. Justify them by the next milestone.

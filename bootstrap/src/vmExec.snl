@@ -2,7 +2,7 @@ package snova.compiler.runtime
 
 import builtin.runtime
 
-// Limite de quadros igual a SN_VM_FRAMES_MAX do runtime de referência.
+// Frame limit equal to SN_VM_FRAMES_MAX of the reference runtime.
 func vmFrameLimit(): int {
     return 256
 }

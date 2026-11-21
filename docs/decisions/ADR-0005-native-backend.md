@@ -58,7 +58,7 @@ translates it to assembly. The gate is `make bootstrap-native`.
   globals) make the backend fail with `unsupported opcode for native backend:
   N`.
 - Generated code calls only `_write`, `_read`, `_open`, `_close`, `_mmap`,
-  `_munmap` and `_exit`, and only from the stubs of `runtimeAbi.snl` (ADR-0006).
+  `_munmap` and `_exit`, and only from the stubs of the native `Primitive` and `System` methods (ADR-0006).
 - Memory is released through ownership: zero live blocks at exit and constant
   peak memory in loops (ADR-0006).
 - The operand stack uses 16-byte `(payload, tag)` slots, a simple choice with

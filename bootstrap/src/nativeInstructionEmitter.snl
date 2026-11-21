@@ -45,7 +45,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
     // RETURN (35): the result leaves as an owner; leftover owned temporaries
     // and every local are released before the frame goes away.
     private method returnValue(output: NativeAssembly, stack: NativeOwnership): unit {
-        let resultOrigin = stack.pop()
+        let resultOrigin = stack.popSlot()
         output.popPair("x0", "x1")
         if runtimeCode == false {
             if resultOrigin >= 0 { stack.retain(output, "x0", "x1") }
@@ -121,8 +121,8 @@ class NativeInstructionEmitter {    public var functionIndex: int
     // operands are released after the call. Division and remainder by zero
     // give 0, as in the SnBC runtime; aarch64 sdiv already returns 0.
     private method binary(output: NativeAssembly, stack: NativeOwnership, opcode: int, label: string): unit {
-        let rightOrigin = stack.pop()
-        let leftOrigin = stack.pop()
+        let rightOrigin = stack.popSlot()
+        let leftOrigin = stack.popSlot()
         output.popPair("x1", "x3")
         output.popPair("x0", "x2")
         if opcode == 24 || opcode == 25 {
@@ -154,14 +154,14 @@ class NativeInstructionEmitter {    public var functionIndex: int
         output.line("mov x1, " + stack.stash(20))
         output.label(label + "_done")
         output.pushPair()
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     private method pushConstant(output: NativeAssembly, stack: NativeOwnership, payload: int, tag: int): unit {
         output.loadConstant("x0", payload)
         output.line("mov x1, #" + output.decimal(tag))
         output.pushPair()
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     // STORE_LOCAL (9): the value stays on the stack and the local becomes
@@ -189,7 +189,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
             return
         }
         stack.upgradeRange(output, 1, stack.depth - 1)
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         let flag = stack.stash(21)
         output.popPair(flag, stack.stash(22))
         stack.releaseIfOwned(output, origin, flag, stack.stash(22))
@@ -204,18 +204,18 @@ class NativeInstructionEmitter {    public var functionIndex: int
         if argumentCount > 0 { output.offset("sp", "sp", 16 * argumentCount, false) }
         var dropped = 0
         while dropped < argumentCount {
-            stack.pop()
+            stack.popSlot()
             dropped = dropped + 1
         }
         output.pushPair()
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     private method loadLocal(output: NativeAssembly, stack: NativeOwnership, slot: int): unit {
         output.localAddress(slot)
         output.line("ldp x0, x1, [x10]")
         output.pushPair()
-        stack.push(slot)
+        stack.pushSlot(slot)
     }
 
     private method duplicate(output: NativeAssembly, stack: NativeOwnership): unit {
@@ -223,7 +223,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
         output.line("ldp x0, x1, [sp]")
         if origin < 0 { stack.retain(output, "x0", "x1") }
         output.pushPair()
-        stack.push(origin)
+        stack.pushSlot(origin)
     }
 
     private method stopWith(output: NativeAssembly, stack: NativeOwnership, code: int, detail: int): unit {

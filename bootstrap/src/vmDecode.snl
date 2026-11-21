@@ -1,8 +1,9 @@
 package snova.compiler.runtime
 
-// Pré-decodificação: cada instrução SnBC vira uma entrada em instructionOpcode/instructionOperand/
-// instructionSecondOperand, e os saltos passam a apontar para o índice da instrução de
-// destino. O laço de execução não decodifica bytes nem calcula larguras.
+// Predecoding: each SnBC instruction becomes one entry in instructionOpcode,
+// instructionOperand and instructionSecondOperand, and jumps point to the
+// index of the target instruction. The execution loop neither decodes bytes
+// nor computes widths.
 func vmDecodeOperand(data: int[], operandAt: int, opcode: int): int {
     if opcode == 1 { return vmConstInt(data, operandAt) }
     if opcode == 4 || opcode == 45 { return data[operandAt] }

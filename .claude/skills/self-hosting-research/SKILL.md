@@ -1,32 +1,32 @@
 ---
 name: self-hosting-research
-description: Pesquisa bootstrap de compiladores e transforma literatura primária em decisões aplicáveis ao compilador Snovalang.
+description: Research compiler bootstrapping and turn primary literature into decisions applicable to the Snovalang compiler.
 ---
 
-# Pesquisa de compiladores self-hosted
+# Self-hosted compiler research
 
-## Use quando
+## Use when
 
-Avaliar bootstrap, ponto fixo, cadeia de confiança, DDC, reprodutibilidade ou uma arquitetura alternativa de seed.
+Evaluating bootstrap, fixed point, chain of trust, DDC, reproducibility or an alternative seed architecture.
 
-## Fontes-base
+## Base sources
 
-Consulte `docs/research/compiler-literature.md` antes de pesquisar novamente. Comece pelos artigos do pnut/SLE 2024 e DDC de Wheeler, documentação GCC de bootstrap e material LLVM/Appel para fases do compilador.
+Read `docs/research/compiler-literature.md` before researching again. Start with the pnut/SLE 2024 papers and Wheeler's DDC, the GCC bootstrap documentation, and LLVM/Appel material for compiler phases.
 
-## Procedimento
+## Procedure
 
-1. Enuncie a pergunta de engenharia e os critérios de comparação.
-2. Priorize artigos revisados por pares, artefatos publicados pelos autores, documentação oficial e livros/autores originais.
-3. Separe resultados reportados pela fonte de inferências para Snovalang.
-4. Extraia condições de validade, limites e dependências da ferramenta; evite resumir apenas o abstract.
-5. Compare alternativas com custo de seed, recursos necessários, dependência do host, auditabilidade e força da evidência.
-6. Recomende decisão pequena, reversível e com probe ou ADR para validar as incertezas.
-7. Atualize a bibliografia e o ADR afetado com links diretos e data de consulta quando uma fonte nova sustentar uma decisão.
+1. State the engineering question and the comparison criteria.
+2. Prioritize peer-reviewed papers, artifacts published by the authors, official documentation and original books/authors.
+3. Separate results reported by the source from inferences for Snovalang.
+4. Extract validity conditions, limits and tool dependencies; do not summarize only the abstract.
+5. Compare alternatives by seed cost, required features, host dependency, auditability and strength of evidence.
+6. Recommend a small, reversible decision, with a probe or ADR to validate the uncertainties.
+7. Update the bibliography and the affected ADR with direct links and the access date when a new source supports a decision.
 
 ## Checklist
 
-- [ ] Fonte primária e ligação verificável?
-- [ ] Evidência separada de inferência?
-- [ ] Premissas aplicáveis ao `snl` instalado foram medidas?
-- [ ] Self-hosting, reprodutibilidade, ponto fixo e DDC não foram confundidos?
-- [ ] A recomendação mantém Snovalang como linguagem de implementação?
+- [ ] Primary source with a verifiable link?
+- [ ] Evidence separated from inference?
+- [ ] Were the assumptions that apply to the installed `snl` measured?
+- [ ] Were self-hosting, reproducibility, fixed point and DDC kept apart?
+- [ ] Does the recommendation keep Snovalang as the implementation language?

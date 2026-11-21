@@ -1,13 +1,14 @@
-# Regras de arquitetura do compilador
+# Compiler architecture rules
 
-- Este checkout é o limite de escrita. Trate `../snovac` como referência somente leitura.
-- A meta é implementar compilador e runtime em Snovalang. Não migre para C por conveniência.
-- Assembly é permitido apenas no seed mínimo/ABI/OS quando a sonda provar que não há alternativa Snovalang. Documente cada fronteira.
-- O predecessor deve compilar o código do estágio seguinte. Nunca introduza recurso de linguagem no compilador sem atualizar a matriz do subset e fixtures.
-- Confirme a versão e as capacidades do `snl` instalado com probes; não confie em notas históricas ou no plano como evidência atual.
-- Separe lexer, parser, semântica, IR, backend, runtime e driver por contratos explícitos; evite regras de linguagem escondidas no driver.
-- Use estruturas e retornos tipados; diagnósticos são dados com código e span. Preserve determinismo em símbolos, erros e artefatos.
-- Nomeie funções, classes, structs, interfaces e arquivos-fonte em `camelCase` por padrão.
-- Não declare self-hosting, ponto fixo, reprodutibilidade ou DDC sem evidência correspondente registrada.
-- Uma feature exige especificação, caso válido, caso inválido e gate de construção pelo predecessor.
-- Não adicione dependência, alvo, exceção, concorrência ou GC avançado ao primeiro corte vertical sem ADR/roadmap atualizado.
+- This checkout is the write boundary. Treat `../snovac` as a read-only reference.
+- The goal is to implement the compiler and runtime in Snovalang. Do not migrate to C for convenience.
+- Assembly is allowed only in the minimal seed/ABI/OS boundary when a probe proves there is no Snovalang alternative. Document every boundary.
+- The predecessor must compile the next stage's code. Never introduce a language feature into the compiler without updating the subset matrix and fixtures.
+- Confirm the version and capabilities of the installed `snl` with probes; do not trust historical notes or the plan as current evidence.
+- Separate lexer, parser, semantics, IR, backend, runtime and driver through explicit contracts; avoid language rules hidden in the driver.
+- Use typed structures and returns; diagnostics are data with a code and a span. Keep symbols, errors and artifacts deterministic.
+- Model the compiler with objects (ADR-0007). Types are PascalCase; functions, methods, variables and source files are camelCase. Use types instead of name prefixes.
+- While `snl build` v0.3.0 is the root, compiler code creates objects with constructors, calls methods only on locals, parameters or siblings (never on a field), has no static methods, does not name methods like array builtins (`push`, `pop`, `len`, `get`) and never shares one array between two fields.
+- Do not claim self-hosting, fixed point, reproducibility or DDC without the matching recorded evidence.
+- A feature requires a specification, a valid case, an invalid case and a build gate by the predecessor.
+- Do not add a dependency, target, exceptions, concurrency or an advanced GC to the first vertical slice without an updated ADR/roadmap. Memory is released deterministically through ownership (ADR-0006).

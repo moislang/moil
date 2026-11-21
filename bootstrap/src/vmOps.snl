@@ -39,9 +39,9 @@ func vmSeenPair(seenLeft: int[], seenRight: int[], seenTag: int[], tag: int, lef
     return false
 }
 
-// Igualdade por valor, como em snovac/runtime/value/value_equal.c: strings
-// pelo conteúdo e arrays/objetos elemento a elemento. Pares já visitados são
-// assumidos iguais, o que encerra a comparação de grafos cíclicos.
+// Value equality, as in snovac/runtime/value/value_equal.c: strings by
+// content and arrays/objects element by element. Already visited pairs are
+// assumed equal, which ends the comparison of cyclic graphs.
 func vmEqualDeep(vm: vmState, leftTag: int, leftValue: int, rightTag: int, rightValue: int, seenLeft: int[], seenRight: int[], seenTag: int[]): bool {
     if leftTag != rightTag { return false }
     if leftTag == 0 || leftTag == 6 { return true }

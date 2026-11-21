@@ -26,7 +26,7 @@ func vmSamePoolBytes(data: int[], left: int, right: int, size: int): bool {
     return true
 }
 
-// Constantes de string com o mesmo conteúdo compartilham um handle.
+// String constants with the same content share one handle.
 func vmLoadPool(vm: vmState, cursor: imageCursor): unit {
     let count = readU32(vm.data, cursor)
     var starts: int[] = []
@@ -89,9 +89,9 @@ func vmReportError(vm: vmState): unit {
     Console.printline("")
 }
 
-// Executa a função principal de uma imagem previousIndexá validada. argumentBase é o número
-// de argumentos do host consumidos antes dos argumentos do programa.
-// Retorna o código de saída do programa, ou 70 em erro de runtime.
+// Runs the main function of an already validated image. argumentBase is the
+// number of host arguments consumed before the program's arguments.
+// Returns the program's exit status, or 70 on a runtime error.
 public func runImage(data: int[], argumentBase: int): int {
     var vm = vmState {
         data: data, functionFirst: [], functionLength: [], instructionOpcode: [], instructionOperand: [], instructionSecondOperand: [], functionArity: [], functionLocals: [],

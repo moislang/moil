@@ -1,30 +1,30 @@
 ---
 name: conformance-determinism
-description: Construir diferenciais e avaliar bootstrap, determinismo, ponto fixo, reprodutibilidade e DDC com alegações precisas.
+description: Build differentials and evaluate bootstrap, determinism, fixed point, reproducibility and DDC with precise claims.
 ---
 
-# Conformance e determinismo
+# Conformance and determinism
 
-## Matriz de evidência
+## Evidence matrix
 
-Registre como dimensões separadas:
+Record as separate dimensions:
 
-1. conformance semântica com casos de referência;
-2. build e execução do compilador sucessor;
-3. compilação do próprio source pelo estágio recém-gerado;
-4. igualdade de saídas entre estágios e definição do artefato comparado;
-5. builds limpos repetidos com fontes, flags e toolchain fixados;
-6. DDC com compilador diverso/root independente e hipóteses explicitadas.
+1. semantic conformance with reference cases;
+2. build and execution of the successor compiler;
+3. compilation of its own source by the newly generated stage;
+4. equality of outputs between stages and the definition of the compared artifact;
+5. repeated clean builds with fixed sources, flags and toolchain;
+6. DDC with a diverse compiler/independent root and explicit assumptions.
 
-## Procedimento
+## Procedure
 
-1. Fixe corpus e versão da referência.
-2. Compare stdout, stderr, código de saída, diagnóstico/span e artefatos conforme o tipo de caso.
-3. Torne diffs determinísticos e reproduzíveis; preserve os casos que revelaram diferenças.
-4. Para fixed point, explique quais bytes são comparados e qual normalização ambiental é permitida.
-5. Para DDC, identifique concretamente a origem confiável diversa; repetir compilação sob o mesmo compilador não basta.
-6. Registre sucessos e falhas por alvo/fase, sem arredondar porcentagens sem denominador.
+1. Fix the corpus and the reference version.
+2. Compare stdout, stderr, exit status, diagnostic/span and artifacts according to the kind of case.
+3. Make diffs deterministic and reproducible; keep the cases that revealed differences.
+4. For a fixed point, explain which bytes are compared and which environmental normalization is allowed.
+5. For DDC, identify the diverse trusted origin concretely; repeating the compilation with the same compiler is not enough.
+6. Record successes and failures by target/phase, without rounding percentages that have no denominator.
 
-## Relato
+## Reporting
 
-Use “compila o próprio código” só após o estágio reportado fazê-lo. Use “reprodutível” só após builds limpos comparados. Use “DDC comprovado” somente com segunda raiz independente e condições do método documentadas.
+Say "compiles its own code" only after the reported stage does it. Say "reproducible" only after compared clean builds. Say "DDC proven" only with a second independent root and the method's conditions documented.

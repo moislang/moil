@@ -1,7 +1,0 @@
-package snova.compiler.client
-
-import snova.compiler.api
-
-public func compileClientSource(src: int[], image: int[]): int {
-    return compileSourceBytes(src, image)
-}

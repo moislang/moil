@@ -14,7 +14,7 @@ STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/hello.snl
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native
+.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-library
 
 bootstrap-check:
 	$(SNL) check --project bootstrap/src
@@ -133,3 +133,33 @@ bootstrap-native: bootstrap-build
 		echo "native cycle rejected: $$fixture"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/nativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
 	grep -Fqx "unsupported opcode for native backend: 42" $(BUILD_DIR)/native-error.txt
+
+# Snova data-structure library (bootstrap/library): each fixture is joined
+# with the library in dependency order (the seed resolves a field type only
+# when its class was declared earlier) and must match `snl run-snbc`. The
+# library uses static methods, so for now it serves programs compiled by the
+# Snova compiler, not the compiler built by `snl build` v0.3.0. Each fixture
+# also runs natively and must free every block before exit.
+LIBRARY_SOURCES := intCell intArray binarySearch linearSearch sorting binaryHeap treeNode binaryTree mapEntry intMap
+LIBRARY_FIXTURES := librarySearch libraryBinaryHeap libraryBinaryTree librarySorting libraryIntMap
+
+bootstrap-library: bootstrap-build
+	@for fixture in $(LIBRARY_FIXTURES); do \
+		joined=$(BUILD_DIR)/$$fixture.joined.snl; \
+		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
+		for name in $(LIBRARY_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
+		$(SNL) check $$joined > /dev/null || exit 1; \
+		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.snbc || exit 1; \
+		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
+		test "$$referenceExit" -eq "$$vmExit" || { echo "$$fixture: exit $$vmExit != $$referenceExit"; exit 1; }; \
+		cmp $(BUILD_DIR)/$$fixture.ref.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
+		echo "library ok: $$fixture (exit $$vmExit)"; \
+		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.s native || exit 1; \
+		$(NATIVE_LINK) || exit 1; \
+		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt 2> $(BUILD_DIR)/$$fixture.memory.txt; nativeExit=$$?; \
+		test "$$nativeExit" -eq "$$vmExit" || { echo "$$fixture: native exit $$nativeExit != $$vmExit"; exit 1; }; \
+		cmp $(BUILD_DIR)/$$fixture.native.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
+		grep -q "live blocks 0, live bytes 0" $(BUILD_DIR)/$$fixture.memory.txt || { echo "$$fixture: memory still live at exit"; exit 1; }; \
+		echo "library native ok: $$fixture (exit $$nativeExit, zero live blocks)"; \
+	done

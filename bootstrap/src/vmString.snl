@@ -2,11 +2,10 @@ package snova.compiler.runtime
 
 import builtin.runtime
 
-// Strings do convidado guardam a string do host (para impressão e caminhos)
-// e seus bytes em vm.stringBytes. stringSpans[handle] usa tag = início e
-// value = tamanho; tag -1 indica bytes ainda desconhecidos (string vinda do
-// host). O `==` de strings do host compara identidade no snl v0.3.0, por isso
-// a igualdade do convidado compara bytes.
+// Guest strings keep the host string (for printing and paths) and its bytes
+// in vm.stringBytes. stringSpans[handle] uses tag = start and value = length;
+// tag -1 means the bytes are not known yet (a host string). Host string `==`
+// compares identity in snl v0.3.0, so guest equality compares bytes.
 func vmNewString(vm: vmState, text: string): int {
     vm.strings.push(text)
     vm.stringSpans.push(vmCell { tag: -1, value: 0 })
@@ -24,9 +23,9 @@ func vmNewStringFrom(vm: vmState, text: string, source: int[], start: int, lengt
     return vm.strings.len() - 1
 }
 
-// Fronteira provisória: converte uma string do host em bytes gravando-a num
-// arquivo de rascunho e relendo seus bytes. Substituir quando o runtime
-// oferecer conversão direta.
+// Provisional boundary (ADR-0004): converts a host string into bytes by
+// writing it to a scratch file and reading the bytes back. Native programs do
+// not need it (ADR-0006); it goes away once the executor is built natively.
 func vmScratchPath(): string {
     return "/tmp/snova-vm-string.bin"
 }

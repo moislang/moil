@@ -18,7 +18,7 @@ class NativeValueEmitter {
         output.line("add x0, x0, " + pool + "@PAGEOFF")
         output.line("mov x1, #3")
         output.pushPair()
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     // NEW_ARRAY (39) and NEW_OBJECT (36): the runtime moves count owned slots
@@ -35,11 +35,11 @@ class NativeValueEmitter {
         if count > 0 { output.offset("sp", "sp", 16 * count, false) }
         var dropped = 0
         while dropped < count {
-            stack.pop()
+            stack.popSlot()
             dropped = dropped + 1
         }
         output.pushPair()
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     // x2/x3 = field of the object in x0/x1, or unit when the value is not an
@@ -60,12 +60,12 @@ class NativeValueEmitter {
 
     // GET_FIELD (37): the result is a new owner of the field value.
     public method getField(output: NativeAssembly, stack: NativeOwnership, field: int, label: string): unit {
-        let objectOrigin = stack.pop()
+        let objectOrigin = stack.popSlot()
         output.popPair("x0", "x1")
         loadField(output, stack, field, label)
         stack.retain(output, "x2", "x3")
         output.pushRegisters("x2", "x3")
-        stack.push(-1)
+        stack.pushSlot(-1)
         stack.releaseIfOwned(output, objectOrigin, "x0", "x1")
     }
 
@@ -75,7 +75,7 @@ class NativeValueEmitter {
     // Array and object values go through Ownership.storeField, which rejects
     // strong cycles.
     public method setField(output: NativeAssembly, stack: NativeOwnership, field: int, label: string): unit {
-        let objectOrigin = stack.pop()
+        let objectOrigin = stack.popSlot()
         let objectPayload = stack.stash(21)
         let objectTag = stack.stash(22)
         output.line("ldp x0, x1, [sp]")
@@ -115,8 +115,8 @@ class NativeValueEmitter {
     // GET_INDEX (40): unit for a non-array, a non-int index or an index out
     // of range (the unsigned compare also rejects negative indexes).
     public method getIndex(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
-        let indexOrigin = stack.pop()
-        let arrayOrigin = stack.pop()
+        let indexOrigin = stack.popSlot()
+        let arrayOrigin = stack.popSlot()
         output.popPair("x2", "x3")
         output.popPair("x0", "x1")
         output.line("mov x4, #0")
@@ -134,7 +134,7 @@ class NativeValueEmitter {
         output.label(label + "_loaded")
         stack.retain(output, "x4", "x5")
         output.pushRegisters("x4", "x5")
-        stack.push(-1)
+        stack.pushSlot(-1)
         output.line("mov " + stack.stash(21) + ", x0")
         output.line("mov " + stack.stash(22) + ", x1")
         stack.releaseIfOwned(output, indexOrigin, "x2", "x3")
@@ -143,7 +143,7 @@ class NativeValueEmitter {
 
     // ARRAY_LEN (49).
     public method arrayLength(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         output.popPair("x0", "x1")
         output.line("cmp x1, #4")
         output.line("b.eq " + label + "_array")
@@ -152,13 +152,13 @@ class NativeValueEmitter {
         output.line("ldr x2, [x0]")
         output.line("mov x3, #1")
         output.pushRegisters("x2", "x3")
-        stack.push(-1)
+        stack.pushSlot(-1)
         stack.releaseIfOwned(output, origin, "x0", "x1")
     }
 
     // NEG (17) requires an int; NOT (18) is true for a zero payload.
     public method unary(output: NativeAssembly, stack: NativeOwnership, opcode: int, label: string): unit {
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         output.popPair("x0", "x1")
         if opcode == 17 {
             output.line("cmp x1, #1")
@@ -173,13 +173,13 @@ class NativeValueEmitter {
             output.line("mov x3, #2")
         }
         output.pushRegisters("x2", "x3")
-        stack.push(-1)
+        stack.pushSlot(-1)
         stack.releaseIfOwned(output, origin, "x0", "x1")
     }
 
     // PRINT (45): Value.display(tag, payload, newline) borrows the value.
     public method display(output: NativeAssembly, stack: NativeOwnership, newline: int): unit {
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         let payload = stack.stash(21)
         let tag = stack.stash(22)
         output.popPair(payload, tag)
@@ -200,15 +200,15 @@ class NativeValueEmitter {
         stack.releaseIfOwned(output, firstOrigin, stack.stash(21), stack.stash(22))
         stack.releaseIfOwned(output, secondOrigin, stack.stash(23), stack.stash(24))
         output.pushRegisters(stack.stash(19), stack.stash(20))
-        stack.push(-1)
+        stack.pushSlot(-1)
     }
 
     // ARRAY_PUSH (50, the element moves), WRITE_BYTES (48) and
     // Runtime.writeText (57, call 4): two value operands, one runtime call.
     public method twoValueCall(output: NativeAssembly, stack: NativeOwnership, role: int, movesSecond: bool): unit {
         if movesSecond { stack.upgrade(output, 0) }
-        var secondOrigin = stack.pop()
-        let firstOrigin = stack.pop()
+        var secondOrigin = stack.popSlot()
+        let firstOrigin = stack.popSlot()
         output.popPair(stack.stash(23), stack.stash(24))
         output.popPair(stack.stash(21), stack.stash(22))
         output.beginArguments()
@@ -223,7 +223,7 @@ class NativeValueEmitter {
 
     // READ_BYTES (47).
     public method readBytes(output: NativeAssembly, stack: NativeOwnership): unit {
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         output.popPair(stack.stash(21), stack.stash(22))
         output.beginArguments()
         output.pushInteger(stack.stash(22))
@@ -238,14 +238,14 @@ class NativeValueEmitter {
         if callId == 6 {
             output.callRole(output.roleArgumentCount(), 0)
             output.pushPair()
-            stack.push(-1)
+            stack.pushSlot(-1)
             return
         }
         if callId == 4 {
             twoValueCall(output, stack, output.roleWriteText(), false)
             return
         }
-        let origin = stack.pop()
+        let origin = stack.popSlot()
         output.popPair(stack.stash(21), stack.stash(22))
         output.beginArguments()
         output.loadConstant("x2", callId)

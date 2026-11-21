@@ -180,10 +180,6 @@ class NativeRoles {
         return true
     }
 
-    public method functionOf(role: int): int {
-        return roleFunction[role]
-    }
-
     public method roleOf(functionIndex: int): int {
         return functionRole[functionIndex]
     }

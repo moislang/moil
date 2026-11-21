@@ -1,7 +1,7 @@
 package snova.compiler.runtime
 
-// Tabela de strings de um byte usada para converter o pool SnBC (bytes ASCII)
-// em strings do host. O subset do seed não tem conversão bytes -> string.
+// Table of one-byte strings used to turn the SnBC pool (ASCII bytes) into
+// host strings. The seed subset has no bytes -> string conversion.
 func vmTextTable(table: string[]): unit {
     var index = 0
     while index < 32 {

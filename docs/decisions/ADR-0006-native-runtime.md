@@ -29,31 +29,33 @@ paths.
    elements and object fields. Results return in `x0` (payload) and `x1`
    (tag). SnBC is dynamically typed (`ADD` serves both ints and strings,
    `PRINT` serves every type), so the tag has to travel with the value.
-2. **Runtime source.** The runtime is Snova source in `bootstrap/runtime/`
-   (`runtimeAbi`, `runtimeMemory`, `runtimeText`, `runtimeArray`,
-   `runtimeOwnership`, `runtimeValue`, `runtimeHost`). In `native` mode the
+2. **Runtime source.** The runtime is Snova source in `bootstrap/runtime/`,
+   one type per file (ADR-0007): `Primitive`, `System`, `Heap`, `Runtime`,
+   `Text`, `Container`, `Ownership`, `Value` and `Host`. In `native` mode the
    compiler appends these files to the program source (`appendNativeRuntime`
    in `sourceJoin.snl`) and compiles everything into one SnBC image. The
    backend then translates the runtime with the same code path it uses for
    the program.
-3. **Reserved names.** Runtime functions use the `snova` prefix. The backend
-   finds the functions it calls by name (role table in `nativeNames.snl`).
-   Functions with the prefix do not count toward the 256-frame program depth
-   limit, and they are not instrumented for ownership: they manage raw
-   addresses themselves, like snovac's runtime layer.
-4. **Assembly boundary.** `runtimeAbi.snl` declares bodyless functions. The
-   backend replaces each one with an aarch64 stub (`nativePrimitive.snl`):
-   - memory primitives: `snovaPrimitiveState`, `Load`, `Store`, `LoadByte`,
-     `StoreByte`, and `Tagged`, which retags a payload;
-   - libSystem calls: `_write`, `_read`, `_open` (the variadic `mode` goes on
-     the stack, as Darwin arm64 requires), `_close`, `_mmap`, `_munmap` and
-     `_exit`.
+3. **Reserved types.** The runtime type names are reserved in native
+   programs. The backend finds the methods it calls by their `Type.method`
+   name (role table in `nativeRoles.snl`). Methods of runtime types do not
+   count toward the 256-frame program depth limit, and they are not
+   instrumented for ownership: they manage raw addresses themselves, like
+   snovac's runtime layer.
+4. **Assembly boundary.** `Primitive` and `System` declare native methods
+   (`@Native`, no body). The backend replaces each one with an aarch64 stub
+   (`nativeBoundary.snl`):
+   - `Primitive`: `state`, `load`, `store`, `loadByte`, `storeByte`, and
+     `tagged`, which retags a payload;
+   - `System`: `write`, `read`, `open` (the variadic `mode` goes on the
+     stack, as Darwin arm64 requires), `close`, `map` (`_mmap`), `unmap`
+     (`_munmap`) and `exit`.
 
    The other boundary code is `_main`, which stores `argc/argv/envp` in a
    256-byte state block, calls `main` and hands its int result to
-   `snovaRuntimeFinish`. These stubs and `_main` are the only generated code
+   `Runtime.finish`. These stubs and `_main` are the only generated code
    that calls libSystem.
-5. **Heap with release** (`runtimeMemory.snl`). Every block has a 16-byte
+5. **Heap with release** (`Heap`, `heap.snl`). Every block has a 16-byte
    header `[owner count][size class]`.
    - Small blocks (up to 64 KiB with the header) use 12 power-of-two classes.
      A freed block goes onto its class's free list and is reused by the next
@@ -62,10 +64,10 @@ paths.
      `munmap` when freed.
    - Temporary buffers (C paths, file reads, equality scratch, array
      growth) are freed by the runtime before it returns.
-6. **Ownership in the backend** (`nativeOwnership.snl`, `runtimeOwnership.snl`).
+6. **Ownership in the backend** (`NativeOwnership`, runtime type `Ownership`).
    Locals, operand-stack temporaries, object fields and array elements are
    owners: each one holds one count in the block header. When the last owner
-   goes away, `snovaRuntimeDestroy` runs exactly once, releases the children
+   goes away, `Ownership.destroy` runs exactly once, releases the children
    and frees the blocks.
    - **Moves.** Call arguments move into the callee, which releases its
      parameters and locals on `RETURN`. The elements of `NEW_ARRAY` and
@@ -87,8 +89,8 @@ paths.
      owners.
    - **Constants.** Constants in `__TEXT,__const` have a negative count and
      are never counted or freed.
-7. **Layouts** (a contract shared between `runtimeArray.snl` and
-   `nativeValue.snl`; each payload follows the header):
+7. **Layouts** (a contract shared between `container.snl` and
+   `nativeValueEmitter.snl`; each payload follows the header):
    - string: `[length:8][bytes]`;
    - array: `[length:8][capacity:8][data:8]`, with 16-byte elements in their
      own block; capacity doubles when full, and the old data block is freed;
@@ -100,7 +102,7 @@ paths.
    container stores, `PRINT`, files, arguments and environment call the Snova
    runtime. Their semantics and messages copy the Snova SnBC executor, which
    acts as the differential oracle.
-9. **Memory evidence.** `snovaRuntimeFinish` counts live blocks, live bytes
+9. **Memory evidence.** `Runtime.finish` counts live blocks, live bytes
    and peak live bytes. With `SNOVA_MEMORY_REPORT` set, it writes them to
    stderr. The gate requires zero live blocks at exit and the same peak for
    20 000 and 160 000 loop iterations.

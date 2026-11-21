@@ -1,23 +1,23 @@
 ---
 name: bootstrap-stage
-description: Especificar e executar um estágio incremental do bootstrap, garantindo que o predecessor compile o sucessor.
+description: Specify and run an incremental bootstrap stage, making sure the predecessor compiles the successor.
 ---
 
-# Planejamento de estágio de bootstrap
+# Bootstrap stage planning
 
-Leia `.claude/skills/bootstrap-incremental/SKILL.md`, `docs/roadmap/stages.md` e a bibliografia antes de começar.
+Read `.claude/skills/bootstrap-incremental/SKILL.md`, `docs/roadmap/stages.md` and the bibliography before starting.
 
-## Passos
+## Steps
 
-1. Identifique seed e compiler predecessor exatos, revisão, host e subset aceito.
-2. Faça probes pequenos dos recursos exigidos; registre a saída sem depender de documentação não verificada.
-3. Descreva subset anterior e extensão nova, com exemplos aceitos/rejeitados.
-4. Defina entradas/saídas, contrato do artefato, diagnósticos, erros de build e comandos reprodutíveis.
-5. Proponha o menor corte vertical que o predecessor consiga construir.
-6. Planeje bootstrap sequencial, limpeza de diretórios, origem das ferramentas e comparação de artefatos.
-7. Declare gates e limitações; DDC só é plano elegível quando existe raiz independente identificada.
-8. Atualize roadmap/evidence/ADR conforme o estágio, sem apresentar plano como conclusão.
+1. Identify the exact predecessor seed and compiler, revision, host and accepted subset.
+2. Run small probes of the required features; record the output without relying on unverified documentation.
+3. Describe the previous subset and the new extension, with accepted/rejected examples.
+4. Define inputs/outputs, the artifact contract, diagnostics, build errors and reproducible commands.
+5. Propose the smallest vertical slice the predecessor can build.
+6. Plan the sequential bootstrap, directory cleanup, tool provenance and artifact comparison.
+7. State gates and limitations; DDC is an eligible plan only when an identified independent root exists.
+8. Update roadmap/evidence/ADR for the stage, without presenting a plan as a conclusion.
 
-## Saída
+## Output
 
-Entregue objetivo, subset, arquivos, probes, cadeia de comandos, gates, dependências, riscos, fallback e evidência esperada. Não amplie o escopo com alvos ou runtime avançados sem dependência demonstrada.
+Deliver the goal, subset, files, probes, command chain, gates, dependencies, risks, fallback and expected evidence. Do not widen the scope with advanced targets or runtime without a demonstrated dependency.
