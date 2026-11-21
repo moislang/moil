@@ -16,6 +16,12 @@ against `libSystem` (ADR-0006). To compile itself, the seed still assembles
 one source unit internally; resolving imports between arbitrary files is the
 next architecture gate. The remaining gaps are in `docs/roadmap/subset.md`.
 
+The own-root milestone is proposed in
+[ADR-0009](../decisions/ADR-0009-committed-snbc-seed.md). Its first slice is a
+committed SnBC seed (`bootstrap/seed/`) that compiles the sources through
+`snl run-snbc` without `snl check` or `snl build`; it still uses the `snl` C VM
+and does not replace the `snl build` CLI.
+
 ## Strategy: bootstrap through cumulative subsets
 
 The seed and the compiler share a common subset. Each milestone extends the language that the previous compiler can accept. The compiler source only uses features already supported by the immediately previous compiler. This avoids an arbitrary boundary between a simple dialect K and a language S that the seed cannot compile.
