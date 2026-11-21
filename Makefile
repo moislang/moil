@@ -21,14 +21,30 @@ SEED_STAGE1_IMAGE := $(BUILD_DIR)/seed-stage1.snbc
 SEED_STAGE2_IMAGE := $(BUILD_DIR)/seed-stage2.snbc
 SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256')
 
-.PHONY: bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
+# First-stage project (SPEC-0001, decision 2): `snl build --project` sees one
+# directory, so the root project is staged under build/ from bootstrap/src
+# plus the library modules migrated to an instance API, in dependency order
+# (the order `ownSource()` in sourceJoin.snl will use once the compiler calls
+# them). `snl` v0.3.0 lowers every visible module, so only migrated modules
+# may be listed.
+LIBRARY_ROOT_SOURCES := binarySearch linearSearch sorting
+LIBRARY_ROOT_FIXTURES := librarySearch librarySorting
+ROOT_PROJECT := $(BUILD_DIR)/root-project
 
-bootstrap-check:
-	$(SNL) check --project bootstrap/src
+.PHONY: bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
+
+bootstrap-root-project:
+	rm -rf $(ROOT_PROJECT)
+	mkdir -p $(ROOT_PROJECT)/library
+	cp bootstrap/src/*.snl $(ROOT_PROJECT)/
+	@for name in $(LIBRARY_ROOT_SOURCES); do cp bootstrap/library/$$name.snl $(ROOT_PROJECT)/library/ || exit 1; done
+
+bootstrap-check: bootstrap-root-project
+	$(SNL) check --project $(ROOT_PROJECT)
 
 bootstrap-build: bootstrap-check
 	mkdir -p $(BUILD_DIR)
-	$(SNL) build --project bootstrap/src -o $(COMPILER_BUNDLE)
+	$(SNL) build --project $(ROOT_PROJECT) -o $(COMPILER_BUNDLE)
 
 bootstrap-self-host: bootstrap-build
 	SNL_OUTPUT=$(STAGE1_IMAGE) $(COMPILER_BUNDLE)
@@ -273,10 +289,8 @@ bootstrap-library: bootstrap-build
 # on stdout and exit status for the image compiled by the Snova compiler, and
 # match bootstrap/fixtures/expected/<fixture>.stdout and .status, captured from
 # the fixture before its migration (SPEC-0001). Needs no native toolchain, so
-# it runs on every host with `snl`.
-LIBRARY_ROOT_SOURCES := binarySearch linearSearch
-LIBRARY_ROOT_FIXTURES := librarySearch
-
+# it runs on every host with `snl`. LIBRARY_ROOT_SOURCES and
+# LIBRARY_ROOT_FIXTURES are defined at the top, next to the root project.
 bootstrap-library-root: bootstrap-build
 	@for fixture in $(LIBRARY_ROOT_FIXTURES); do \
 		joined=$(BUILD_DIR)/$$fixture.root.snl; \

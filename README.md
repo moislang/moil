@@ -26,7 +26,7 @@ This repository develops a Snovalang compiler written in Snova. The compiler is 
 
 ## Current bootstrap
 
-`bootstrap/src/` holds the compiler and its I/O module in Snova; `bootstrap/runtime/` holds the native runtime in Snova, one type per responsibility; `bootstrap/library/` holds data structures and algorithms in Snova. `make bootstrap-build` produces `build/bootstrap/snova-bootstrap`. Run that binary with:
+`bootstrap/src/` holds the compiler and its I/O module in Snova; `bootstrap/runtime/` holds the native runtime in Snova, one type per responsibility; `bootstrap/library/` holds data structures and algorithms in Snova. `make bootstrap-build` stages `bootstrap/src/` and the library modules already migrated to an instance API into `build/bootstrap/root-project/` and produces `build/bootstrap/snova-bootstrap` from it. Run that binary with:
 
 - `<input.snl> <output.snbc>` to compile;
 - `<image.snbc>` to validate an image's structure;

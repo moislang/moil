@@ -3,10 +3,12 @@ package bootstrap.fixture
 import builtin.io.console
 
 // Sorting: merge sort with duplicates and negatives, plus empty and single
-// arrays; the input stays unchanged.
+// arrays; the input stays unchanged. `Sorting` is an instance API, so
+// `snl build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
 func main(): int {
+    let sorting = Sorting()
     let input = [5, -3, 9, 0, 5, 12, -8, 1]
-    let output = Sorting.sorted(input)
+    let output = sorting.sorted(input)
     var index = 0
     while index < output.len() {
         Console.print(output[index])
@@ -14,11 +16,11 @@ func main(): int {
         index = index + 1
     }
     Console.printline("")
-    Console.printline(Sorting.isSorted(output))
-    Console.printline(Sorting.isSorted(input))
+    Console.printline(sorting.isSorted(output))
+    Console.printline(sorting.isSorted(input))
     Console.printline(input[0])
     var empty: int[] = []
-    Console.printline(Sorting.sorted(empty).len())
-    Console.printline(Sorting.sorted([7])[0])
+    Console.printline(sorting.sorted(empty).len())
+    Console.printline(sorting.sorted([7])[0])
     return output[0] + output[7] + output.len()
 }
