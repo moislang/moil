@@ -26,7 +26,7 @@ func runtimeCallArity(callId: int): int {
     return 1
 }
 
-func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int): unit {
+func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int, paren: int): unit {
     if callee < 0 {
         fail(cx)
         return
@@ -91,7 +91,11 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         }
         if argc == 1 && isWord(src, ns, nl, 4, 112, 117, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0) {
             emitExpr(src, bg, cx, code, fat, fb, recv)
+            let recvType = cx.expr_ty
             emitExpr(src, bg, cx, code, fat, fb, consFirst(bg, args))
+            if isArrayType(recvType) {
+                if checkArgType(src, bg, cx, elementType(recvType), cx.expr_ty, tokenStart(bg, paren)) != 0 { return }
+            }
             code.push(50)
             cx.expr_ty = -1
             return
@@ -115,13 +119,15 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         fn = findFunc(src, bg, ns, nl)
     }
     if fn >= 0 && arityMismatch(src, bg, cx, fn, consCount(bg, args), 0, ns) != 0 { return }
-    emitForward(src, bg, cx, code, fat, fb, args, 0)
     if fn >= 0 {
+        emitArgsChecked(src, bg, cx, code, fat, fb, args, fn, tokenStart(bg, paren))
+        if cx.failed != 0 { return }
         code.push(33)
         pushU32(code, fn)
         pushU32(code, consCount(bg, args))
         cx.expr_ty = 0
     } else {
+        emitForward(src, bg, cx, code, fat, fb, args, 0)
         fail(cx)
     }
 }

@@ -25,6 +25,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4004` | Non-exhaustive `match` on an enum | `SNOVA0205` | `match` keyword | `invalidMatchExpression`, `invalidMatchStatement` |
 | `SNV4005` | Assignment to an immutable binding (`let`, parameter, `for` or `match` binding) | `SNOVA0047` | Binding name in the assignment | `invalidImmutableLet`, `invalidImmutableParam`, `invalidImmutableFor` |
 | `SNV4006` | Call argument count differs from the parameter count (function, static or instance method, `defer`/`pulsar` call), or a constructor receives more arguments than the class has fields | `SNOVA0131` | Called name | `invalidCallArity`, `invalidMethodArity`, `invalidConstructorArity` |
+| `SNV4007` | Argument type does not match the parameter (function, static or instance method, positional constructor field, or `push` element type) | `SNOVA0132` | Opening `(` of the call | `invalidArgType`, `invalidMethodArgType`, `invalidConstructorType`, `invalidPushType` |
 | `SNW0001` | `==`/`!=` between known, different types (warning) | No warning; `SNOVA0133` rejects mismatched operators | Line | `warnMismatch` |
 
 Known divergences, all recorded in [evidence.md](evidence.md):
@@ -46,7 +47,7 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 |---|---|---|---|---|
 | Call with the wrong argument count | `SNOVA0131` | `SNV4006` (it used to emit an invalid image) | Closed | — |
 | Constructor with extra argument | `SNOVA0131` | `SNV4006` (it used to be accepted) | Closed | — |
-| Argument of known wrong type (function, constructor, `push`) | `SNOVA0132` | Accepted | Parameter types are known; check not wired | 2 |
+| Argument of known wrong type (function, constructor, method, `push`) | `SNOVA0132` | `SNV4007` | Closed | — |
 | `if`/`while` condition of known non-`bool` type | `SNOVA0135` | Accepted | Missing check | 2 |
 | Unary `-` on `string`, `!` on `int` | `SNOVA0134` | Accepted, fails at run time | Missing check | 2 |
 | Binary or ordering operator on known different types | `SNOVA0133` | Accepted (`SNW0001` only for `==`/`!=`) | Missing check | 2 |

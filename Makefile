@@ -121,6 +121,16 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4006]: expected 1 argument(s), found 2 at line 13, span 232..233" $(BUILD_DIR)/method-arity-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidConstructorArity.snl $(BUILD_DIR)/invalidConstructorArity.snbc > $(BUILD_DIR)/constructor-arity-error.txt; then echo "expected arity failure"; exit 1; fi
 	grep -Fqx "error[SNV4006]: expected 2 argument(s), found 3 at line 9, span 109..110" $(BUILD_DIR)/constructor-arity-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/argTypes.snl $(BUILD_DIR)/argTypes.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/argTypes.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidArgType.snl $(BUILD_DIR)/invalidArgType.snbc > $(BUILD_DIR)/arg-type-error.txt; then echo "expected argument type failure"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119" $(BUILD_DIR)/arg-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidConstructorType.snl $(BUILD_DIR)/invalidConstructorType.snbc > $(BUILD_DIR)/constructor-type-error.txt; then echo "expected constructor type failure"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 97..98" $(BUILD_DIR)/constructor-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMethodArgType.snl $(BUILD_DIR)/invalidMethodArgType.snbc > $(BUILD_DIR)/method-arg-type-error.txt; then echo "expected method argument type failure"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236" $(BUILD_DIR)/method-arg-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidPushType.snl $(BUILD_DIR)/invalidPushType.snbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81" $(BUILD_DIR)/push-type-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc

@@ -91,7 +91,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
         return
     }
     if k == 7 {
-        emitCall(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+        emitCall(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], bg.nd[nd])
         return
     }
     if k == 8 {
