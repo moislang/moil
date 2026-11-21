@@ -258,7 +258,9 @@ func emitUnit(src: int[], bg: compilerState, cx: compilerContext): unit {
         if cx.failed != 0 { return }
         emitFunc(src, bg, cx, fi)
         if cx.failed != 0 {
-            cx.error_token = fi
+            // SNV3001 reports the function index; typed diagnostics (phase
+            // 4 and above) keep their own token or span.
+            if cx.error_phase < 4 { cx.error_token = fi }
             return
         }
         fi = fi + 1

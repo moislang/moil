@@ -85,6 +85,12 @@ bootstrap-diagnostics: bootstrap-build
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
 	grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130" $(BUILD_DIR)/field-assignment-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/matchExhaustive.snl $(BUILD_DIR)/matchExhaustive.snbc
+	@$(SNL) run-snbc $(BUILD_DIR)/matchExhaustive.snbc; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMatchExpression.snl $(BUILD_DIR)/invalidMatchExpression.snbc > $(BUILD_DIR)/match-expression-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
+	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135' $(BUILD_DIR)/match-expression-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMatchStatement.snl $(BUILD_DIR)/invalidMatchStatement.snbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
+	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Go` at line 12, span 136..141' $(BUILD_DIR)/match-statement-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
@@ -197,7 +203,7 @@ bootstrap-native: bootstrap-build
 # native assembly, then use the generated executable for two further builds.
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
-NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch
+NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch matchCheck
 NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native

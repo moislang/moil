@@ -12,7 +12,7 @@ func scopeEmitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int
         return 1
     }
     if k == 17 {
-        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 1)
+        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 1, bg.nd[nd])
         return 1
     }
     if k == 10 {
@@ -112,9 +112,11 @@ func scopeEmitArms(src: int[], bg: compilerState, cx: compilerContext, code: int
     patchAt(code, fat, fb, nxt)
 }
 
-func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int): unit {
+func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int, matchToken: int): unit {
     let saved = cx.locals
     emitExpr(src, bg, cx, code, fat, fb, sub)
+    matchCheckExhaustive(src, bg, cx, cx.expr_ty, arms, matchToken)
+    if cx.failed != 0 { return }
     let slot = addLocal(bg, cx, 0, 0, 0)
     code.push(9)
     pushU32(code, slot)
@@ -269,7 +271,7 @@ func scopeEmitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int
         return 1
     }
     if k == 30 {
-        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 0)
+        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 0, bg.nd[nd])
         return 1
     }
     if k == 31 {
