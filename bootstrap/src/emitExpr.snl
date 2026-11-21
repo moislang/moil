@@ -185,6 +185,18 @@ func emitAssign(src: int[], bg: compilerState, cx: compilerContext, code: int[],
             fail(cx)
             return
         }
+        if localMutable(bg, cx, slot) == 0 {
+            cx.failed = 1
+            cx.error_phase = 8
+            cx.error_start = bg.na[lhs]
+            cx.error_line = 1
+            var byteIndex = 0
+            while byteIndex < bg.na[lhs] {
+                if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+                byteIndex = byteIndex + 1
+            }
+            return
+        }
         let currentType = localTypeOf(bg, cx, slot)
         if currentType != 0 && rhs_ty != 0 && currentType != rhs_ty {
             cx.failed = 1

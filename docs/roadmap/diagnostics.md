@@ -23,6 +23,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4002` | Assignment type does not match local binding | `SNOVA0132` | Binding name | `invalidTypedAssignment` |
 | `SNV4003` | Assignment type does not match field | `SNOVA0132` | Field name | `invalidFieldAssignment` |
 | `SNV4004` | Non-exhaustive `match` on an enum | `SNOVA0205` | `match` keyword | `invalidMatchExpression`, `invalidMatchStatement` |
+| `SNV4005` | Assignment to an immutable binding (`let`, parameter, `for` or `match` binding) | `SNOVA0047` | Binding name in the assignment | `invalidImmutableLet`, `invalidImmutableParam`, `invalidImmutableFor` |
 | `SNW0001` | `==`/`!=` between known, different types (warning) | No warning; `SNOVA0133` rejects mismatched operators | Line | `warnMismatch` |
 
 Known divergences, all recorded in [evidence.md](evidence.md):

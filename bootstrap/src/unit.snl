@@ -35,6 +35,9 @@ struct compilerState {
     public var loc_ns: int[]
     public var loc_nl: int[]
     public var loc_ty: int[]
+    // 1 for `var` locals and compiler temporaries, 0 for `let`, parameters
+    // and `for`/`match` bindings (immutable, SNV4005 on assignment)
+    public var loc_mut: int[]
     public var fd_st: int[]
     public var fd_ns: int[]
     public var fd_nl: int[]
