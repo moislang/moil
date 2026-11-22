@@ -29,6 +29,7 @@ func parseBinding(src: int[], bg: compilerState, cx: compilerContext): int {
 
 func parseReturn(src: int[], bg: compilerState, cx: compilerContext): int {
     if cx.failed != 0 { return -1 }
+    let retTok = cx.pos
     let ret_line = bg.tl[cx.pos]
     bump(cx)
     var expr = -1
@@ -48,7 +49,7 @@ func parseReturn(src: int[], bg: compilerState, cx: compilerContext): int {
         }
     }
     acceptTok(bg, cx, 24)
-    return node(bg, 23, 0, expr, -1, -1)
+    return node(bg, 23, 0, expr, -1, retTok)
 }
 
 func parseBody(src: int[], bg: compilerState, cx: compilerContext): int {
@@ -290,9 +291,10 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
     expectTok(bg, cx, 17)
     let arity = parseParams(src, bg, cx, fi)
     expectTok(bg, cx, 18)
+    var retTy = 0
     if atTok(bg, cx, 23) {
         bump(cx)
-        parseType(src, bg, cx)
+        retTy = parseType(src, bg, cx)
     }
     var body = -1
     if atTok(bg, cx, 19) {
@@ -314,6 +316,7 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
     } else {
         bg.fn_ar.push(arity)
     }
+    bg.fn_ty.push(retTy)
     bg.fn_body.push(body)
 }
 

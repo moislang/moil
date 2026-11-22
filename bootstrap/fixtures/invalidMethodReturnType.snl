@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+class Box {
+    public method name(): int {
+        return "x"
+    }
+}
+
+func main(): int {
+    return Box().name()
+}

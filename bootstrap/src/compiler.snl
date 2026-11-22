@@ -128,6 +128,10 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         reportNonBoolCondition(cx)
         return
     }
+    if cx.error_phase == 14 {
+        reportReturnType(cx)
+        return
+    }
     if cx.error_phase == 8 {
         Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
         Console.print(cx.error_line)
@@ -166,7 +170,7 @@ func compileSource(src: int[], image: int[], userEnd: int): int {
         loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [], loc_mut: [], nline: [], parse_line: 0,
         fd_st: [], fd_ns: [], fd_nl: [], fd_ty: [],
         st_ns: [], st_nl: [],
-        fn_ns: [], fn_nl: [], fn_ar: [], fn_body: [],
+        fn_ns: [], fn_nl: [], fn_ar: [], fn_ty: [], fn_body: [],
         fn_off: [], fn_len: [], fn_loc: [],
         par_fn: [], par_ns: [], par_nl: [], par_ty: [],
         pool_b: [], pool_s: [], pool_n: [],
@@ -179,7 +183,7 @@ func compileSource(src: int[], image: int[], userEnd: int): int {
         warningCodes: [], warningLines: []
     }
     var cx = compilerContext {
-        pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
+        pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0, ret_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
         owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
         phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, error_expected: 0, error_found: 0, line: 1, user_end: userEnd

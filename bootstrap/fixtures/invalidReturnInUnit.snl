@@ -1,0 +1,10 @@
+package bootstrap.fixture
+
+func show(): unit {
+    return 3
+}
+
+func main(): int {
+    show()
+    return 0
+}

@@ -1,0 +1,30 @@
+package bootstrap.fixture
+
+enum Signal {
+    Stop,
+    Wait,
+    Go
+}
+
+func color(): Signal {
+    return Signal.Go
+}
+
+func twice(amount: int): int {
+    return amount * 2
+}
+
+func silent(): unit {
+    return
+}
+
+func main(): int {
+    silent()
+    let amount: int = twice(20)
+    let code = match color() {
+        Signal.Stop -> 0
+        Signal.Wait -> 1
+        Signal.Go -> 2
+    }
+    return amount + code
+}
