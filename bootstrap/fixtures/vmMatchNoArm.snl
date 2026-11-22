@@ -2,15 +2,15 @@ package bootstrap.fixture
 
 // A match expression with no matching arm traps (opcode 52): runtime error
 // "bodyless routine trapped" with status 70.
-// The subject is a call: function return types are not yet known, so
-// SNV4004 does not check this match (a match on a known enum local would
-// be rejected at compile time).
+// The subject is a call with no declared return type, so SNV4004 does
+// not check this match (a match on a known enum, including a call whose
+// declared return type is a known enum, is rejected at compile time).
 enum Mode {
     Fast,
     Slow
 }
 
-func current(): Mode {
+func current() {
     return Mode.Slow
 }
 

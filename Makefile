@@ -157,6 +157,20 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73" $(BUILD_DIR)/if-condition-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidWhileCondition.snl $(BUILD_DIR)/invalidWhileCondition.snbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
 	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76" $(BUILD_DIR)/while-condition-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/returnTypes.snl $(BUILD_DIR)/returnTypes.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/returnTypes.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidReturnType.snl $(BUILD_DIR)/invalidReturnType.snbc > $(BUILD_DIR)/return-type-error.txt; then echo "expected return type failure"; exit 1; fi
+	grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51" $(BUILD_DIR)/return-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidReturnInUnit.snl $(BUILD_DIR)/invalidReturnInUnit.snbc > $(BUILD_DIR)/return-unit-error.txt; then echo "expected unit return type failure"; exit 1; fi
+	grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 51..52" $(BUILD_DIR)/return-unit-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidBareReturn.snl $(BUILD_DIR)/invalidBareReturn.snbc > $(BUILD_DIR)/bare-return-error.txt; then echo "expected bare return type failure"; exit 1; fi
+	grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51" $(BUILD_DIR)/bare-return-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMethodReturnType.snl $(BUILD_DIR)/invalidMethodReturnType.snbc > $(BUILD_DIR)/method-return-error.txt; then echo "expected method return type failure"; exit 1; fi
+	grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 5, span 79..80" $(BUILD_DIR)/method-return-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidCallResultType.snl $(BUILD_DIR)/invalidCallResultType.snbc > $(BUILD_DIR)/call-result-error.txt; then echo "expected call result type failure"; exit 1; fi
+	grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 8, span 94..95" $(BUILD_DIR)/call-result-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMatchCall.snl $(BUILD_DIR)/invalidMatchCall.snbc > $(BUILD_DIR)/match-call-error.txt; then echo "expected non-exhaustive match on a call"; exit 1; fi
+	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 14, span 150..155' $(BUILD_DIR)/match-call-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc

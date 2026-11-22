@@ -1,0 +1,9 @@
+package bootstrap.fixture
+
+func name(): int {
+    return
+}
+
+func main(): int {
+    return 0
+}

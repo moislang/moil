@@ -357,3 +357,34 @@ func reportNonBoolCondition(cx: compilerContext): unit {
     Console.print(cx.error_start + 1)
     Console.printline("")
 }
+
+func callResultType(bg: compilerState, fn: int): int {
+    if fn < 0 { return 0 }
+    if fn >= bg.fn_ty.len() { return 0 }
+    return bg.fn_ty[fn]
+}
+
+// SNV4011: a return's known type does not match the function's declared
+// return type (snl check SNOVA0136). A bare `return` has type unit. The
+// span is the `return` keyword, or the expression of a function shorthand.
+func checkReturnType(src: int[], bg: compilerState, cx: compilerContext, nd: int, got: int): int {
+    if cx.failed != 0 { return 1 }
+    if cx.ret_ty == 0 { return 0 }
+    if typesClash(cx.ret_ty, got) {
+        var start = tokenStart(bg, bg.nd[nd])
+        if start == 0 { start = exprStart(bg, bg.nb[nd]) }
+        typeFail(src, cx, 14, start)
+        return 1
+    }
+    return 0
+}
+
+func reportReturnType(cx: compilerContext): unit {
+    Console.print("error[SNV4011]: returned type does not match the function's declared return type at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
