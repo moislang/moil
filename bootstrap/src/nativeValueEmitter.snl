@@ -13,21 +13,47 @@ package snova.compiler.backend
 // and ownership model, which arrive as typed parameters.
 class NativeValueEmitter {
     public method constantString(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
-        let pool = "l_snova_pool_" + output.decimal(poolIndex)
-        if output.targetKind == 1 {
-            output.line("adrp x0, " + pool + "@PAGE")
-            output.line("add x0, x0, " + pool + "@PAGEOFF")
-        } else {
-            output.line("adrp x0, " + pool)
-            output.line("add x0, x0, :lo12:" + pool)
-        }
-        output.line("mov x1, #3")
+        poolValue(output, stack, poolIndex, 3)
+    }
+
+    // VARIANT (42) without payload: tag 7 whose payload is the address of
+    // the interned variant name in the constant pool. Pool entries are never
+    // counted or freed, so the value needs no ownership work.
+    public method variant(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
+        poolValue(output, stack, poolIndex, 7)
+    }
+
+    private method poolValue(output: NativeAssembly, stack: NativeOwnership, poolIndex: int, tag: int): unit {
+        poolAddress(output, "x0", poolIndex)
+        output.line("mov x1, #" + output.decimal(tag))
         output.pushPair()
         stack.pushSlot(-1)
     }
 
-    // NEW_ARRAY (39): the runtime moves count owned slots from the operand
-    // stack through its top address; the slots are dropped without release.
+    private method poolAddress(output: NativeAssembly, target: string, poolIndex: int): unit {
+        let pool = "l_snova_pool_" + output.decimal(poolIndex)
+        output.line("adrp " + target + ", " + pool + "@PAGE")
+        output.line("add " + target + ", " + target + ", " + pool + "@PAGEOFF")
+    }
+
+    // IS_VARIANT (43): the pool interns names by content, so the subject
+    // matches when its tag is 7 and its payload is the same pool address.
+    public method isVariant(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
+        let origin = stack.popSlot()
+        output.popPair("x0", "x1")
+        poolAddress(output, "x2", poolIndex)
+        output.line("cmp x1, #7")
+        output.line("ccmp x0, x2, #0, eq")
+        output.line("cset x2, eq")
+        output.line("mov x3, #2")
+        output.pushRegisters("x2", "x3")
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, "x0", "x1")
+    }
+
+    // NEW_ARRAY (39) and NEW_OBJECT (36): the runtime moves count owned slots
+    // from the operand stack through its top address; the slots are dropped
+    // without release.
     public method fromStack(output: NativeAssembly, stack: NativeOwnership, role: int, count: int): unit {
         stack.upgradeRange(output, 0, count)
         output.beginArguments()

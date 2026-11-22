@@ -12,7 +12,7 @@ func scopeEmitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int
         return 1
     }
     if k == 17 {
-        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 1)
+        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 1, bg.nd[nd])
         return 1
     }
     if k == 10 {
@@ -99,7 +99,7 @@ func scopeEmitArms(src: int[], bg: CompilerState, cx: CompilerContext, code: int
     let nxt = emitJump(code, 31)
     if pat >= 0 && bg.na[pat] == 4 {
         if scopeVariantEn(src, bg, bg.nb[pat], bg.nc[pat]) < 0 {
-            let slot = addLocal(bg, cx, bg.nb[pat], bg.nc[pat], 0)
+            let slot = addLocalWith(bg, cx, bg.nb[pat], bg.nc[pat], 0, 0)
             code.push(8)
             pushU32(code, subj)
             code.push(9)
@@ -112,9 +112,11 @@ func scopeEmitArms(src: int[], bg: CompilerState, cx: CompilerContext, code: int
     patchAt(code, fat, fb, nxt)
 }
 
-func scopeEmitMatch(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int): unit {
+func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int, matchToken: int): unit {
     let saved = cx.locals
     emitExpr(src, bg, cx, code, fat, fb, sub)
+    matchCheckExhaustive(src, bg, cx, cx.expr_ty, arms, matchToken)
+    if cx.failed != 0 { return }
     let slot = addLocal(bg, cx, 0, 0, 0)
     code.push(9)
     pushU32(code, slot)
@@ -139,7 +141,7 @@ func scopeEmitFor(src: int[], bg: CompilerState, cx: CompilerContext, code: int[
     let is_arr = addLocal(bg, cx, 0, 0, 0)
     let iter = addLocal(bg, cx, 0, 0, 0)
     let idx = addLocal(bg, cx, 0, 0, 0)
-    addLocal(bg, cx, bg.na[nd], bg.nb[nd], 0)
+    addLocalWith(bg, cx, bg.na[nd], bg.nb[nd], 0, 0)
     let user = idx + 1
     emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
     code.push(9)
@@ -228,6 +230,7 @@ func scopeEmitDefer(src: int[], bg: CompilerState, cx: CompilerContext, code: in
         fail(cx)
         return
     }
+    if arityMismatch(src, bg, cx, fn, consCount(bg, bg.nc[call]), 0, bg.na[callee]) != 0 { return }
     emitForward(src, bg, cx, code, fat, fb, bg.nc[call], 0)
     code.push(53)
     pushU32(code, fn)
@@ -240,6 +243,7 @@ func scopeEmitPulsar(src: int[], bg: CompilerState, cx: CompilerContext, code: i
         if callee >= 0 && bg.nk[callee] == 4 {
             let fn = findFunc(src, bg, bg.na[callee], bg.nb[callee])
             if fn >= 0 {
+                if arityMismatch(src, bg, cx, fn, consCount(bg, bg.nc[call]), 0, bg.na[callee]) != 0 { return }
                 emitForward(src, bg, cx, code, fat, fb, bg.nc[call], 0)
                 code.push(54)
                 pushU32(code, fn)
@@ -269,7 +273,7 @@ func scopeEmitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int
         return 1
     }
     if k == 30 {
-        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 0)
+        scopeEmitMatch(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], 0, bg.nd[nd])
         return 1
     }
     if k == 31 {

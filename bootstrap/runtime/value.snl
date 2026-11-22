@@ -10,8 +10,8 @@ class Value {
             Runtime.outputInteger(payload)
         } else if tag == 2 {
             if payload != 0 { Runtime.outputString("true") } else { Runtime.outputString("false") }
-        } else if tag == 3 {
-            Runtime.outputString(payload)
+        } else if tag == 3 || tag == 7 {
+            Runtime.outputHandle(payload)
         } else if tag == 6 {
             Runtime.outputString("null")
         } else if tag != 0 {
@@ -42,7 +42,7 @@ class Value {
     public static method equal(leftTag: int, left: int, rightTag: int, right: int, seen: int): bool {
         if leftTag != rightTag { return false }
         if leftTag == 0 || leftTag == 6 { return true }
-        if leftTag == 1 || leftTag == 2 { return left == right }
+        if leftTag == 1 || leftTag == 2 || leftTag == 7 { return left == right }
         if leftTag == 3 { return Text.equal(left, right) }
         if left == right { return true }
         if Value.seenPair(seen, leftTag, left, right) { return true }

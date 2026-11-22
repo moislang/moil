@@ -50,48 +50,55 @@ func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
     }
     if k == 5 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let operandType = cx.expr_ty
+        let start = tokenStart(bg, bg.nd[nd])
         if bg.na[nd] == 35 {
+            if operandType != 0 && isIntType(operandType) == false {
+                typeFail(src, cx, 12, start)
+                return
+            }
             code.push(17)
+            cx.expr_ty = -1
         } else {
             if bg.na[nd] == 42 {
+                if operandType != 0 && isBoolType(operandType) == false {
+                    typeFail(src, cx, 12, start)
+                    return
+                }
                 code.push(18)
+                cx.expr_ty = -2
             } else {
                 fail(cx)
             }
         }
-        cx.expr_ty = 0
         return
     }
     if k == 6 {
+        let start = tokenStart(bg, bg.nd[nd])
         if bg.na[nd] == 43 {
-            emitAnd(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+            emitAnd(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
             return
         }
         if bg.na[nd] == 44 {
-            emitOr(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+            emitOr(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
             return
         }
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
         let leftType = cx.expr_ty
         emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
         let rightType = cx.expr_ty
-        if bg.na[nd] == 28 || bg.na[nd] == 29 {
-            if leftType != 0 && rightType != 0 && leftType != rightType {
-                bg.warningCodes.push(1)
-                bg.warningLines.push(bg.tl[bg.nd[nd]])
-            }
-        }
+        if checkBinaryTypes(src, cx, bg.na[nd], leftType, rightType, start) != 0 { return }
         let op = binOp(bg.na[nd])
         if op < 0 {
             fail(cx)
             return
         }
         code.push(op)
-        cx.expr_ty = 0
+        cx.expr_ty = binaryExprType(bg.na[nd], leftType, rightType)
         return
     }
     if k == 7 {
-        emitCall(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+        emitCall(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], bg.nd[nd])
         return
     }
     if k == 8 {
@@ -103,9 +110,20 @@ func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
     }
     if k == 9 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let recvType = cx.expr_ty
         emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        let indexType = cx.expr_ty
+        if indexType != 0 && isIntType(indexType) == false {
+            typeFail(src, cx, 12, tokenStart(bg, bg.nd[nd]))
+            cx.error_found = 1
+            return
+        }
         code.push(40)
-        cx.expr_ty = 0
+        if isArrayType(recvType) {
+            cx.expr_ty = elementType(recvType)
+        } else {
+            cx.expr_ty = 0
+        }
         return
     }
     if k == 10 {
@@ -123,7 +141,14 @@ func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
     fail(cx)
 }
 
-func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    let saved = cx.line
+    if nd >= 0 && nd < bg.nline.len() && bg.nline[nd] > 0 { cx.line = bg.nline[nd] }
+    emitStmtAt(src, bg, cx, code, fat, fb, nd)
+    if cx.failed == 0 { cx.line = saved }
+}
+
+func emitStmtAt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }
     if nd < 0 {
         fail(cx)
@@ -136,7 +161,7 @@ func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
         code.push(6)
         return
     }
-    if k == 21 {
+    if k == 21 || k == 36 {
         let declaredType = bg.nd[nd]
         if bg.nc[nd] >= 0 {
             emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
@@ -159,7 +184,9 @@ func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
         }
         var ty = inferredType
         if declaredType != 0 { ty = declaredType }
-        let slot = addLocal(bg, cx, bg.na[nd], bg.nb[nd], ty)
+        var mutable = 1
+        if k == 36 { mutable = 0 }
+        let slot = addLocalWith(bg, cx, bg.na[nd], bg.nb[nd], ty, mutable)
         code.push(9)
         pushU32(code, slot)
         code.push(6)
@@ -176,6 +203,7 @@ func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
     }
     if k == 24 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
         let jelse = emitJump(code, 31)
         emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
         if bg.nd[nd] >= 0 {
@@ -192,6 +220,7 @@ func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
         let start = code.len()
         scopeLoopEnter(bg, cx, start, 1)
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
         let jexit = emitJump(code, 31)
         emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
         code.push(30)
@@ -226,7 +255,7 @@ func emitFunc(src: int[], bg: CompilerState, cx: CompilerContext, fi: int): unit
     var i = 0
     while i < bg.par_fn.len() {
         if bg.par_fn[i] == fi {
-            addLocal(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i])
+            addLocalWith(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i], 0)
         }
         i = i + 1
     }
@@ -258,7 +287,9 @@ func emitUnit(src: int[], bg: CompilerState, cx: CompilerContext): unit {
         if cx.failed != 0 { return }
         emitFunc(src, bg, cx, fi)
         if cx.failed != 0 {
-            cx.error_token = fi
+            // SNV3001 reports the function index; typed diagnostics (phase
+            // 4 and above) keep their own token or span.
+            if cx.error_phase < 4 { cx.error_token = fi }
             return
         }
         fi = fi + 1

@@ -12,12 +12,10 @@ sources, then asks the generated compiler to do the same. Both SnBC images must
 match byte for byte. The compiler's `SourceJoin.snl` handles this internal
 bootstrap operation; there is no separate joiner executable.
 
-Run `make bootstrap-reproducible` to compile the frozen current source tree
-into two independent clean output directories. It compares the SnBC and
-native assembly artifacts and writes a provenance manifest under
-`build/bootstrap-reproducibility/`. This uses the installed `snl` as the
-initial root and the same host toolchain twice; it is not independent DDC.
-The gate also compiles the interface and trait dispatch fixtures natively.
+`seed/compiler.snbc` is a committed SnBC seed (ADR-0009, proposed). `make
+bootstrap-seed-fixed-point` runs it with `snl run-snbc` only, checks that the
+next two images match, and compares the first one with the `snl build` path.
+See `seed/README.md` for provenance and the update flow.
 
 Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
 invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
@@ -58,6 +56,16 @@ and the rejection of strong cycles. Unsupported opcodes fail with
 `library/` holds data structures and algorithms in Snova (searches,
 sorting, `BinaryHeap`, `BinaryTree`, `IntMap`). `make bootstrap-library`
 runs each fixture on `snl run-snbc`, on the Snova executor and natively.
+`BinarySearch`, `LinearSearch` and `Sorting` expose an instance API
+(ADR-0007, SPEC-0001), so `make bootstrap-library-root` also builds their
+fixtures with `snl build` and
+compares that executable with `snl run-snbc`, the Snova executor and the
+expected output in `fixtures/expected/` (stdout and exit status captured
+before the migration); it needs no native toolchain. Those modules are also
+copied into the first-stage project: `make bootstrap-build` runs `snl build`
+on `build/bootstrap/root-project/`, staged from `src/*.snl` plus the modules
+in `LIBRARY_ROOT_SOURCES`, because `snl` v0.3.0 builds one project directory
+and lowers every module it sees.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
 `fixtures/Hello.snl` through the generated SnBC image.

@@ -434,7 +434,8 @@ func scopeParseArms(src: int[], bg: CompilerState, cx: CompilerContext): int {
     return head
 }
 
-func scopeParseMatch(src: int[], bg: CompilerState, cx: CompilerContext, as_stmt: int): int {
+func scopeParseMatch(src: int[], bg: compilerState, cx: compilerContext, as_stmt: int): int {
+    let matchToken = cx.pos
     bump(cx)
     let saved = cx.no_struct
     cx.no_struct = 1
@@ -442,9 +443,9 @@ func scopeParseMatch(src: int[], bg: CompilerState, cx: CompilerContext, as_stmt
     cx.no_struct = saved
     let arms = scopeParseArms(src, bg, cx)
     if as_stmt == 1 {
-        return node(bg, 30, 0, sub, arms, -1)
+        return node(bg, 30, 0, sub, arms, matchToken)
     }
-    return node(bg, 17, 0, sub, arms, -1)
+    return node(bg, 17, 0, sub, arms, matchToken)
 }
 
 func parseScopePrimary(src: int[], bg: CompilerState, cx: CompilerContext): int {

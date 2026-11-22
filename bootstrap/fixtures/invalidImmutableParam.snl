@@ -1,0 +1,10 @@
+package bootstrap.fixture
+
+func next(count: int): int {
+    count = count + 1
+    return count
+}
+
+func main(): int {
+    return next(1)
+}

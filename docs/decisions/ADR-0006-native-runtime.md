@@ -23,7 +23,10 @@ paths.
 ## Decision
 
 1. **Values.** Native code keeps the SnBC executor's tags (0 unit, 1 int,
-   2 bool, 3 string, 4 array, 5 object, 6 null). Every value is a 16-byte
+   2 bool, 3 string, 4 array, 5 object, 6 null, 7 unit enum variant). A
+   variant's payload is the address of its name in the constant pool, which
+   interns names by content; it is never counted or freed, compares by
+   payload and prints its name, as `snl run` does. Every value is a 16-byte
    slot `(payload, tag)`: operand stack entries, locals, arguments, array
    elements and object fields. Results return in `x0` (payload) and `x1`
    (tag). SnBC is dynamically typed (`ADD` serves both ints and strings,

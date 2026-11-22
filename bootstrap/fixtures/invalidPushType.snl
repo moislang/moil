@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    var xs: int[] = []
+    xs.push("a")
+    return 0
+}

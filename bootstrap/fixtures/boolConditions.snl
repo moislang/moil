@@ -1,0 +1,14 @@
+package bootstrap.fixture
+
+func main(): int {
+    var total = 0
+    var n = 2
+    if true {
+        total = total + 40
+    }
+    while n > 0 {
+        total = total + 1
+        n = n - 1
+    }
+    return total
+}

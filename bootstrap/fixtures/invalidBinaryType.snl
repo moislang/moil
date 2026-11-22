@@ -1,0 +1,8 @@
+package bootstrap.fixture
+
+func main(): int {
+    let number = 1
+    let text = "x"
+    let value = number + text
+    return 0
+}

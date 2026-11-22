@@ -1,5 +1,10 @@
 flowchart LR
   H[installed snl as transitional root] --> K[Snova seed in the current subset]
+  SEED[Committed SnBC seed - ADR-0009, proposed] --> RS[snl run-snbc only: seed compiles the sources]
+  RS --> SFP[Seed chain fixed point]
+  SFP --> DIFF[Differential: seed stage 1 equals snl build stage 1]
+  C2 --> DIFF
+  SFP --> NSEED[Native assembly seed - slice 2, pending]
   K --> C1[snl build: SnBC + bundled C VM]
   C1 --> C2[Seed compiles its sources to SnBC]
   C2 --> R[Current runtime executes SnBC]

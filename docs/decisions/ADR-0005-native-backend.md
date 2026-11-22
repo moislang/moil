@@ -57,9 +57,14 @@ assembly. The entry point is
 runtime to the program, generates the SnBC image in memory, validates it and
 translates it to assembly. The gate is `make bootstrap-native`.
 
-- Opcodes outside the subset (enum variants, match, async/spawn, doubles,
-  globals) make the backend fail with `unsupported opcode for native backend:
-  N`.
+- Unit enum variants and `match` are supported: `VARIANT` (42) with zero
+  payload pushes a tag 7 value whose payload is the address of the interned
+  variant name, and `IS_VARIANT` (43) compares tag and address inline
+  (ADR-0006, "Values").
+- Opcodes outside the subset (enum variants with payload, async/spawn,
+  doubles, globals) make the backend fail with `unsupported opcode for native
+  backend: N`. The frontend does not lower doubles or globals yet, so those
+  opcodes have no fixture.
 - Generated code calls only `_write`, `_read`, `_open`, `_close`, `_mmap`,
   `_munmap` and `_exit`, and only from the stubs of the native `Primitive` and `System` methods (ADR-0006).
 - Memory is released through ownership: zero live blocks at exit and constant

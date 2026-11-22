@@ -1,0 +1,7 @@
+package bootstrap.fixture
+
+func main(): int {
+    let limit = 3
+    limit = 4
+    return limit
+}

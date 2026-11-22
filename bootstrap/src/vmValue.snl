@@ -3,7 +3,8 @@ package snova.compiler.runtime
 // Values of the SnBC executor: each value is a (tag, value) pair.
 // tag 0 unit, 1 int, 2 bool, 3 string (value = handle into strings),
 // 4 array (value = index into arrays), 5 object (value = index into
-// objectStart), 6 null. The seed subset has no index assignment, so every
+// objectStart), 6 null, 7 unit enum variant (value = string handle of
+// the variant name). The seed subset has no index assignment, so every
 // mutable position is a cell (struct) changed through a typed parameter.
 struct VmCell {
     public var tag: int

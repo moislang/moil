@@ -166,13 +166,27 @@ func setLocalTy(bg: CompilerState, cx: CompilerContext, slot: int, ty: int): uni
             bg.loc_ns.push(bg.loc_ns[i])
             bg.loc_nl.push(bg.loc_nl[i])
             bg.loc_ty.push(ty)
+            bg.loc_mut.push(bg.loc_mut[i])
             return
         }
         i = i - 1
     }
 }
 
-func addLocal(bg: CompilerState, cx: CompilerContext, ns: int, nl: int, ty: int): int {
+func localMutable(bg: compilerState, cx: compilerContext, slot: int): int {
+    var i = bg.loc_slot.len() - 1
+    while i >= cx.loc_base {
+        if bg.loc_slot[i] == slot { return bg.loc_mut[i] }
+        i = i - 1
+    }
+    return 1
+}
+
+func addLocal(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int): int {
+    return addLocalWith(bg, cx, ns, nl, ty, 1)
+}
+
+func addLocalWith(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int, mutable: int): int {
     if cx.locals >= 256 {
         fail(cx)
         return 0
@@ -186,6 +200,7 @@ func addLocal(bg: CompilerState, cx: CompilerContext, ns: int, nl: int, ty: int)
     bg.loc_ns.push(ns)
     bg.loc_nl.push(nl)
     bg.loc_ty.push(ty)
+    bg.loc_mut.push(mutable)
     return slot
 }
 
@@ -238,10 +253,13 @@ func emitForward(src: int[], bg: CompilerState, cx: CompilerContext, code: int[]
     }
 }
 
-func emitAnd(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
+func emitAnd(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int, start: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, lhs)
+    let leftType = cx.expr_ty
     let j1 = emitJump(code, 31)
     emitExpr(src, bg, cx, code, fat, fb, rhs)
+    let rightType = cx.expr_ty
+    if checkBinaryTypes(src, cx, 43, leftType, rightType, start) != 0 { return }
     let j2 = emitJump(code, 31)
     code.push(4)
     code.push(1)
@@ -251,13 +269,16 @@ func emitAnd(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fa
     code.push(4)
     code.push(0)
     patchAt(code, fat, fb, j3)
-    cx.expr_ty = 0
+    cx.expr_ty = -2
 }
 
-func emitOr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
+func emitOr(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int, start: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, lhs)
+    let leftType = cx.expr_ty
     let j1 = emitJump(code, 32)
     emitExpr(src, bg, cx, code, fat, fb, rhs)
+    let rightType = cx.expr_ty
+    if checkBinaryTypes(src, cx, 44, leftType, rightType, start) != 0 { return }
     let j2 = emitJump(code, 32)
     code.push(4)
     code.push(0)
@@ -267,7 +288,7 @@ func emitOr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat
     code.push(4)
     code.push(1)
     patchAt(code, fat, fb, j3)
-    cx.expr_ty = 0
+    cx.expr_ty = -2
 }
 
 func binOp(op: int): int {

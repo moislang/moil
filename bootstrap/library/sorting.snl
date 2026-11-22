@@ -2,13 +2,15 @@ package snova.library
 
 // Stable merge sort of int arrays. Returns a new sorted array and leaves the
 // input unchanged; O(n log n) time and O(n) extra space per level.
+// Stateless instance API (ADR-0007, SPEC-0001 slice 2): create it with
+// `Sorting()`, so code built by `snl build` v0.3.0 can use it.
 class Sorting {
-    public static method sorted(values: int[]): int[] {
-        return Sorting.sortRange(values, 0, values.len())
+    public method sorted(values: int[]): int[] {
+        return sortRange(values, 0, values.len())
     }
 
     // True when values are in ascending order.
-    public static method isSorted(values: int[]): bool {
+    public method isSorted(values: int[]): bool {
         var index = 1
         while index < values.len() {
             if values[index - 1] > values[index] { return false }
@@ -17,15 +19,15 @@ class Sorting {
         return true
     }
 
-    private static method sortRange(values: int[], start: int, end: int): int[] {
+    private method sortRange(values: int[], start: int, end: int): int[] {
         if end - start == 0 {
             var empty: int[] = []
             return empty
         }
         if end - start == 1 { return [values[start]] }
         let middle = start + (end - start) / 2
-        let left = Sorting.sortRange(values, start, middle)
-        let right = Sorting.sortRange(values, middle, end)
+        let left = sortRange(values, start, middle)
+        let right = sortRange(values, middle, end)
         var result: int[] = []
         var leftIndex = 0
         var rightIndex = 0

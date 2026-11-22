@@ -178,9 +178,10 @@ func parsePrimary(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     let k = kindOf(bg, cx)
     if k == 2 {
+        let start = bg.ts[cx.pos]
         let v = bg.tv[cx.pos]
         bump(cx)
-        return node(bg, 1, v, -1, -1, -1)
+        return node(bg, 1, v, start, -1, -1)
     }
     if k == 3 {
         let s = bg.ts[cx.pos]
@@ -189,18 +190,21 @@ func parsePrimary(src: int[], bg: CompilerState, cx: CompilerContext): int {
         return node(bg, 3, s, n, -1, -1)
     }
     if k == 4 {
+        let start = bg.ts[cx.pos]
         bump(cx)
-        return node(bg, 2, 1, -1, -1, -1)
+        return node(bg, 2, 1, start, -1, -1)
     }
     if k == 5 {
+        let start = bg.ts[cx.pos]
         bump(cx)
-        return node(bg, 2, 0, -1, -1, -1)
+        return node(bg, 2, 0, start, -1, -1)
     }
     if k == 42 || k == 35 {
+        let opToken = cx.pos
         let op = k
         bump(cx)
         let inner = parsePrimary(src, bg, cx)
-        return node(bg, 5, op, inner, -1, -1)
+        return node(bg, 5, op, inner, -1, opToken)
     }
     if k == 21 {
         return parseArray(src, bg, cx)
@@ -243,18 +247,20 @@ func parsePostfix(src: int[], bg: CompilerState, cx: CompilerContext, lhs: int):
                 }
             } else {
                 if atTok(bg, cx, 17) {
+                    let paren = cx.pos
                     let args = parseArgs(src, bg, cx)
-                    cur = node(bg, 7, 0, cur, args, -1)
+                    cur = node(bg, 7, 0, cur, args, paren)
                 } else {
                     if atTok(bg, cx, 21) && peekKind(bg, cx, 1) == 22 && peekKind(bg, cx, 2) == 17 {
                         bump(cx)
                         bump(cx)
                     } else {
                         if atTok(bg, cx, 21) {
+                            let bracket = cx.pos
                             bump(cx)
                             let idx = parseExpr(src, bg, cx, 1)
                             expectTok(bg, cx, 22)
-                            cur = node(bg, 9, 0, cur, idx, -1)
+                            cur = node(bg, 9, 0, cur, idx, bracket)
                         } else {
                             if atStructLit(bg, cx, cur) {
                                 cur = parseStructLit(src, bg, cx, cur)
@@ -310,7 +316,28 @@ func findStruct(src: int[], bg: CompilerState, s: int, n: int): int {
     return -1
 }
 
-func typeCode(src: int[], bg: CompilerState, s: int, n: int): int {
+// Array-of-T encoding used by SNV4007 (`push`) and later index element
+// types: a known primitive or unit T becomes T-20; a known struct T
+// (st+1) becomes T+10000. Unknown stays 0.
+func arrayOf(elem: int): int {
+    if elem == 0 { return 0 }
+    if elem < 0 { return elem - 20 }
+    return elem + 10000
+}
+
+func isArrayType(ty: int): bool {
+    if ty <= -21 { return true }
+    if ty >= 10000 { return true }
+    return false
+}
+
+func elementType(ty: int): int {
+    if ty <= -21 { return ty + 20 }
+    if ty >= 10000 { return ty - 10000 }
+    return 0
+}
+
+func typeCode(src: int[], bg: compilerState, s: int, n: int): int {
     if isWord(src, s, n, 3, 105, 110, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return -1 }
     if isWord(src, s, n, 4, 98, 111, 111, 108, 0, 0, 0, 0, 0, 0, 0, 0) { return -2 }
     if isWord(src, s, n, 6, 115, 116, 114, 105, 110, 103, 0, 0, 0, 0, 0, 0) { return -3 }
@@ -334,7 +361,7 @@ func parseType(src: int[], bg: CompilerState, cx: CompilerContext): int {
         bump(cx)
         expectTok(bg, cx, 22)
         scopeTypeSuffix(bg, cx)
-        return 0
+        return arrayOf(code)
     }
     scopeTypeSuffix(bg, cx)
     return code

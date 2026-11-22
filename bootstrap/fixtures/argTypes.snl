@@ -1,0 +1,25 @@
+package bootstrap.fixture
+
+class Box {
+    var value: int
+}
+
+class Counter {
+    var count: int
+    public method add(amount: int): int {
+        count = count + amount
+        return count
+    }
+}
+
+func twice(amount: int): int {
+    return amount * 2
+}
+
+func main(): int {
+    let box = Box(20)
+    var xs: int[] = []
+    xs.push(1)
+    let counter = Counter(0)
+    return twice(box.value) + counter.add(1) + xs.len()
+}
