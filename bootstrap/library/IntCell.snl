@@ -1,17 +1,19 @@
 package snova.library
 
 // Mutable integer cell. The seed subset has no index assignment, so mutable
-// indexed storage is an array of cells whose field changes. The seed also
-// cannot call a method on an array element, so cells are read and written
-// through static methods that take the cell as a typed parameter.
+// indexed storage is an array of cells whose field changes. Instance API
+// (ADR-0007, SPEC-0001 slice 3): create a cell with `IntCell(value)`. Neither
+// the seed nor `snl build` v0.3.0 can call a method on an array element, so
+// owners pass the element to a sibling method that takes the cell as a typed
+// parameter and calls `read`/`assign` on it.
 class IntCell {
     public var value: int
 
-    public static method assign(cell: IntCell, newValue: int): unit {
-        cell.value = newValue
+    public method assign(newValue: int): unit {
+        value = newValue
     }
 
-    public static method read(cell: IntCell): int {
-        return cell.value
+    public method read(): int {
+        return value
     }
 }

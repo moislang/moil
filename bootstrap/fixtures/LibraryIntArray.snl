@@ -1,0 +1,41 @@
+package bootstrap.fixture
+
+import builtin.io.console
+
+// IntArray: append, random access, out-of-range reads and writes, removal at
+// the end (including on an empty array), swap, reuse of cells after removal
+// and a copy of the contents. IntCell and IntArray are instance APIs, so
+// `snl build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
+func main(): int {
+    var cells: IntCell[] = []
+    let numbers = IntArray(cells, 0)
+    Console.printline(numbers.isEmpty())
+    Console.printline(numbers.removeLast(-1))
+    Console.printline(numbers.at(0, -2))
+    Console.printline(numbers.put(0, 5))
+    numbers.append(4)
+    numbers.append(9)
+    numbers.append(2)
+    Console.printline(numbers.count())
+    Console.printline(numbers.at(1, -1))
+    Console.printline(numbers.at(3, -1))
+    Console.printline(numbers.at(-1, -1))
+    Console.printline(numbers.put(3, 1))
+    Console.printline(numbers.put(0, 7))
+    numbers.swap(0, 2)
+    Console.printline(numbers.at(0, -1))
+    Console.printline(numbers.removeLast(-1))
+    Console.printline(numbers.count())
+    numbers.append(11)
+    numbers.append(13)
+    let copy = numbers.values()
+    var index = 0
+    while index < copy.len() {
+        Console.print(copy[index])
+        Console.print(" ")
+        index = index + 1
+    }
+    Console.printline("")
+    Console.printline(numbers.isEmpty())
+    return numbers.count() * 10 + numbers.at(3, -1)
+}

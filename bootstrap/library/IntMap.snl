@@ -31,7 +31,7 @@ class IntMap {
 
     // Arena index of key, or -1 when absent.
     private method entryIndex(key: int): int {
-        var index = IntCell.read(heads[bucketIndex(key)])
+        var index = readHead(heads[bucketIndex(key)])
         while index >= 0 {
             if MapEntry.keyOf(entries[index]) == key { return index }
             index = MapEntry.nextOf(entries[index])
@@ -47,8 +47,8 @@ class IntMap {
             return false
         }
         let bucket = bucketIndex(key)
-        entries.push(MapEntry { key: key, payload: payload, next: IntCell.read(heads[bucket]) })
-        IntCell.assign(heads[bucket], entries.len() - 1)
+        entries.push(MapEntry { key: key, payload: payload, next: readHead(heads[bucket]) })
+        assignHead(heads[bucket], entries.len() - 1)
         return true
     }
 
@@ -60,5 +60,16 @@ class IntMap {
 
     public method containsKey(key: int): bool {
         return entryIndex(key) >= 0
+    }
+
+    // IntCell has an instance API (SPEC-0001 slice 3); bucket heads are
+    // reached through typed parameters because the seed cannot call a method
+    // on an array element.
+    private method readHead(head: IntCell): int {
+        return head.read()
+    }
+
+    private method assignHead(head: IntCell, newValue: int): unit {
+        head.assign(newValue)
     }
 }

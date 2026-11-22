@@ -31,8 +31,8 @@ SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo
 # (the order `ownSource()` in SourceJoin.snl will use once the compiler calls
 # them). `snl` v0.3.0 lowers every visible module, so only migrated modules
 # may be listed.
-LIBRARY_ROOT_SOURCES := BinarySearch LinearSearch Sorting
-LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting
+LIBRARY_ROOT_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting
+LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting LibraryIntArray
 ROOT_PROJECT := $(BUILD_DIR)/root-project
 
 .PHONY: bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
@@ -503,7 +503,7 @@ bootstrap-prerelease:
 # migrated to an instance API are gated by `bootstrap-library-root`. Each
 # fixture also runs natively and must free every block before exit.
 LIBRARY_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting BinaryHeap TreeNode BinaryTree MapEntry IntMap
-LIBRARY_FIXTURES := LibrarySearch LibraryBinaryHeap LibraryBinaryTree LibrarySorting LibraryIntMap
+LIBRARY_FIXTURES := LibrarySearch LibraryBinaryHeap LibraryBinaryTree LibrarySorting LibraryIntMap LibraryIntArray
 
 bootstrap-library: bootstrap-build
 	@for fixture in $(LIBRARY_FIXTURES); do \
