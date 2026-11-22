@@ -1,0 +1,5 @@
+# Snovalang file rules for Git. Used by this repository's .gitattributes and
+# installed in the user's global attributes file by `make git-setup`, so they
+# apply to every repository of the organization on that machine.
+*.snl text eol=lf diff=snovalang
+*.snbc binary linguist-generated

@@ -1,0 +1,284 @@
+{
+  "name": "Snovalang",
+  "scopeName": "source.snovalang",
+  "fileTypes": [
+    "snl"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#calls"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.snovalang",
+          "begin": "//",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.snovalang"
+            }
+          },
+          "end": "$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.snovalang",
+          "begin": "\"",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.snovalang"
+            }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.snovalang"
+            }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.snovalang",
+              "match": "\\\\[nrt0\\\\\"']"
+            },
+            {
+              "name": "invalid.illegal.escape.snovalang",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "comment": "package/import paths",
+          "match": "\\b(package|import)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.$1.snovalang"
+            },
+            "2": {
+              "name": "entity.name.namespace.snovalang"
+            }
+          }
+        },
+        {
+          "comment": "func / method name",
+          "match": "\\b(func|method)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.snovalang"
+            },
+            "2": {
+              "name": "entity.name.function.snovalang"
+            }
+          }
+        },
+        {
+          "comment": "class / struct / enum / interface / trait name",
+          "match": "\\b(class|struct|enum|interface|trait)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.$1.snovalang"
+            },
+            "2": {
+              "name": "entity.name.type.snovalang"
+            }
+          }
+        },
+        {
+          "comment": "impl Trait for Type",
+          "match": "\\b(impl)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(for)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.impl.snovalang"
+            },
+            "2": {
+              "name": "entity.name.type.snovalang"
+            },
+            "3": {
+              "name": "keyword.other.for.snovalang"
+            },
+            "4": {
+              "name": "entity.name.type.snovalang"
+            }
+          }
+        },
+        {
+          "comment": "let / var binding name",
+          "match": "\\b(let|var)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.$1.snovalang"
+            },
+            "2": {
+              "name": "variable.other.declaration.snovalang"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.snovalang",
+          "match": "\\b(if|else|while|for|in|match|return|break|continue|defer|await)\\b"
+        },
+        {
+          "name": "storage.type.snovalang",
+          "match": "\\b(func|method|class|struct|enum|interface|trait|impl|let|var)\\b"
+        },
+        {
+          "name": "storage.modifier.snovalang",
+          "match": "\\b(public|private|static|async|pulsar|implements)\\b"
+        },
+        {
+          "name": "keyword.other.snovalang",
+          "match": "\\b(package|import)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.snovalang",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.snovalang",
+          "match": "\\bnull\\b"
+        },
+        {
+          "name": "variable.language.wildcard.snovalang",
+          "match": "\\b_\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.snovalang",
+          "match": "\\b0[xX][0-9A-Fa-f_]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.snovalang",
+          "match": "\\b[0-9][0-9_]*(?:\\.[0-9][0-9_]*)?\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.snovalang",
+          "match": "\\b(int|bool|string|unit)\\b"
+        },
+        {
+          "comment": "PascalCase names are types (ADR-0007)",
+          "name": "entity.name.type.snovalang",
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "calls": {
+      "patterns": [
+        {
+          "comment": "builtins recognized by the compiler",
+          "match": "\\b(len|length|push|pop|get|print|printline|println|read_bytes|write_bytes)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "support.function.builtin.snovalang"
+            }
+          }
+        },
+        {
+          "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.call.snovalang"
+            }
+          }
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arrow.snovalang",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.comparison.snovalang",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.snovalang",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.assignment.snovalang",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.snovalang",
+          "match": "\\+|-|\\*|/|%"
+        },
+        {
+          "name": "keyword.operator.bitwise.snovalang",
+          "match": "&|\\||\\^|~"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.type.snovalang",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.separator.comma.snovalang",
+          "match": ","
+        },
+        {
+          "name": "punctuation.accessor.snovalang",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.terminator.snovalang",
+          "match": ";"
+        }
+      ]
+    }
+  }
+}
