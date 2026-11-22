@@ -323,19 +323,18 @@ bootstrap-native-self: bootstrap-build
 	$(BUILD_DIR)/compiler-native-stage2 $(NATIVE_COMPILER_SOURCE) $(BUILD_DIR)/compiler-native-stage3.s native
 	cmp $(BUILD_DIR)/compiler-native-stage2.s $(BUILD_DIR)/compiler-native-stage3.s
 
-# Runs seed build, ELF assembly/linking, native-vs-VM fixtures and compiler
-# self-host inside the pinned Linux ARM64 container used by CI.
 LINUX_ARM64_IMAGE ?= snova-linux-aarch64:ci
 LINUX_AMD64_IMAGE ?= snova-linux-x86_64:ci
-# Native build run inside the ARM64 container; empty skips it.
-LINUX_NATIVE_TARGET ?= aarch64-unknown-linux-gnu
+# The x86_64 image uses the official snl binary. The ARM64 image has no snl:
+# the host (which has snl) emits the ELF assembly and VM results, and the
+# container only assembles, links and runs them, as in CI.
 bootstrap-cli-linux-x86_64:
 	docker build --platform linux/amd64 -f ci/linux-amd64.Dockerfile -t $(LINUX_AMD64_IMAGE) ci
 	docker run --rm --platform linux/amd64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_AMD64_IMAGE) make bootstrap-cli-linux-ci
 
-bootstrap-cli-linux-aarch64:
+bootstrap-cli-linux-aarch64: bootstrap-native-linux-aarch64-emit
 	docker build --platform linux/arm64 -f ci/linux-aarch64.Dockerfile -t $(LINUX_ARM64_IMAGE) ci
-	docker run --rm --platform linux/arm64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_ARM64_IMAGE) make bootstrap-cli-linux-ci $(if $(LINUX_NATIVE_TARGET),bootstrap-native-target NATIVE_TARGET=$(LINUX_NATIVE_TARGET))
+	docker run --rm --platform linux/arm64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_ARM64_IMAGE) make bootstrap-native-linux-aarch64-run
 
 bootstrap-cli-linux-ci: bootstrap-build
 	$(MAKE) -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
