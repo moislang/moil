@@ -1,6 +1,6 @@
 package snova.compiler
 
-func parseBinding(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseBinding(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     bump(cx)
     if kindOf(bg, cx) != 1 {
@@ -24,7 +24,7 @@ func parseBinding(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 21, ns, nl, init, declaredType)
 }
 
-func parseReturn(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseReturn(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     let ret_line = bg.tl[cx.pos]
     bump(cx)
@@ -48,14 +48,14 @@ func parseReturn(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 23, 0, expr, -1, -1)
 }
 
-func parseBody(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseBody(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if atTok(bg, cx, 19) {
         return parseBlock(src, bg, cx)
     }
     return parseStmt(src, bg, cx)
 }
 
-func parseIf(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseIf(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     bump(cx)
     let saved = cx.no_struct
@@ -71,7 +71,7 @@ func parseIf(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 24, 0, cond, th, el)
 }
 
-func parseWhile(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseWhile(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     bump(cx)
     let saved = cx.no_struct
@@ -82,7 +82,7 @@ func parseWhile(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 25, 0, cond, body, -1)
 }
 
-func parseBlock(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseBlock(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     expectTok(bg, cx, 19)
     var head = -1
@@ -108,7 +108,7 @@ func parseBlock(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 26, 0, -1, head, -1)
 }
 
-func parseStmt(src: int[], bg: compilerState, cx: compilerContext): int {
+func parseStmt(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
     let k = kindOf(bg, cx)
     if k == 11 || k == 12 { return parseBinding(src, bg, cx) }
@@ -123,7 +123,7 @@ func parseStmt(src: int[], bg: compilerState, cx: compilerContext): int {
     return node(bg, 20, 0, e, -1, -1)
 }
 
-func parseDotted(src: int[], bg: compilerState, cx: compilerContext): unit {
+func parseDotted(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     expectTok(bg, cx, 1)
     var go = 1
     while go == 1 {
@@ -141,7 +141,7 @@ func parseDotted(src: int[], bg: compilerState, cx: compilerContext): unit {
     acceptTok(bg, cx, 24)
 }
 
-func parseStruct(src: int[], bg: compilerState, cx: compilerContext): unit {
+func parseStruct(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     if cx.failed != 0 { return }
     bump(cx)
     if kindOf(bg, cx) != 1 {
@@ -210,7 +210,7 @@ func parseStruct(src: int[], bg: compilerState, cx: compilerContext): unit {
     expectTok(bg, cx, 20)
 }
 
-func parseParams(src: int[], bg: compilerState, cx: compilerContext, fi: int): int {
+func parseParams(src: int[], bg: CompilerState, cx: CompilerContext, fi: int): int {
     var arity = 0
     if atTok(bg, cx, 18) {
         return 0
@@ -248,7 +248,7 @@ func parseParams(src: int[], bg: compilerState, cx: compilerContext, fi: int): i
     return arity
 }
 
-func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
+func parseFunc(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     if cx.failed != 0 { return }
     bump(cx)
     if kindOf(bg, cx) != 1 {
@@ -277,9 +277,10 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
     expectTok(bg, cx, 17)
     let arity = parseParams(src, bg, cx, fi)
     expectTok(bg, cx, 18)
+    var returnType = 0
     if atTok(bg, cx, 23) {
         bump(cx)
-        parseType(src, bg, cx)
+        returnType = parseType(src, bg, cx)
     }
     var body = -1
     if atTok(bg, cx, 19) {
@@ -301,10 +302,11 @@ func parseFunc(src: int[], bg: compilerState, cx: compilerContext): unit {
     } else {
         bg.fn_ar.push(arity)
     }
+    bg.fn_return_ty.push(returnType)
     bg.fn_body.push(body)
 }
 
-func parseFile(src: int[], bg: compilerState, cx: compilerContext): unit {
+func parseFile(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     cx.phase = 2
     if atTok(bg, cx, 6) {
         bump(cx)
@@ -347,5 +349,6 @@ func parseFile(src: int[], bg: compilerState, cx: compilerContext): unit {
             }
         }
     }
+    scopeValidateImplementations(src, bg, cx)
 }
 

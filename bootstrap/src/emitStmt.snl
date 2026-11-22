@@ -1,6 +1,6 @@
 package snova.compiler
 
-func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }
     if nd < 0 {
         fail(cx)
@@ -123,7 +123,7 @@ func emitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     fail(cx)
 }
 
-func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }
     if nd < 0 {
         fail(cx)
@@ -212,7 +212,7 @@ func emitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     fail(cx)
 }
 
-func emitFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit {
+func emitFunc(src: int[], bg: CompilerState, cx: CompilerContext, fi: int): unit {
     cx.locals = 0
     cx.water = 0
     cx.loc_base = bg.loc_slot.len()
@@ -252,7 +252,7 @@ func emitFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit
     bg.fn_loc.push(cx.water)
 }
 
-func emitUnit(src: int[], bg: compilerState, cx: compilerContext): unit {
+func emitUnit(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     var fi = 0
     while fi < bg.fn_ns.len() {
         if cx.failed != 0 { return }

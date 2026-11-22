@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build in this repository a compiler that compiles its own source code, keeping Snovalang as the implementation language. The reference compiler `../snovac` serves as an observable specification and oracle during the migration; this work must not modify it.
+Build a compiler that compiles its own source code, keeping Snovalang as the implementation language. Reference compiler comparisons are recorded as migration evidence; this repository is the implementation source.
 
 The compiler is the only public product. Its frontend, semantics, backend,
 runtime and driver must be developed in Snova. The installed `snl` root is
@@ -57,6 +57,18 @@ The Mermaid versions used in these diagrams must be supported by the GitHub rend
 - **Conformance harness**: compares the new compiler's results with the reference `snl`/`snovac` without modifying the reference checkout.
 
 The final physical layout stays deliberately open until the discovery milestone. A suggested structure is `seed/`, `compiler/`, `runtime/`, `docs/` and `scripts/`, but the names must not force a premature split or duplicate modules.
+
+As the frontend grows, replace the joined source unit and parallel state arrays
+with typed phase contracts: source files and spans → tokens and syntax trees →
+resolved symbols and checked types → validated IR → target artifacts. Keep
+each phase's input/output explicit so it can be tested and reused without
+sharing mutable compiler-wide state. Classes or structs should own cohesive
+state; interfaces should represent behavior that varies at runtime, such as a
+target backend; traits and `impl` should express statically checked shared
+behavior; generics should preserve concrete input/output types. This is the
+direction of travel, not a claim that the current subset already supports all
+these mechanisms. See the [maturity assessment](../roadmap/maturity.md) and
+[multi-target decision](../decisions/ADR-0008-multi-target-backend.md).
 
 ## Boundaries and contracts
 

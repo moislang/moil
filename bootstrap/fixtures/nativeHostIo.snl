@@ -3,7 +3,7 @@ package bootstrap.fixture
 import builtin.io.console
 import builtin.runtime
 
-struct pair {
+struct Pair {
     public var left: int
     public var right: string
 }
@@ -27,8 +27,8 @@ func main(): int {
     Console.printline(Runtime.argument(0) + "|" + Runtime.argument(1))
     Console.printline(1 << 63)
     Console.printline(-42 / 5)
-    let first = pair { left: 3, right: "x" }
-    let second = pair { left: 3, right: "y" }
+    let first = Pair { left: 3, right: "x" }
+    let second = Pair { left: 3, right: "y" }
     Console.printline(first == second)
     Console.printline([first] == [first])
     Console.printline(null)

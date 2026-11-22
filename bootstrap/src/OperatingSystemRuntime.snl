@@ -1,0 +1,16 @@
+package snova.compiler.backend
+
+interface OperatingSystemRuntime {
+    method name(): string
+    method canEmitNative(): bool
+}
+
+class DarwinOperatingSystem implements OperatingSystemRuntime {
+    method name(): string { return "darwin" }
+    method canEmitNative(): bool { return true }
+}
+
+class LinuxOperatingSystem implements OperatingSystemRuntime {
+    method name(): string { return "linux-gnu" }
+    method canEmitNative(): bool { return true }
+}

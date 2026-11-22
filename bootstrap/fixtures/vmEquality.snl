@@ -2,7 +2,7 @@ package bootstrap.fixture
 
 import builtin.io.console
 
-struct point {
+struct Point {
     public var horizontal: int
     public var vertical: int
 }
@@ -11,8 +11,8 @@ func main(): int {
     let joined = "ab" + "c"
     Console.printline(joined == "abc")
     Console.printline(joined != "abd")
-    let first = point { horizontal: 1, vertical: 2 }
-    let second = point { horizontal: 1, vertical: 2 }
+    let first = Point { horizontal: 1, vertical: 2 }
+    let second = Point { horizontal: 1, vertical: 2 }
     Console.printline(first == second)
     Console.printline([1, 2, 3] == [1, 2, 3])
     Console.printline(1 == 1)

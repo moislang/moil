@@ -9,8 +9,15 @@ It is the first in-repository compiler source, not a complete replacement for
 Run `make bootstrap-fixed-point` with the installed `snl` toolchain. The target
 builds the multi-file project, asks the Snova compiler to compile its own
 sources, then asks the generated compiler to do the same. Both SnBC images must
-match byte for byte. The compiler's `sourceJoin.snl` handles this internal
+match byte for byte. The compiler's `SourceJoin.snl` handles this internal
 bootstrap operation; there is no separate joiner executable.
+
+Run `make bootstrap-reproducible` to compile the frozen current source tree
+into two independent clean output directories. It compares the SnBC and
+native assembly artifacts and writes a provenance manifest under
+`build/bootstrap-reproducibility/`. This uses the installed `snl` as the
+initial root and the same host toolchain twice; it is not independent DDC.
+The gate also compiles the interface and trait dispatch fixtures natively.
 
 Run `make bootstrap-build` to produce `build/bootstrap/snova-bootstrap`, then
 invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
@@ -19,7 +26,7 @@ validates the canonical image structure, opcodes and instruction references. `ma
 both a valid self-compiled image and a truncated one.
 
 `<image.snbc> run [args...]` executes an SnBC image through the executor
-written in Snova (`src/vm*.snl`). The mode is recognised by the `SNBC` magic of
+written in Snova (`src/Vm*.snl`). The mode is recognised by the `SNBC` magic of
 the first argument; arguments after `run` belong to the program. The executor
 is iterative (256-frame limit), predecodes instructions, and supports typed
 values, calls, arrays, objects, byte-backed strings with value equality, file
@@ -32,13 +39,18 @@ divergences and the provisional string boundary are in
 `docs/decisions/ADR-0004-snova-snbc-executor.md`. This is a development
 command, not the final CLI.
 
-`<input.snl> <output.s> native` runs the native backend (`src/native*.snl`,
+`<input.snl> <output.s> native` runs the native backend (`src/Native*.snl`,
 ADR-0005): the compiler appends the Snova runtime (`runtime/*.snl`,
-ADR-0006) to the program, and the validated SnBC image becomes
-aarch64-apple-darwin assembly. The runtime covers strings, arrays, objects,
-printing, files, arguments and environment, and releases memory through
-ownership. `make bootstrap-native` assembles and links with the system
-`as`/`ld`. It checks stdout and exit status against the Snova executor, zero
+ADR-0006) to the program. By default the validated image becomes
+aarch64-apple-darwin assembly; passing `aarch64-unknown-linux-gnu` selects the
+Linux ARM64 ELF entry and syscall runtime. The runtime covers strings, arrays,
+objects, printing, files, arguments and environment, and releases memory
+through ownership. `make bootstrap-native` assembles and links Darwin with the
+system `as`/`ld`. `make bootstrap-cli-linux-aarch64` builds and tests inside
+the pinned ARM64 Docker image, including the CLI/VM gates and native ELF
+differential fixtures. `make bootstrap-cli-linux-x86_64` tests the CLI/VM on
+Linux x86_64; its native emitter is not implemented. The Linux ARM64 gate
+checks stdout and exit status against the Snova executor, zero
 live blocks at exit (`SNOVA_MEMORY_REPORT=1`), constant peak memory in a loop
 and the rejection of strong cycles. Unsupported opcodes fail with
 `unsupported opcode for native backend: N`.
@@ -48,7 +60,7 @@ sorting, `BinaryHeap`, `BinaryTree`, `IntMap`). `make bootstrap-library`
 runs each fixture on `snl run-snbc`, on the Snova executor and natively.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
-`fixtures/hello.snl` through the generated SnBC image.
+`fixtures/Hello.snl` through the generated SnBC image.
 
 Run `make bootstrap-diagnostics` to check lexer and parser failures include a
 phase and source line, and that `==`/`!=` between operands whose static types
@@ -66,10 +78,11 @@ the previous toolchain, so this is not yet a standalone distribution.
 ## Current subset
 
 The compiler modules share the `snova.compiler` package where appropriate;
-`compiler.snl` imports the `snova.compiler.runtime` and `snova.compiler.backend`
-packages, and `make bootstrap-check` validates these cross-file imports. Module declarations
-and names follow the project's `camelCase` convention. Every compiler source
-file stays below 400 lines.
+`Compiler.snl` imports the `snova.compiler.runtime` and `snova.compiler.backend`
+packages, and `make bootstrap-check` validates these cross-file imports. Module
+declarations and source file names use `PascalCase`; types use `PascalCase`, and
+functions, methods and variables use `camelCase`. Every compiler source file
+stays below 400 lines.
 
 The seed recognizes and lowers a small imperative subset: functions, structs,
 classes with instance and `static` methods (ADR-0007), integer and string

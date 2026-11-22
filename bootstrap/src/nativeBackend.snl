@@ -15,32 +15,40 @@ import builtin.runtime
 class NativeBackend {
     // Returns 0 on success, the first unsupported opcode, or -1 when the
     // native runtime is missing from the image.
-    public method emit(bytes: int[], outputPath: string): int {
+    public method emit(bytes: int[], outputPath: string, targetKind: int): int {
+        let resolver = NativeTargetResolver()
+        if resolver.instructionSet(targetKind) != "AArch64" { return -2 }
         var roleFunction: int[] = []
         var functionRole: int[] = []
         var runtimeFunction: int[] = []
         var roleCopy: int[] = []
         var lines: string[] = []
+        var dispatchData: string[] = []
         var slots: NativeSlot[] = []
         var targets: int[] = []
         var offsets: int[] = []
         var depths: int[] = []
-        let image = NativeImage(bytes)
+        var poolOffsets: int[] = []
+        let image = NativeImage(bytes, poolOffsets, 0)
+        image.indexPool()
         let roles = NativeRoles(roleFunction, functionRole, runtimeFunction)
-        let output = NativeAssembly(lines, 0, roleCopy)
+        let output = NativeAssembly(lines, 0, roleCopy, dispatchData, resolver.symbolPrefix(targetKind), targetKind)
         let stack = NativeOwnership(slots, 0, 0, 1, targets, offsets, depths)
         let values = NativeValueEmitter()
         let boundary = NativeBoundary()
         if roles.resolve(image) == false { return -1 }
         output.useRoles(roles)
-        let failed = translate(image, roles, output, stack, values, boundary)
+        let failed = translate(image, roles, output, stack, values, boundary, targetKind)
         if failed != 0 { return failed }
         Runtime.writeText(outputPath, output.text())
         return 0
     }
 
-    private method translate(image: NativeImage, roles: NativeRoles, output: NativeAssembly, stack: NativeOwnership, values: NativeValueEmitter, boundary: NativeBoundary): int {
-        boundary.entry(output, image.mainFunction())
+    private method translate(image: NativeImage, roles: NativeRoles, output: NativeAssembly, stack: NativeOwnership, values: NativeValueEmitter, boundary: NativeBoundary, targetKind: int): int {
+        let resolver = NativeTargetResolver()
+        if resolver.instructionSet(targetKind) != "AArch64" { return -2 }
+        let symbolPrefix = resolver.symbolPrefix(targetKind)
+        boundary.entry(output, image.mainFunction(), symbolPrefix, resolver.textSection(targetKind), targetKind)
         var offset = image.functionTable()
         let functionCount = image.u32(offset)
         offset = offset + 4
@@ -53,7 +61,7 @@ class NativeBackend {
             let codeStart = offset + 12
             let role = roles.roleOf(functionIndex)
             if role >= 0 && role <= roles.lastNative() {
-                boundary.nativeStub(output, functionIndex, role)
+                boundary.nativeStub(output, functionIndex, role, symbolPrefix, targetKind)
             } else {
                 let instructions = NativeInstructionEmitter(functionIndex, localCount, roles.isRuntime(functionIndex))
                 let failed = translateFunction(image, output, stack, values, instructions, arity, codeStart, codeLength)
@@ -62,7 +70,7 @@ class NativeBackend {
             offset = codeStart + codeLength
             functionIndex = functionIndex + 1
         }
-        boundary.data(output, image)
+        boundary.data(output, image, resolver.constSection(targetKind), resolver.bssSection(targetKind), targetKind)
         return 0
     }
 

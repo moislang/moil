@@ -1,0 +1,25 @@
+package snova.tools.version
+
+import builtin.io.console
+import builtin.runtime
+
+// The caller supplies the current version and newest Git tag as environment
+// values. The runtime currently has no process-spawn API for invoking Git.
+func main(): int {
+    let current = Runtime.environment("SNOVA_CURRENT_VERSION")
+    let newest = Runtime.environment("SNOVA_LATEST_TAG")
+
+    if current == "" || newest == "" {
+        Console.printline("set SNOVA_CURRENT_VERSION and SNOVA_LATEST_TAG")
+        return 2
+    }
+    if newest == current {
+        Console.printline("already on latest tagged version: " + current)
+        return 0
+    }
+
+    Console.printline("upgrade available: " + newest)
+    Console.printline("current version: " + current)
+    Console.printline("run: git checkout " + newest)
+    return 0
+}

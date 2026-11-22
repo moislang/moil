@@ -6,15 +6,15 @@ import builtin.runtime
 // in vm.stringBytes. stringSpans[handle] uses tag = start and value = length;
 // tag -1 means the bytes are not known yet (a host string). Host string `==`
 // compares identity in snl v0.3.0, so guest equality compares bytes.
-func vmNewString(vm: vmState, text: string): int {
+func vmNewString(vm: VmState, text: string): int {
     vm.strings.push(text)
-    vm.stringSpans.push(vmCell { tag: -1, value: 0 })
+    vm.stringSpans.push(VmCell { tag: -1, value: 0 })
     return vm.strings.len() - 1
 }
 
-func vmNewStringFrom(vm: vmState, text: string, source: int[], start: int, length: int): int {
+func vmNewStringFrom(vm: VmState, text: string, source: int[], start: int, length: int): int {
     vm.strings.push(text)
-    vm.stringSpans.push(vmCell { tag: vm.stringBytes.len(), value: length })
+    vm.stringSpans.push(VmCell { tag: vm.stringBytes.len(), value: length })
     var index = 0
     while index < length {
         vm.stringBytes.push(source[start + index])
@@ -30,7 +30,7 @@ func vmScratchPath(): string {
     return "/tmp/snova-vm-string.bin"
 }
 
-func vmStringStart(vm: vmState, handle: int): int {
+func vmStringStart(vm: VmState, handle: int): int {
     let known = cellTag(vm.stringSpans[handle])
     if known >= 0 { return known }
     let path = vmScratchPath()
@@ -46,12 +46,12 @@ func vmStringStart(vm: vmState, handle: int): int {
     return start
 }
 
-func vmStringLength(vm: vmState, handle: int): int {
+func vmStringLength(vm: VmState, handle: int): int {
     vmStringStart(vm, handle)
     return cellValue(vm.stringSpans[handle])
 }
 
-func vmStringsEqual(vm: vmState, leftHandle: int, rightHandle: int): bool {
+func vmStringsEqual(vm: VmState, leftHandle: int, rightHandle: int): bool {
     if leftHandle == rightHandle { return true }
     let length = vmStringLength(vm, leftHandle)
     if length != vmStringLength(vm, rightHandle) { return false }
@@ -65,7 +65,7 @@ func vmStringsEqual(vm: vmState, leftHandle: int, rightHandle: int): bool {
     return true
 }
 
-func vmConcatStrings(vm: vmState, leftHandle: int, rightHandle: int): int {
+func vmConcatStrings(vm: VmState, leftHandle: int, rightHandle: int): int {
     let leftLength = vmStringLength(vm, leftHandle)
     let rightLength = vmStringLength(vm, rightHandle)
     let leftStart = vmStringStart(vm, leftHandle)
@@ -82,6 +82,6 @@ func vmConcatStrings(vm: vmState, leftHandle: int, rightHandle: int): int {
         index = index + 1
     }
     vm.strings.push(vm.strings[leftHandle] + vm.strings[rightHandle])
-    vm.stringSpans.push(vmCell { tag: start, value: leftLength + rightLength })
+    vm.stringSpans.push(VmCell { tag: start, value: leftLength + rightLength })
     return vm.strings.len() - 1
 }

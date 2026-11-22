@@ -11,7 +11,7 @@ func vmDecodeOperand(data: int[], operandAt: int, opcode: int): int {
     return 0
 }
 
-func vmDecodeFunction(vm: vmState, codeStart: int, codeLength: int): unit {
+func vmDecodeFunction(vm: VmState, codeStart: int, codeLength: int): unit {
     let firstInstruction = vm.instructionOpcode.len()
     var instructionAt: int[] = []
     var offset = 0

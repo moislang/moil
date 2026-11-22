@@ -1,6 +1,6 @@
 package snova.compiler
 
-func scopeEmitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
+func scopeEmitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
     let k = bg.nk[nd]
     if k == 15 {
         code.push(51)
@@ -54,7 +54,7 @@ func scopeEmitExpr(src: int[], bg: compilerState, cx: compilerContext, code: int
     return 0
 }
 
-func scopeEmitPattern(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], subj: int, pat: int): unit {
+func scopeEmitPattern(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], subj: int, pat: int): unit {
     code.push(8)
     pushU32(code, subj)
     if pat < 0 || bg.na[pat] == 1 {
@@ -79,7 +79,7 @@ func scopeEmitPattern(src: int[], bg: compilerState, cx: compilerContext, code: 
     code.push(1)
 }
 
-func scopeEmitArmValue(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], arm: int, as_value: int): unit {
+func scopeEmitArmValue(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], arm: int, as_value: int): unit {
     if bg.nb[arm] >= 0 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[arm])
         if as_value == 0 { code.push(6) }
@@ -90,7 +90,7 @@ func scopeEmitArmValue(src: int[], bg: compilerState, cx: compilerContext, code:
     }
 }
 
-func scopeEmitArms(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], arms: int, subj: int, as_value: int, ends: int[]): unit {
+func scopeEmitArms(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], arms: int, subj: int, as_value: int, ends: int[]): unit {
     if arms < 0 { return }
     scopeEmitArms(src, bg, cx, code, fat, fb, bg.nc[arms], subj, as_value, ends)
     let arm = bg.nb[arms]
@@ -112,7 +112,7 @@ func scopeEmitArms(src: int[], bg: compilerState, cx: compilerContext, code: int
     patchAt(code, fat, fb, nxt)
 }
 
-func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int): unit {
+func scopeEmitMatch(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int): unit {
     let saved = cx.locals
     emitExpr(src, bg, cx, code, fat, fb, sub)
     let slot = addLocal(bg, cx, 0, 0, 0)
@@ -134,7 +134,7 @@ func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: in
     cx.expr_ty = 0
 }
 
-func scopeEmitFor(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func scopeEmitFor(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     let saved = cx.locals
     let is_arr = addLocal(bg, cx, 0, 0, 0)
     let iter = addLocal(bg, cx, 0, 0, 0)
@@ -213,7 +213,7 @@ func scopeEmitFor(src: int[], bg: compilerState, cx: compilerContext, code: int[
     cx.locals = saved
 }
 
-func scopeEmitDefer(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], call: int): unit {
+func scopeEmitDefer(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], call: int): unit {
     if call < 0 || bg.nk[call] != 7 {
         fail(cx)
         return
@@ -234,7 +234,7 @@ func scopeEmitDefer(src: int[], bg: compilerState, cx: compilerContext, code: in
     pushU32(code, consCount(bg, bg.nc[call]))
 }
 
-func scopeEmitPulsar(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], call: int): unit {
+func scopeEmitPulsar(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], call: int): unit {
     if call >= 0 && bg.nk[call] == 7 {
         let callee = bg.nb[call]
         if callee >= 0 && bg.nk[callee] == 4 {
@@ -254,7 +254,7 @@ func scopeEmitPulsar(src: int[], bg: compilerState, cx: compilerContext, code: i
     }
 }
 
-func scopeEmitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
+func scopeEmitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
     let k = bg.nk[nd]
     if k == 27 {
         scopeEmitBreak(bg, cx, code)
@@ -283,7 +283,7 @@ func scopeEmitStmt(src: int[], bg: compilerState, cx: compilerContext, code: int
     return 0
 }
 
-func scopeWriteFnName(src: int[], bg: compilerState, image: int[], i: int): unit {
+func scopeWriteFnName(src: int[], bg: CompilerState, image: int[], i: int): unit {
     if bg.fn_own[i] < 0 {
         pushU32(image, bg.fn_nl[i])
         var j = 0

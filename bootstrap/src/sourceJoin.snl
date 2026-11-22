@@ -1,5 +1,67 @@
 package snova.compiler.runtime
 
+import builtin.io.console
+
+func compilerFiles(): string[] {
+    return [
+        "bootstrap/src/Unit.snl", "bootstrap/src/Lex.snl", "bootstrap/src/Parse.snl",
+        "bootstrap/src/ParseDecl.snl", "bootstrap/src/Emit.snl", "bootstrap/src/EmitExpr.snl",
+        "bootstrap/src/EmitStmt.snl", "bootstrap/src/Runtime.snl", "bootstrap/src/ImageReader.snl",
+        "bootstrap/src/ImageCode.snl", "bootstrap/src/VmValue.snl", "bootstrap/src/VmText.snl",
+        "bootstrap/src/VmString.snl", "bootstrap/src/VmOps.snl", "bootstrap/src/VmExec.snl",
+        "bootstrap/src/VmDecode.snl", "bootstrap/src/VmFast.snl", "bootstrap/src/VmFrame.snl",
+        "bootstrap/src/VmLoad.snl", "bootstrap/src/NativeImage.snl", "bootstrap/src/NativeRoles.snl",
+        "bootstrap/src/NativeAssembly.snl", "bootstrap/src/NativeSlot.snl", "bootstrap/src/NativeOwnership.snl",
+        "bootstrap/src/ProcessorArchitecture.snl", "bootstrap/src/OperatingSystemRuntime.snl",
+        "bootstrap/src/CallingConvention.snl", "bootstrap/src/ExecutableFormat.snl",
+        "bootstrap/src/NativeToolchain.snl", "bootstrap/src/NativeValueEmitter.snl",
+        "bootstrap/src/NativeInstructionEmitter.snl", "bootstrap/src/NativeTargetResolver.snl",
+        "bootstrap/src/NativeBoundary.snl", "bootstrap/src/NativeBackend.snl", "bootstrap/src/SourceJoin.snl",
+        "bootstrap/src/Compiler.snl", "bootstrap/src/ScopeParse.snl", "bootstrap/src/ScopeEmit.snl",
+        "bootstrap/src/ScopeMatch.snl"
+    ]
+}
+
+func runtimeFiles(): string[] {
+    return [
+        "bootstrap/runtime/Primitive.snl", "bootstrap/runtime/System.snl",
+        "bootstrap/runtime/Heap.snl", "bootstrap/runtime/Runtime.snl",
+        "bootstrap/runtime/Text.snl", "bootstrap/runtime/Container.snl",
+        "bootstrap/runtime/Ownership.snl", "bootstrap/runtime/Value.snl",
+        "bootstrap/runtime/Host.snl"
+    ]
+}
+
+// Print the fixed input list first, then keep a single carriage-return
+// progress line below it. Updating that line does not append terminal rows.
+func startBuildProgress(files: string[]): unit {
+    Console.printline("Build inputs:")
+    var index = 0
+    while index < files.len() {
+        Console.print("  ")
+        Console.printline(files[index])
+        index = index + 1
+    }
+    Console.print("Progress [                    ] 0%")
+}
+
+func updateBuildProgress(completed: int, total: int, file: string): unit {
+    let percent = completed * 100 / total
+    let filled = percent / 5
+    Console.print("\r")
+    Console.print(file)
+    Console.print(" [")
+    var index = 0
+    while index < 20 {
+        if index < filled { Console.print("#") } else { Console.print(" ") }
+        index = index + 1
+    }
+    Console.print("] ")
+    Console.print(percent)
+    Console.print("%")
+    if completed == total { Console.printline("") }
+}
+
 func isPackageLine(data: int[], start: int, end: int): bool {
     if end - start < 8 { return false }
     if data[start] != 112 || data[start + 1] != 97 || data[start + 2] != 99 || data[start + 3] != 107 { return false }
@@ -64,39 +126,16 @@ public func ownSource(): int[] {
     output.push(114)
     output.push(10)
     output.push(10)
-    appendFile(output, "bootstrap/src/unit.snl", 1)
-    appendFile(output, "bootstrap/src/lex.snl", 0)
-    appendFile(output, "bootstrap/src/parse.snl", 0)
-    appendFile(output, "bootstrap/src/parseDecl.snl", 0)
-    appendFile(output, "bootstrap/src/emit.snl", 0)
-    appendFile(output, "bootstrap/src/emitExpr.snl", 0)
-    appendFile(output, "bootstrap/src/emitStmt.snl", 0)
-    appendFile(output, "bootstrap/src/runtime.snl", 0)
-    appendFile(output, "bootstrap/src/imageReader.snl", 0)
-    appendFile(output, "bootstrap/src/imageCode.snl", 0)
-    appendFile(output, "bootstrap/src/vmValue.snl", 0)
-    appendFile(output, "bootstrap/src/vmText.snl", 0)
-    appendFile(output, "bootstrap/src/vmString.snl", 0)
-    appendFile(output, "bootstrap/src/vmOps.snl", 0)
-    appendFile(output, "bootstrap/src/vmExec.snl", 0)
-    appendFile(output, "bootstrap/src/vmDecode.snl", 0)
-    appendFile(output, "bootstrap/src/vmFast.snl", 0)
-    appendFile(output, "bootstrap/src/vmFrame.snl", 0)
-    appendFile(output, "bootstrap/src/vmLoad.snl", 0)
-    appendFile(output, "bootstrap/src/nativeImage.snl", 0)
-    appendFile(output, "bootstrap/src/nativeRoles.snl", 0)
-    appendFile(output, "bootstrap/src/nativeAssembly.snl", 0)
-    appendFile(output, "bootstrap/src/nativeSlot.snl", 0)
-    appendFile(output, "bootstrap/src/nativeOwnership.snl", 0)
-    appendFile(output, "bootstrap/src/nativeValueEmitter.snl", 0)
-    appendFile(output, "bootstrap/src/nativeInstructionEmitter.snl", 0)
-    appendFile(output, "bootstrap/src/nativeBoundary.snl", 0)
-    appendFile(output, "bootstrap/src/nativeBackend.snl", 0)
-    appendFile(output, "bootstrap/src/sourceJoin.snl", 0)
-    appendFile(output, "bootstrap/src/compiler.snl", 0)
-    appendFile(output, "bootstrap/src/scopeParse.snl", 0)
-    appendFile(output, "bootstrap/src/scopeEmit.snl", 0)
-    appendFile(output, "bootstrap/src/scopeMatch.snl", 0)
+    let files = compilerFiles()
+    startBuildProgress(files)
+    var index = 0
+    while index < files.len() {
+        var keepImports = 0
+        if index == 0 { keepImports = 1 }
+        appendFile(output, files[index], keepImports)
+        updateBuildProgress(index + 1, files.len(), files[index])
+        index = index + 1
+    }
     return output
 }
 
@@ -105,13 +144,12 @@ public func ownSource(): int[] {
 // relative to the repository root, like ownSource.
 public func appendNativeRuntime(source: int[]): unit {
     source.push(10)
-    appendFile(source, "bootstrap/runtime/primitive.snl", 0)
-    appendFile(source, "bootstrap/runtime/system.snl", 0)
-    appendFile(source, "bootstrap/runtime/heap.snl", 0)
-    appendFile(source, "bootstrap/runtime/runtime.snl", 0)
-    appendFile(source, "bootstrap/runtime/text.snl", 0)
-    appendFile(source, "bootstrap/runtime/container.snl", 0)
-    appendFile(source, "bootstrap/runtime/ownership.snl", 0)
-    appendFile(source, "bootstrap/runtime/value.snl", 0)
-    appendFile(source, "bootstrap/runtime/host.snl", 0)
+    let files = runtimeFiles()
+    startBuildProgress(files)
+    var index = 0
+    while index < files.len() {
+        appendFile(source, files[index], 0)
+        updateBuildProgress(index + 1, files.len(), files[index])
+        index = index + 1
+    }
 }

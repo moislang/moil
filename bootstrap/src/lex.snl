@@ -17,14 +17,14 @@ func classify(src: int[], s: int, n: int): int {
     return classifyScope(src, s, n)
 }
 
-func punctPair(src: int[], lx: lexerCursor, a: int, b: int): bool {
+func punctPair(src: int[], lx: LexerCursor, a: int, b: int): bool {
     if lx.i + 1 >= src.len() { return false }
     if src[lx.i] != a { return false }
     if src[lx.i + 1] != b { return false }
     return true
 }
 
-func lexString(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCursor): unit {
+func lexString(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
     let start = lx.i
     let line = lx.line
     lx.i = lx.i + 1
@@ -63,7 +63,7 @@ func lexString(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCurs
     }
 }
 
-func lexNumber(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCursor): unit {
+func lexNumber(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
     let start = lx.i
     let line = lx.line
     var v = 0
@@ -92,7 +92,7 @@ func lexNumber(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCurs
     }
 }
 
-func lexIdent(src: int[], bg: compilerState, lx: lexerCursor): unit {
+func lexIdent(src: int[], bg: CompilerState, lx: LexerCursor): unit {
     let start = lx.i
     let line = lx.line
     lx.i = lx.i + 1
@@ -112,7 +112,7 @@ func lexIdent(src: int[], bg: compilerState, lx: lexerCursor): unit {
     pushTok(bg, classify(src, start, n), start, n, 0, line)
 }
 
-func lexLineComment(src: int[], lx: lexerCursor): unit {
+func lexLineComment(src: int[], lx: LexerCursor): unit {
     lx.i = lx.i + 2
     var go = 1
     while go == 1 {
@@ -128,7 +128,7 @@ func lexLineComment(src: int[], lx: lexerCursor): unit {
     }
 }
 
-func lexBlockComment(src: int[], cx: compilerContext, lx: lexerCursor): unit {
+func lexBlockComment(src: int[], cx: CompilerContext, lx: LexerCursor): unit {
     lx.i = lx.i + 2
     var go = 1
     while go == 1 {
@@ -153,14 +153,14 @@ func lexBlockComment(src: int[], cx: compilerContext, lx: lexerCursor): unit {
 // Annotations such as `@Native` produce no token: a bodyless method is
 // already native, and the seed attaches no other meaning to annotations.
 // A lone `@` is still a lexical error.
-func lexAnnotation(src: int[], lx: lexerCursor): unit {
+func lexAnnotation(src: int[], lx: LexerCursor): unit {
     lx.i = lx.i + 1
     while lx.i < src.len() && isIdentCont(src[lx.i]) {
         lx.i = lx.i + 1
     }
 }
 
-func lexOne(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCursor): unit {
+func lexOne(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
     let c = src[lx.i]
     if isSpace(c) {
         if c == 10 {
@@ -231,8 +231,8 @@ func lexOne(src: int[], bg: compilerState, cx: compilerContext, lx: lexerCursor)
     lx.i = lx.i + 1
 }
 
-func lexAll(src: int[], bg: compilerState, cx: compilerContext): unit {
-    var lx = lexerCursor { i: 0, line: 1 }
+func lexAll(src: int[], bg: CompilerState, cx: CompilerContext): unit {
+    var lx = LexerCursor { i: 0, line: 1 }
     cx.phase = 1
     var go = 1
     while go == 1 {
@@ -251,4 +251,3 @@ func lexAll(src: int[], bg: compilerState, cx: compilerContext): unit {
         pushTok(bg, 0, lx.i, 0, 0, lx.line)
     }
 }
-

@@ -2,7 +2,7 @@ package snova.compiler.runtime
 
 import builtin.io.console
 
-func vmPoolText(vm: vmState, start: int, size: int): string {
+func vmPoolText(vm: VmState, start: int, size: int): string {
     var text = ""
     var index = 0
     while index < size {
@@ -27,45 +27,48 @@ func vmSamePoolBytes(data: int[], left: int, right: int, size: int): bool {
 }
 
 // String constants with the same content share one handle.
-func vmLoadPool(vm: vmState, cursor: imageCursor): unit {
-    let count = readU32(vm.data, cursor)
+func vmLoadPool(vm: VmState, cursor: ImageCursor): unit {
+    let count = cursor.readU32(vm.data)
     var starts: int[] = []
     var sizes: int[] = []
     var index = 0
     while index < count {
-        let size = readU32(vm.data, cursor)
-        starts.push(cursor.offset)
+        let size = cursor.readU32(vm.data)
+        starts.push(cursor.position())
         sizes.push(size)
-        skipBytes(vm.data, cursor, size)
+        cursor.skip(vm.data, size)
         var shared = -1
         var previousIndex = 0
         while previousIndex < index && shared < 0 {
-            if sizes[previousIndex] == size && vmSamePoolBytes(vm.data, starts[previousIndex], cursor.offset - size, size) {
+            if sizes[previousIndex] == size && vmSamePoolBytes(vm.data, starts[previousIndex], cursor.position() - size, size) {
                 shared = vm.poolHandles[previousIndex]
             }
             previousIndex = previousIndex + 1
         }
         if shared < 0 {
-            shared = vmNewStringFrom(vm, vmPoolText(vm, cursor.offset - size, size), vm.data, cursor.offset - size, size)
+            shared = vmNewStringFrom(vm, vmPoolText(vm, cursor.position() - size, size), vm.data, cursor.position() - size, size)
         }
         vm.poolHandles.push(shared)
         index = index + 1
     }
 }
 
-func vmLoadFunctions(vm: vmState, cursor: imageCursor): unit {
-    let count = readU32(vm.data, cursor)
+func vmLoadFunctions(vm: VmState, cursor: ImageCursor): unit {
+    let count = cursor.readU32(vm.data)
     var index = 0
     while index < count {
-        let nameSize = readU32(vm.data, cursor)
-        skipBytes(vm.data, cursor, nameSize)
-        vm.functionArity.push(readU32(vm.data, cursor))
-        vm.functionLocals.push(readU32(vm.data, cursor))
-        let codeLength = readU32(vm.data, cursor)
-        vmDecodeFunction(vm, cursor.offset, codeLength)
-        skipBytes(vm.data, cursor, codeLength)
+        let nameSize = cursor.readU32(vm.data)
+        let nameStart = cursor.position()
+        vm.functionName.push(vmNewStringFrom(vm, vmPoolText(vm, nameStart, nameSize), vm.data, nameStart, nameSize))
+        cursor.skip(vm.data, nameSize)
+        vm.functionArity.push(cursor.readU32(vm.data))
+        vm.functionLocals.push(cursor.readU32(vm.data))
+        let codeLength = cursor.readU32(vm.data)
+        vmDecodeFunction(vm, cursor.position(), codeLength)
+        cursor.skip(vm.data, codeLength)
         index = index + 1
     }
+    vmIndexFunctionNames(vm)
 }
 
 func vmErrorText(failureCode: int): string {
@@ -78,13 +81,14 @@ func vmErrorText(failureCode: int): string {
     if failureCode == 7 { return "function ended without return" }
     if failureCode == 8 { return "field assignment rejected at index " }
     if failureCode == 11 { return "pop from empty array" }
+    if failureCode == 12 { return "method not found for concrete type " }
     return "invalid SnBC image"
 }
 
-func vmReportError(vm: vmState): unit {
+func vmReportError(vm: VmState): unit {
     Console.print("runtime error: ")
     Console.print(vmErrorText(vm.failed))
-    if vm.failed == 2 || vm.failed == 4 || vm.failed == 6 || vm.failed == 8 {
+    if vm.failed == 2 || vm.failed == 4 || vm.failed == 6 || vm.failed == 8 || vm.failed == 12 {
         Console.print(vm.failureDetail)
     }
     Console.printline("")
@@ -94,11 +98,11 @@ func vmReportError(vm: vmState): unit {
 // number of host arguments consumed before the program's arguments.
 // Returns the program's exit status, or 70 on a runtime error.
 public func runImage(data: int[], argumentBase: int): int {
-    var vm = vmState {
-        data: data, functionFirst: [], functionLength: [], instructionOpcode: [], instructionOperand: [], instructionSecondOperand: [], functionArity: [], functionLocals: [],
+    var vm = VmState {
+        data: data, functionFirst: [], functionLength: [], instructionOpcode: [], instructionOperand: [], instructionSecondOperand: [], functionArity: [], functionLocals: [], functionName: [], functionOrder: [],
         poolHandles: [], strings: [], stringSpans: [], stringBytes: [], text: [], stack: [], frames: [], arrays: [],
         resumeFunction: 0, resumeBase: 0, resumeFloor: 0, resumeInstruction: 0,
-        objectStart: [], objectFieldCount: [], fields: [],
+        objectStart: [], objectFieldCount: [], objectType: [], fields: [],
         stackTop: 0, floor: 0, depth: 1, returnTag: 0, returnValue: 0,
         halted: 0, failed: 0, failureDetail: 0, argumentBase: argumentBase, mainIndex: 0
     }
@@ -107,11 +111,11 @@ public func runImage(data: int[], argumentBase: int): int {
         return 70
     }
     vmTextTable(vm.text)
-    var cursor = imageCursor { offset: 8, valid: 1 }
-    vm.mainIndex = readU32(data, cursor)
+    let cursor = ImageCursor(8, 1)
+    vm.mainIndex = cursor.readU32(data)
     vmLoadPool(vm, cursor)
     vmLoadFunctions(vm, cursor)
-    if vm.failed != 0 || cursor.valid == 0 {
+    if vm.failed != 0 || cursor.isValid() == 0 {
         vmReportError(vm)
         return 70
     }

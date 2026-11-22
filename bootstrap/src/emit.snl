@@ -48,7 +48,7 @@ func byteAt(code: int[], fat: int[], fb: int[], i: int): int {
     return code[i]
 }
 
-func poolEq(bg: compilerState, idx: int, bytes: int[]): bool {
+func poolEq(bg: CompilerState, idx: int, bytes: int[]): bool {
     if bg.pool_n[idx] != bytes.len() { return false }
     let s = bg.pool_s[idx]
     var j = 0
@@ -59,7 +59,7 @@ func poolEq(bg: compilerState, idx: int, bytes: int[]): bool {
     return true
 }
 
-func internBytes(bytes: int[], bg: compilerState): int {
+func internBytes(bytes: int[], bg: CompilerState): int {
     var i = 0
     while i < bg.pool_n.len() {
         if poolEq(bg, i, bytes) { return i }
@@ -76,7 +76,7 @@ func internBytes(bytes: int[], bg: compilerState): int {
     return bg.pool_n.len() - 1
 }
 
-func internSpan(src: int[], s: int, n: int, bg: compilerState): int {
+func internSpan(src: int[], s: int, n: int, bg: CompilerState): int {
     var tmp: int[] = []
     var j = 0
     while j < n {
@@ -110,7 +110,7 @@ func decodeString(src: int[], s: int, n: int, out: int[]): unit {
     }
 }
 
-func consCount(bg: compilerState, c: int): int {
+func consCount(bg: CompilerState, c: int): int {
     var n = 0
     var cur = c
     while cur >= 0 {
@@ -120,7 +120,7 @@ func consCount(bg: compilerState, c: int): int {
     return n
 }
 
-func consFirst(bg: compilerState, c: int): int {
+func consFirst(bg: CompilerState, c: int): int {
     var cur = c
     var item = -1
     while cur >= 0 {
@@ -130,7 +130,7 @@ func consFirst(bg: compilerState, c: int): int {
     return item
 }
 
-func findLocal(src: int[], bg: compilerState, cx: compilerContext, s: int, n: int): int {
+func findLocal(src: int[], bg: CompilerState, cx: CompilerContext, s: int, n: int): int {
     var seen: int[] = []
     var i = bg.loc_slot.len() - 1
     while i >= cx.loc_base {
@@ -149,7 +149,7 @@ func findLocal(src: int[], bg: compilerState, cx: compilerContext, s: int, n: in
     return -1
 }
 
-func localTypeOf(bg: compilerState, cx: compilerContext, slot: int): int {
+func localTypeOf(bg: CompilerState, cx: CompilerContext, slot: int): int {
     var i = bg.loc_slot.len() - 1
     while i >= cx.loc_base {
         if bg.loc_slot[i] == slot { return bg.loc_ty[i] }
@@ -158,7 +158,7 @@ func localTypeOf(bg: compilerState, cx: compilerContext, slot: int): int {
     return 0
 }
 
-func setLocalTy(bg: compilerState, cx: compilerContext, slot: int, ty: int): unit {
+func setLocalTy(bg: CompilerState, cx: CompilerContext, slot: int, ty: int): unit {
     var i = bg.loc_slot.len() - 1
     while i >= cx.loc_base {
         if bg.loc_slot[i] == slot {
@@ -172,7 +172,7 @@ func setLocalTy(bg: compilerState, cx: compilerContext, slot: int, ty: int): uni
     }
 }
 
-func addLocal(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int): int {
+func addLocal(bg: CompilerState, cx: CompilerContext, ns: int, nl: int, ty: int): int {
     if cx.locals >= 256 {
         fail(cx)
         return 0
@@ -189,7 +189,7 @@ func addLocal(bg: compilerState, cx: compilerContext, ns: int, nl: int, ty: int)
     return slot
 }
 
-func findFunc(src: int[], bg: compilerState, s: int, n: int): int {
+func findFunc(src: int[], bg: CompilerState, s: int, n: int): int {
     var i = 0
     while i < bg.fn_ns.len() {
         if bg.fn_own[i] < 0 {
@@ -200,7 +200,7 @@ func findFunc(src: int[], bg: compilerState, s: int, n: int): int {
     return -1
 }
 
-func fieldIndex(src: int[], bg: compilerState, st: int, ns: int, nl: int): int {
+func fieldIndex(src: int[], bg: CompilerState, st: int, ns: int, nl: int): int {
     var i = 0
     var idx = 0
     var found = -1
@@ -216,7 +216,7 @@ func fieldIndex(src: int[], bg: compilerState, st: int, ns: int, nl: int): int {
     return found
 }
 
-func fieldTypeAt(src: int[], bg: compilerState, st: int, ns: int, nl: int): int {
+func fieldTypeAt(src: int[], bg: CompilerState, st: int, ns: int, nl: int): int {
     var i = 0
     while i < bg.fd_st.len() {
         if bg.fd_st[i] == st && spanEq(src, bg.fd_ns[i], bg.fd_nl[i], ns, nl) {
@@ -227,7 +227,7 @@ func fieldTypeAt(src: int[], bg: compilerState, st: int, ns: int, nl: int): int 
     return 0
 }
 
-func emitForward(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], c: int, as_stmt: int): unit {
+func emitForward(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], c: int, as_stmt: int): unit {
     if cx.failed != 0 { return }
     if c < 0 { return }
     emitForward(src, bg, cx, code, fat, fb, bg.nc[c], as_stmt)
@@ -238,7 +238,7 @@ func emitForward(src: int[], bg: compilerState, cx: compilerContext, code: int[]
     }
 }
 
-func emitAnd(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
+func emitAnd(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, lhs)
     let j1 = emitJump(code, 31)
     emitExpr(src, bg, cx, code, fat, fb, rhs)
@@ -254,7 +254,7 @@ func emitAnd(src: int[], bg: compilerState, cx: compilerContext, code: int[], fa
     cx.expr_ty = 0
 }
 
-func emitOr(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
+func emitOr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, lhs)
     let j1 = emitJump(code, 32)
     emitExpr(src, bg, cx, code, fat, fb, rhs)
@@ -290,7 +290,7 @@ func binOp(op: int): int {
     return -1
 }
 
-func emitDefault(bg: compilerState, code: int[], ty: int): unit {
+func emitDefault(bg: CompilerState, code: int[], ty: int): unit {
     if ty == -2 {
         code.push(4)
         code.push(0)
@@ -307,7 +307,7 @@ func emitDefault(bg: compilerState, code: int[], ty: int): unit {
     pushI64(code, 0)
 }
 
-func fieldValue(src: int[], bg: compilerState, cons: int, ns: int, nl: int): int {
+func fieldValue(src: int[], bg: CompilerState, cons: int, ns: int, nl: int): int {
     var found = -1
     var c = cons
     while c >= 0 {
@@ -322,7 +322,7 @@ func fieldValue(src: int[], bg: compilerState, cons: int, ns: int, nl: int): int
     return found
 }
 
-func structFieldsKnown(src: int[], bg: compilerState, st: int, cons: int): bool {
+func structFieldsKnown(src: int[], bg: CompilerState, st: int, cons: int): bool {
     var c = cons
     var ok = 1
     while c >= 0 {
@@ -347,7 +347,7 @@ func namePrint(src: int[], s: int, n: int): int {
     return 0
 }
 
-func emitPrint(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], args: int, which: int): unit {
+func emitPrint(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], args: int, which: int): unit {
     if consCount(bg, args) == 0 {
         var empty: int[] = []
         let si = internBytes(empty, bg)

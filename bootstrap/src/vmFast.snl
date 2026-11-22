@@ -3,7 +3,7 @@ package snova.compiler.runtime
 // Fast paths of the execution loop. Each helper receives the stack cells as
 // typed parameters, which lets it read and write fields with a single host
 // call per instruction in the common case.
-func cellLoadField(top: vmCell, vm: vmState, field: int): unit {
+func cellLoadField(top: VmCell, vm: VmState, field: int): unit {
     if top.tag == 5 && field < vm.objectFieldCount[top.value] {
         cellCopy(top, vm.fields[vm.objectStart[top.value] + field])
         return
@@ -12,13 +12,13 @@ func cellLoadField(top: vmCell, vm: vmState, field: int): unit {
     top.value = 0
 }
 
-func cellStoreField(target: vmCell, value: vmCell, vm: vmState, field: int): bool {
+func cellStoreField(target: VmCell, value: VmCell, vm: VmState, field: int): bool {
     if target.tag != 5 || field >= vm.objectFieldCount[target.value] { return false }
     cellCopy(vm.fields[vm.objectStart[target.value] + field], value)
     return true
 }
 
-func cellFromArray(target: vmCell, array: vmArray, index: int): unit {
+func cellFromArray(target: VmCell, array: VmArray, index: int): unit {
     if index < 0 || index >= array.values.len() {
         target.tag = 0
         target.value = 0
@@ -32,7 +32,7 @@ func cellFromArray(target: vmCell, array: vmArray, index: int): unit {
     target.value = array.values[index]
 }
 
-func cellLoadIndex(target: vmCell, index: vmCell, vm: vmState): unit {
+func cellLoadIndex(target: VmCell, index: VmCell, vm: VmState): unit {
     if target.tag == 4 && index.tag == 1 {
         cellFromArray(target, vm.arrays[target.value], index.value)
         return
@@ -44,7 +44,7 @@ func cellLoadIndex(target: vmCell, index: vmCell, vm: vmState): unit {
 // Arithmetic and comparison between integers (or booleans, for comparisons)
 // written to the left operand's cell. Returns false when the types need the
 // general path of vmBinary.
-func cellArith(left: vmCell, right: vmCell, opcode: int): bool {
+func cellArith(left: VmCell, right: VmCell, opcode: int): bool {
     let leftValue = left.value
     let rightValue = right.value
     if opcode == 24 || opcode == 25 {

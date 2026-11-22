@@ -18,6 +18,10 @@ class NativeAssembly {
     public var labelSerial: int
     // role -> function index, copied from NativeRoles after resolve
     public var roleFunction: int[]
+    // Constant-space dispatch entries reference the generated function code.
+    public var dispatchData: string[]
+    public var symbolPrefix: string
+    public var targetKind: int
 
     public method useRoles(roles: NativeRoles): unit {
         var role = 0
@@ -72,7 +76,24 @@ class NativeAssembly {
 
     public method text(): string {
         if lines.len() == 0 { return "" }
-        return joinRange(0, lines.len())
+        let body = joinRange(0, lines.len())
+        if dispatchData.len() == 0 { return body }
+        if targetKind == 1 { return body + ".section __DATA_CONST,__const\n" + joinDispatchRange(0, dispatchData.len()) }
+        return body + ".section .rodata\n" + joinDispatchRange(0, dispatchData.len())
+    }
+
+    private method joinDispatchRange(start: int, end: int): string {
+        if end - start == 1 { return dispatchData[start] + "\n" }
+        let middle = start + (end - start) / 2
+        return joinDispatchRange(start, middle) + joinDispatchRange(middle, end)
+    }
+
+    public method dispatchDirective(text: string): unit {
+        dispatchData.push("    " + text)
+    }
+
+    public method dispatchLabel(name: string): unit {
+        dispatchData.push(name + ":")
     }
 
     // Runtime methods that generated code calls (NativeRoles order).
@@ -98,7 +119,7 @@ class NativeAssembly {
     }
 
     public method symbol(functionIndex: int): string {
-        return "_snova_fn_" + decimal(functionIndex)
+        return symbolPrefix + "snova_fn_" + decimal(functionIndex)
     }
 
     public method pushPair(): unit {
@@ -171,8 +192,13 @@ class NativeAssembly {
     }
 
     public method stateAddress(register: string): unit {
-        line("adrp " + register + ", _snova_state@PAGE")
-        line("add " + register + ", " + register + ", _snova_state@PAGEOFF")
+        if targetKind == 1 {
+            line("adrp " + register + ", " + symbolPrefix + "snova_state@PAGE")
+            line("add " + register + ", " + register + ", " + symbolPrefix + "snova_state@PAGEOFF")
+        } else {
+            line("adrp " + register + ", snova_state")
+            line("add " + register + ", " + register + ", :lo12:snova_state")
+        }
     }
 
 }

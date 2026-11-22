@@ -4,7 +4,7 @@ import builtin.io.console
 import builtin.runtime
 
 // Snova compiler for the slice this file is written in.
-// The Snova joiner combines this package source with compiler.snl for the seed.
+// The Snova joiner combines this package source with Compiler.snl for the seed.
 //
 // It reads a source path and writes canonical SnBC. The lowering matches
 // emit-snbc: source order of functions, local high-water, first-use string
@@ -20,7 +20,7 @@ import builtin.runtime
 // 34 + 35 - 36 * 37 / 38 % 39 & 40 | 41 ^ 42 !
 // 43 && 44 || 45 << 46 >>
 
-struct compilerState {
+struct CompilerState {
     public var tk: int[]
     public var ts: int[]
     public var tn: int[]
@@ -61,7 +61,11 @@ struct compilerState {
     public var fn_pulsar: int[]
     // 1 for `static` methods: no implicit self parameter
     public var fn_static: int[]
+    public var fn_return_ty: int[]
     public var st_kind: int[]
+    public var impl_owner: int[]
+    public var impl_ns: int[]
+    public var impl_nl: int[]
     public var fd_init: int[]
     public var va_ns: int[]
     public var va_nl: int[]
@@ -77,7 +81,7 @@ struct compilerState {
     public var warningLines: int[]
 }
 
-struct compilerContext {
+struct CompilerContext {
     public var pos: int
     public var failed: int
     public var locals: int
@@ -96,16 +100,17 @@ struct compilerContext {
     public var error_phase: int
     public var error_token: int
     public var error_start: int
+    public var error_end: int
     public var error_line: int
     public var line: int
 }
 
-struct lexerCursor {
+struct LexerCursor {
     public var i: int
     public var line: int
 }
 
-func fail(cx: compilerContext): unit {
+func fail(cx: CompilerContext): unit {
     if cx.failed == 0 {
         cx.failed = 1
         cx.error_phase = cx.phase
@@ -176,7 +181,7 @@ func hasInt(xs: int[], v: int): bool {
     return false
 }
 
-func pushTok(bg: compilerState, k: int, s: int, n: int, v: int, line: int): unit {
+func pushTok(bg: CompilerState, k: int, s: int, n: int, v: int, line: int): unit {
     bg.tk.push(k)
     bg.ts.push(s)
     bg.tn.push(n)
@@ -184,7 +189,7 @@ func pushTok(bg: compilerState, k: int, s: int, n: int, v: int, line: int): unit
     bg.tl.push(line)
 }
 
-func node(bg: compilerState, k: int, a: int, b: int, c: int, d: int): int {
+func node(bg: CompilerState, k: int, a: int, b: int, c: int, d: int): int {
     let id = bg.nk.len()
     bg.nk.push(k)
     bg.na.push(a)

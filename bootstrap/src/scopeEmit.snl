@@ -1,6 +1,6 @@
 package snova.compiler
 
-func scopeCur(bg: compilerState, which: int): int {
+func scopeCur(bg: CompilerState, which: int): int {
     var n = bg.lp_id.len()
     if n == 0 { return 0 }
     if which == 0 { return bg.lp_id[n - 1] }
@@ -8,14 +8,14 @@ func scopeCur(bg: compilerState, which: int): int {
     return bg.lp_pos[n - 1]
 }
 
-func scopeLoopEnter(bg: compilerState, cx: compilerContext, pos: int, known: int): unit {
+func scopeLoopEnter(bg: CompilerState, cx: CompilerContext, pos: int, known: int): unit {
     bg.lp_id.push(cx.seq)
     bg.lp_known.push(known)
     bg.lp_pos.push(pos)
     cx.seq = cx.seq + 1
 }
 
-func scopeLoopLeave(bg: compilerState): unit {
+func scopeLoopLeave(bg: CompilerState): unit {
     var ids: int[] = []
     var ks: int[] = []
     var ps: int[] = []
@@ -39,15 +39,15 @@ func scopePatchTagged(code: int[], fat: int[], fb: int[], at: int[], lv: int[], 
     }
 }
 
-func scopePatchBrk(code: int[], fat: int[], fb: int[], bg: compilerState): unit {
+func scopePatchBrk(code: int[], fat: int[], fb: int[], bg: CompilerState): unit {
     scopePatchTagged(code, fat, fb, bg.brk_at, bg.brk_lv, scopeCur(bg, 0))
 }
 
-func scopePatchCont(code: int[], fat: int[], fb: int[], bg: compilerState): unit {
+func scopePatchCont(code: int[], fat: int[], fb: int[], bg: CompilerState): unit {
     scopePatchTagged(code, fat, fb, bg.cont_at, bg.cont_lv, scopeCur(bg, 0))
 }
 
-func scopeEmitBreak(bg: compilerState, cx: compilerContext, code: int[]): unit {
+func scopeEmitBreak(bg: CompilerState, cx: CompilerContext, code: int[]): unit {
     if bg.lp_id.len() == 0 {
         fail(cx)
         return
@@ -57,7 +57,7 @@ func scopeEmitBreak(bg: compilerState, cx: compilerContext, code: int[]): unit {
     bg.brk_lv.push(scopeCur(bg, 0))
 }
 
-func scopeEmitContinue(bg: compilerState, cx: compilerContext, code: int[]): unit {
+func scopeEmitContinue(bg: CompilerState, cx: CompilerContext, code: int[]): unit {
     if bg.lp_id.len() == 0 {
         fail(cx)
         return
@@ -74,7 +74,7 @@ func scopeEmitContinue(bg: compilerState, cx: compilerContext, code: int[]): uni
     bg.cont_lv.push(scopeCur(bg, 0))
 }
 
-func scopeFindMethod(src: int[], bg: compilerState, owner: int, s: int, n: int): int {
+func scopeFindMethod(src: int[], bg: CompilerState, owner: int, s: int, n: int): int {
     var i = 0
     while i < bg.fn_ns.len() {
         if bg.fn_own[i] == owner {
@@ -85,7 +85,7 @@ func scopeFindMethod(src: int[], bg: compilerState, owner: int, s: int, n: int):
     return -1
 }
 
-func scopeFieldIndex(src: int[], bg: compilerState, st: int, s: int, n: int): int {
+func scopeFieldIndex(src: int[], bg: CompilerState, st: int, s: int, n: int): int {
     var i = 0
     var seen = 0
     var found = -1
@@ -101,7 +101,7 @@ func scopeFieldIndex(src: int[], bg: compilerState, st: int, s: int, n: int): in
     return found
 }
 
-func scopeFieldTy(src: int[], bg: compilerState, st: int, s: int, n: int): int {
+func scopeFieldTy(src: int[], bg: CompilerState, st: int, s: int, n: int): int {
     var i = 0
     while i < bg.fd_st.len() {
         if bg.fd_st[i] == st {
@@ -112,7 +112,7 @@ func scopeFieldTy(src: int[], bg: compilerState, st: int, s: int, n: int): int {
     return 0
 }
 
-func scopeEmitVariant(src: int[], bg: compilerState, code: int[], s: int, n: int): unit {
+func scopeEmitVariant(src: int[], bg: CompilerState, code: int[], s: int, n: int): unit {
     let si = internSpan(src, s, n, bg)
     code.push(42)
     pushU32(code, si)
@@ -129,7 +129,7 @@ func scopeCallOp(code: int[], fn: int, argc: int, async_fn: int): unit {
     pushU32(code, argc)
 }
 
-func scopeArgAt(bg: compilerState, c: int, k: int): int {
+func scopeArgAt(bg: CompilerState, c: int, k: int): int {
     let n = consCount(bg, c)
     var cur = c
     var skip = n - 1 - k
@@ -140,7 +140,7 @@ func scopeArgAt(bg: compilerState, c: int, k: int): int {
     return bg.nb[cur]
 }
 
-func scopeEmitCtor(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], st: int, args: int): unit {
+func scopeEmitCtor(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], st: int, args: int): unit {
     var i = 0
     var argi = 0
     var nfields = 0
@@ -182,7 +182,7 @@ func scopeBuiltinName(src: int[], s: int, n: int): int {
     return 0
 }
 
-func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
+func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
     let callee = bg.nb[nd]
     let args = bg.nc[nd]
     if callee < 0 { return 0 }
@@ -221,6 +221,20 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
                         // A static method is called through its type.
                         if bg.fn_static[m] != 0 {
                             fail(cx)
+                            return 1
+                        }
+                        if bg.st_kind[st] == 2 || bg.st_kind[st] == 4 {
+                            let argc = consCount(bg, args) + 1
+                            if bg.fn_ar[m] != argc {
+                                fail(cx)
+                                return 1
+                            }
+                            emitExpr(src, bg, cx, code, fat, fb, recv)
+                            emitForward(src, bg, cx, code, fat, fb, args, 0)
+                            code.push(59)
+                            pushU32(code, internSpan(src, ns, nl, bg))
+                            pushU32(code, argc)
+                            cx.expr_ty = 0
                             return 1
                         }
                         emitExpr(src, bg, cx, code, fat, fb, recv)
@@ -276,7 +290,7 @@ func scopeEmitCall(src: int[], bg: compilerState, cx: compilerContext, code: int
     return 0
 }
 
-func scopeEmitEnumMember(src: int[], bg: compilerState, cx: compilerContext, code: int[], nd: int): int {
+func scopeEmitEnumMember(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], nd: int): int {
     if bg.nk[nd] != 10 { return 0 }
     let lhs = bg.nb[nd]
     if lhs < 0 || bg.nk[lhs] != 4 { return 0 }

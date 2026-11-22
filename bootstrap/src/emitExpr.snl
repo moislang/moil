@@ -26,7 +26,7 @@ func runtimeCallArity(callId: int): int {
     return 1
 }
 
-func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int): unit {
+func emitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int): unit {
     if callee < 0 {
         fail(cx)
         return
@@ -125,7 +125,7 @@ func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], f
     }
 }
 
-func emitStruct(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func emitStruct(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     let ns = bg.na[nd]
     let nl = bg.nb[nd]
     let st = findStruct(src, bg, ns, nl)
@@ -172,7 +172,7 @@ func emitStruct(src: int[], bg: compilerState, cx: compilerContext, code: int[],
     cx.expr_ty = st + 1
 }
 
-func emitAssign(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
+func emitAssign(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], lhs: int, rhs: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, rhs)
     let rhs_ty = cx.expr_ty
     if lhs < 0 {
@@ -237,7 +237,7 @@ func emitAssign(src: int[], bg: compilerState, cx: compilerContext, code: int[],
     fail(cx)
 }
 
-func emitMember(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+func emitMember(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
     let ty = cx.expr_ty
     var st = -1

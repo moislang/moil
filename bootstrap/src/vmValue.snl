@@ -5,14 +5,14 @@ package snova.compiler.runtime
 // 4 array (value = index into arrays), 5 object (value = index into
 // objectStart), 6 null. The seed subset has no index assignment, so every
 // mutable position is a cell (struct) changed through a typed parameter.
-struct vmCell {
+struct VmCell {
     public var tag: int
     public var value: int
 }
 
 // Guest array. While mixed == 0 every element is an int and tags stays
 // empty; the first element of another type materializes the tags.
-struct vmArray {
+struct VmArray {
     public var mixed: int
     public var tags: int[]
     public var values: int[]
@@ -20,14 +20,14 @@ struct vmArray {
 
 // Saved frame of a calling function: the executor is iterative and does not
 // use the host call stack for guest calls.
-struct vmFrameRecord {
+struct VmFrameRecord {
     public var functionIndex: int
     public var base: int
     public var floor: int
     public var resume: int
 }
 
-struct vmState {
+struct VmState {
     public var data: int[]
     public var functionFirst: int[]
     public var functionLength: int[]
@@ -36,21 +36,27 @@ struct vmState {
     public var instructionSecondOperand: int[]
     public var functionArity: int[]
     public var functionLocals: int[]
+    // VM string handles for fully qualified method names, used by dispatch.
+    public var functionName: int[]
+    // Function indexes sorted by qualified-name bytes for O(log n) dispatch lookup.
+    public var functionOrder: int[]
     public var poolHandles: int[]
     public var strings: string[]
-    public var stringSpans: vmCell[]
+    public var stringSpans: VmCell[]
     public var stringBytes: int[]
     public var text: string[]
-    public var stack: vmCell[]
-    public var frames: vmFrameRecord[]
+    public var stack: VmCell[]
+    public var frames: VmFrameRecord[]
     public var resumeFunction: int
     public var resumeBase: int
     public var resumeFloor: int
     public var resumeInstruction: int
-    public var arrays: vmArray[]
+    public var arrays: VmArray[]
     public var objectStart: int[]
     public var objectFieldCount: int[]
-    public var fields: vmCell[]
+    // String-pool index from NEW_OBJECT, retained for runtime method dispatch.
+    public var objectType: int[]
+    public var fields: VmCell[]
     public var stackTop: int
     public var floor: int
     public var depth: int
@@ -63,59 +69,59 @@ struct vmState {
     public var mainIndex: int
 }
 
-func cellSet(cell: vmCell, tag: int, value: int): unit {
+func cellSet(cell: VmCell, tag: int, value: int): unit {
     cell.tag = tag
     cell.value = value
 }
 
-func cellCopy(target: vmCell, source: vmCell): unit {
+func cellCopy(target: VmCell, source: VmCell): unit {
     target.tag = source.tag
     target.value = source.value
 }
 
-func frameSave(record: vmFrameRecord, functionIndex: int, base: int, floor: int, resume: int): unit {
+func frameSave(record: VmFrameRecord, functionIndex: int, base: int, floor: int, resume: int): unit {
     record.functionIndex = functionIndex
     record.base = base
     record.floor = floor
     record.resume = resume
 }
 
-func frameRestore(record: vmFrameRecord, vm: vmState): unit {
+func frameRestore(record: VmFrameRecord, vm: VmState): unit {
     vm.resumeFunction = record.functionIndex
     vm.resumeBase = record.base
     vm.resumeFloor = record.floor
     vm.resumeInstruction = record.resume
 }
 
-func cellTag(cell: vmCell): int {
+func cellTag(cell: VmCell): int {
     return cell.tag
 }
 
-func cellValue(cell: vmCell): int {
+func cellValue(cell: VmCell): int {
     return cell.value
 }
 
-func vmFail(vm: vmState, failureCode: int, failureDetail: int): unit {
+func vmFail(vm: VmState, failureCode: int, failureDetail: int): unit {
     if vm.failed == 0 {
         vm.failed = failureCode
         vm.failureDetail = failureDetail
     }
 }
 
-func vmGrow(vm: vmState): unit {
-    vm.stack.push(vmCell { tag: 0, value: 0 })
+func vmGrow(vm: VmState): unit {
+    vm.stack.push(VmCell { tag: 0, value: 0 })
 }
 
-func vmPush(vm: vmState, tag: int, value: int): unit {
+func vmPush(vm: VmState, tag: int, value: int): unit {
     if vm.stackTop == vm.stack.len() {
-        vm.stack.push(vmCell { tag: tag, value: value })
+        vm.stack.push(VmCell { tag: tag, value: value })
     } else {
         cellSet(vm.stack[vm.stackTop], tag, value)
     }
     vm.stackTop = vm.stackTop + 1
 }
 
-func vmTopTag(vm: vmState): int {
+func vmTopTag(vm: VmState): int {
     if vm.stackTop <= vm.floor {
         vmFail(vm, 1, 0)
         return 0
@@ -123,7 +129,7 @@ func vmTopTag(vm: vmState): int {
     return cellTag(vm.stack[vm.stackTop - 1])
 }
 
-func vmPop(vm: vmState): int {
+func vmPop(vm: VmState): int {
     if vm.stackTop <= vm.floor {
         vmFail(vm, 1, 0)
         return 0
@@ -132,20 +138,20 @@ func vmPop(vm: vmState): int {
     return cellValue(vm.stack[vm.stackTop])
 }
 
-func arrayLen(array: vmArray): int {
+func arrayLen(array: VmArray): int {
     return array.values.len()
 }
 
-func arrayTag(array: vmArray, index: int): int {
+func arrayTag(array: VmArray, index: int): int {
     if array.mixed == 0 { return 1 }
     return array.tags[index]
 }
 
-func arrayValue(array: vmArray, index: int): int {
+func arrayValue(array: VmArray, index: int): int {
     return array.values[index]
 }
 
-func arrayPush(array: vmArray, tag: int, value: int): unit {
+func arrayPush(array: VmArray, tag: int, value: int): unit {
     if array.mixed == 0 && tag != 1 {
         var index = 0
         while index < array.values.len() {
@@ -158,12 +164,12 @@ func arrayPush(array: vmArray, tag: int, value: int): unit {
     array.values.push(value)
 }
 
-func vmNewArray(vm: vmState, count: int): int {
+func vmNewArray(vm: VmState, count: int): int {
     if count > vm.stackTop - vm.floor {
         vmFail(vm, 1, 0)
         return 0
     }
-    var array = vmArray { mixed: 0, tags: [], values: [] }
+    var array = VmArray { mixed: 0, tags: [], values: [] }
     let first = vm.stackTop - count
     var index = 0
     while index < count {
@@ -175,12 +181,12 @@ func vmNewArray(vm: vmState, count: int): int {
     return vm.arrays.len() - 1
 }
 
-func vmBytesArray(vm: vmState, bytes: int[]): int {
-    vm.arrays.push(vmArray { mixed: 0, tags: [], values: bytes })
+func vmBytesArray(vm: VmState, bytes: int[]): int {
+    vm.arrays.push(VmArray { mixed: 0, tags: [], values: bytes })
     return vm.arrays.len() - 1
 }
 
-func vmNewObject(vm: vmState, count: int): int {
+func vmNewObject(vm: VmState, typeName: int, count: int): int {
     if count > vm.stackTop - vm.floor {
         vmFail(vm, 1, 0)
         return 0
@@ -188,11 +194,144 @@ func vmNewObject(vm: vmState, count: int): int {
     let first = vm.stackTop - count
     vm.objectStart.push(vm.fields.len())
     vm.objectFieldCount.push(count)
+    vm.objectType.push(typeName)
     var index = 0
     while index < count {
-        vm.fields.push(vmCell { tag: cellTag(vm.stack[first + index]), value: cellValue(vm.stack[first + index]) })
+        vm.fields.push(VmCell { tag: cellTag(vm.stack[first + index]), value: cellValue(vm.stack[first + index]) })
         index = index + 1
     }
     vm.stackTop = first
     return vm.objectStart.len() - 1
+}
+
+func vmCompareFunctionNames(vm: VmState, leftIndex: int, rightIndex: int): int {
+    let leftHandle = vm.functionName[leftIndex]
+    let rightHandle = vm.functionName[rightIndex]
+    let leftLength = vmStringLength(vm, leftHandle)
+    let rightLength = vmStringLength(vm, rightHandle)
+    let leftStart = vmStringStart(vm, leftHandle)
+    let rightStart = vmStringStart(vm, rightHandle)
+    var index = 0
+    while index < leftLength && index < rightLength {
+        let leftByte = vm.stringBytes[leftStart + index]
+        let rightByte = vm.stringBytes[rightStart + index]
+        if leftByte < rightByte { return -1 }
+        if leftByte > rightByte { return 1 }
+        index = index + 1
+    }
+    if leftLength < rightLength { return -1 }
+    if leftLength > rightLength { return 1 }
+    return 0
+}
+
+func vmCompareMethodName(vm: VmState, functionHandle: int, typeHandle: int, methodHandle: int): int {
+    let typeLength = vmStringLength(vm, typeHandle)
+    let methodLength = vmStringLength(vm, methodHandle)
+    let functionLength = vmStringLength(vm, functionHandle)
+    if functionLength <= typeLength { return -1 }
+    let functionStart = vmStringStart(vm, functionHandle)
+    let typeStart = vmStringStart(vm, typeHandle)
+    let methodStart = vmStringStart(vm, methodHandle)
+    var index = 0
+    while index < typeLength {
+        let functionByte = vm.stringBytes[functionStart + index]
+        let typeByte = vm.stringBytes[typeStart + index]
+        if functionByte < typeByte { return -1 }
+        if functionByte > typeByte { return 1 }
+        index = index + 1
+    }
+    let separator = vm.stringBytes[functionStart + typeLength]
+    if separator < 46 { return -1 }
+    if separator > 46 { return 1 }
+    let functionMethodLength = functionLength - typeLength - 1
+    index = 0
+    while index < methodLength && index < functionMethodLength {
+        let functionByte = vm.stringBytes[functionStart + typeLength + index + 1]
+        let methodByte = vm.stringBytes[methodStart + index]
+        if functionByte < methodByte { return -1 }
+        if functionByte > methodByte { return 1 }
+        index = index + 1
+    }
+    if functionMethodLength < methodLength { return -1 }
+    if functionMethodLength > methodLength { return 1 }
+    return 0
+}
+
+func vmMergeFunctionOrder(vm: VmState, left: int[], right: int[]): int[] {
+    var merged: int[] = []
+    var leftIndex = 0
+    var rightIndex = 0
+    while leftIndex < left.len() && rightIndex < right.len() {
+        if vmCompareFunctionNames(vm, left[leftIndex], right[rightIndex]) <= 0 {
+            merged.push(left[leftIndex])
+            leftIndex = leftIndex + 1
+        } else {
+            merged.push(right[rightIndex])
+            rightIndex = rightIndex + 1
+        }
+    }
+    while leftIndex < left.len() {
+        merged.push(left[leftIndex])
+        leftIndex = leftIndex + 1
+    }
+    while rightIndex < right.len() {
+        merged.push(right[rightIndex])
+        rightIndex = rightIndex + 1
+    }
+    return merged
+}
+
+func vmSortFunctionOrder(vm: VmState, indexes: int[]): int[] {
+    let count = indexes.len()
+    if count < 2 {
+        var single: int[] = []
+        if count == 1 { single.push(indexes[0]) }
+        return single
+    }
+    let split = count / 2
+    var left: int[] = []
+    var right: int[] = []
+    var index = 0
+    while index < split {
+        left.push(indexes[index])
+        index = index + 1
+    }
+    while index < count {
+        right.push(indexes[index])
+        index = index + 1
+    }
+    let sortedLeft = vmSortFunctionOrder(vm, left)
+    let sortedRight = vmSortFunctionOrder(vm, right)
+    return vmMergeFunctionOrder(vm, sortedLeft, sortedRight)
+}
+
+func vmIndexFunctionNames(vm: VmState): unit {
+    var indexes: int[] = []
+    var index = 0
+    while index < vm.functionName.len() {
+        indexes.push(index)
+        index = index + 1
+    }
+    vm.functionOrder = vmSortFunctionOrder(vm, indexes)
+}
+
+func vmResolveMethod(vm: VmState, objectHandle: int, methodNameIndex: int): int {
+    let concreteTypeIndex = vm.objectType[objectHandle]
+    let typeHandle = vm.poolHandles[concreteTypeIndex]
+    let methodHandle = vm.poolHandles[methodNameIndex]
+    var low = 0
+    var high = vm.functionOrder.len()
+    while low < high {
+        let middle = low + (high - low) / 2
+        let functionIndex = vm.functionOrder[middle]
+        let comparison = vmCompareMethodName(vm, vm.functionName[functionIndex], typeHandle, methodHandle)
+        if comparison < 0 {
+            low = middle + 1
+        } else if comparison > 0 {
+            high = middle
+        } else {
+            return functionIndex
+        }
+    }
+    return -1
 }

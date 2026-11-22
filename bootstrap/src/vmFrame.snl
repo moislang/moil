@@ -5,7 +5,7 @@ package snova.compiler.runtime
 // CALL saves the calling frame in vm.frames; RETURN restores it. Depth is
 // limited by vmFrameLimit(), independent of the host call stack. The most
 // frequent opcodes come first.
-func vmRun(vm: vmState, entryFunction: int): unit {
+func vmRun(vm: VmState, entryFunction: int): unit {
     var functionIndex = entryFunction
     var base = 0
     var floor = vm.functionLocals[functionIndex]
@@ -45,6 +45,32 @@ func vmRun(vm: vmState, entryFunction: int): unit {
                 vm.floor = floor
                 instruction = vm.functionFirst[functionIndex]
                 end = instruction + vm.functionLength[functionIndex]
+            }
+        } else if opcode == 59 {
+            let argumentCount = vm.instructionSecondOperand[instruction - 1]
+            let calleeBase = vm.stackTop - argumentCount
+            if vm.depth >= vmFrameLimit() {
+                vmFail(vm, 3, operand)
+            } else if argumentCount < 1 || calleeBase < floor {
+                vmFail(vm, 1, 0)
+            } else if cellTag(vm.stack[calleeBase]) != 5 {
+                vmFail(vm, 2, opcode)
+            } else {
+                let target = vmResolveMethod(vm, cellValue(vm.stack[calleeBase]), operand)
+                if target < 0 {
+                    vmFail(vm, 12, operand)
+                } else if vm.functionArity[target] != argumentCount {
+                    vmFail(vm, 2, opcode)
+                } else {
+                    vmEnterLocals(vm, target, argumentCount)
+                    vmSaveFrame(vm, functionIndex, base, floor, instruction)
+                    functionIndex = target
+                    base = calleeBase
+                    floor = base + vm.functionLocals[functionIndex]
+                    vm.floor = floor
+                    instruction = vm.functionFirst[functionIndex]
+                    end = instruction + vm.functionLength[functionIndex]
+                }
             }
         } else if opcode == 31 || opcode == 32 {
             if vm.stackTop <= floor {
@@ -119,7 +145,7 @@ func vmRun(vm: vmState, entryFunction: int): unit {
 }
 
 // Less frequent opcodes, outside the main loop.
-func vmOther(vm: vmState, opcode: int, operand: int, secondOperand: int, functionIndex: int): unit {
+func vmOther(vm: VmState, opcode: int, operand: int, secondOperand: int, functionIndex: int): unit {
     if opcode == 47 || opcode == 48 || opcode == 49 || opcode == 50 || opcode == 58 {
         vmArrayOp(vm, opcode)
     } else if opcode == 17 || opcode == 18 {
@@ -134,7 +160,7 @@ func vmOther(vm: vmState, opcode: int, operand: int, secondOperand: int, functio
         let arrayHandle = vmNewArray(vm, operand)
         if vm.failed == 0 { vmPush(vm, 4, arrayHandle) }
     } else if opcode == 36 {
-        let objectHandle = vmNewObject(vm, secondOperand)
+        let objectHandle = vmNewObject(vm, operand, secondOperand)
         if vm.failed == 0 { vmPush(vm, 5, objectHandle) }
     } else if opcode == 7 {
         let tag = vmTopTag(vm)

@@ -1,69 +1,72 @@
 package snova.compiler.runtime
 
-struct imageCursor {
+class ImageCursor {
     public var offset: int
     public var valid: int
-}
 
-func readU32(data: int[], cursor: imageCursor): int {
-    if cursor.valid == 0 { return 0 }
-    if cursor.offset < 0 || cursor.offset > data.len() - 4 {
-        cursor.valid = 0
-        return 0
+    public method readU32(data: int[]): int {
+        if valid == 0 { return 0 }
+        if offset < 0 || offset > data.len() - 4 {
+            valid = 0
+            return 0
+        }
+        let start = offset
+        let value = data[start] + data[start + 1] * 256 +
+            data[start + 2] * 65536 + data[start + 3] * 16777216
+        offset = start + 4
+        return value
     }
-    let offset = cursor.offset
-    let value = data[offset] + data[offset + 1] * 256 +
-        data[offset + 2] * 65536 + data[offset + 3] * 16777216
-    cursor.offset = offset + 4
-    return value
-}
 
-func skipBytes(data: int[], cursor: imageCursor, count: int): unit {
-    if cursor.valid == 0 { return }
-    if count < 0 || cursor.offset < 0 || count > data.len() - cursor.offset {
-        cursor.valid = 0
-        return
+    public method skip(data: int[], count: int): unit {
+        if valid == 0 { return }
+        if count < 0 || offset < 0 || count > data.len() - offset {
+            valid = 0
+            return
+        }
+        offset = offset + count
     }
-    cursor.offset = cursor.offset + count
+
+    public method isValid(): int { return valid }
+    public method position(): int { return offset }
 }
 
 public func validateImage(data: int[]): int {
-    var cursor = imageCursor { offset: 0, valid: 1 }
-    if readU32(data, cursor) != 1128418899 { return 0 }
-    if readU32(data, cursor) != 1 { return 0 }
-    let mainIndex = readU32(data, cursor)
-    let stringCount = readU32(data, cursor)
-    if cursor.valid == 0 || stringCount > data.len() / 4 { return 0 }
+    let cursor = ImageCursor(0, 1)
+    if cursor.readU32(data) != 1128418899 { return 0 }
+    if cursor.readU32(data) != 1 { return 0 }
+    let mainIndex = cursor.readU32(data)
+    let stringCount = cursor.readU32(data)
+    if cursor.isValid() == 0 || stringCount > data.len() / 4 { return 0 }
     var index = 0
     while index < stringCount {
-        let length = readU32(data, cursor)
-        skipBytes(data, cursor, length)
-        if cursor.valid == 0 { return 0 }
+        let length = cursor.readU32(data)
+        cursor.skip(data, length)
+        if cursor.isValid() == 0 { return 0 }
         index = index + 1
     }
-    let functionCount = readU32(data, cursor)
-    if cursor.valid == 0 || functionCount == 0 || mainIndex >= functionCount { return 0 }
+    let functionCount = cursor.readU32(data)
+    if cursor.isValid() == 0 || functionCount == 0 || mainIndex >= functionCount { return 0 }
     var arities: int[] = []
     var locals: int[] = []
     var codeStarts: int[] = []
     var codeLengths: int[] = []
     index = 0
     while index < functionCount {
-        let nameLength = readU32(data, cursor)
-        skipBytes(data, cursor, nameLength)
-        let arity = readU32(data, cursor)
-        let localCount = readU32(data, cursor)
-        let codeLength = readU32(data, cursor)
-        if cursor.valid == 0 || localCount < arity || localCount > 256 || codeLength == 0 { return 0 }
+        let nameLength = cursor.readU32(data)
+        cursor.skip(data, nameLength)
+        let arity = cursor.readU32(data)
+        let localCount = cursor.readU32(data)
+        let codeLength = cursor.readU32(data)
+        if cursor.isValid() == 0 || localCount < arity || localCount > 256 || codeLength == 0 { return 0 }
         arities.push(arity)
         locals.push(localCount)
-        codeStarts.push(cursor.offset)
+        codeStarts.push(cursor.position())
         codeLengths.push(codeLength)
-        skipBytes(data, cursor, codeLength)
-        if cursor.valid == 0 { return 0 }
+        cursor.skip(data, codeLength)
+        if cursor.isValid() == 0 { return 0 }
         index = index + 1
     }
-    if cursor.offset != data.len() { return 0 }
+    if cursor.position() != data.len() { return 0 }
     if arities[mainIndex] != 0 { return 0 }
     index = 0
     while index < functionCount {

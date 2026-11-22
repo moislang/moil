@@ -14,6 +14,12 @@ class NativeInstructionEmitter {    public var functionIndex: int
     public method prologue(output: NativeAssembly, stack: NativeOwnership, arity: int): unit {
         output.directive(".p2align 2")
         output.label(output.symbol(functionIndex))
+        // Native emission uses x19..x24 as value stashes across calls. Keep
+        // their AAPCS64 callee-saved contract so nested runtime calls cannot
+        // corrupt the caller's intermediate values.
+        output.line("stp x19, x20, [sp, #-16]!")
+        output.line("stp x21, x22, [sp, #-16]!")
+        output.line("stp x23, x24, [sp, #-16]!")
         output.line("stp x29, x30, [sp, #-16]!")
         output.line("mov x29, sp")
         if localCount > 0 { output.offset("sp", "sp", 16 * localCount, true) }
@@ -32,7 +38,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
         while slot < localCount {
             output.localAddress(slot)
             if slot < arity {
-                output.offset("x11", "x29", 16 + 16 * (arity - 1 - slot), false)
+                output.offset("x11", "x29", 64 + 16 * (arity - 1 - slot), false)
                 output.line("ldp x12, x13, [x11]")
                 output.line("stp x12, x13, [x10]")
             } else {
@@ -69,6 +75,9 @@ class NativeInstructionEmitter {    public var functionIndex: int
         }
         output.line("mov sp, x29")
         output.line("ldp x29, x30, [sp], #16")
+        output.line("ldp x23, x24, [sp], #16")
+        output.line("ldp x21, x22, [sp], #16")
+        output.line("ldp x19, x20, [sp], #16")
         output.line("ret")
         stack.depth = 0
         stack.stop()
@@ -211,6 +220,56 @@ class NativeInstructionEmitter {    public var functionIndex: int
         stack.pushSlot(-1)
     }
 
+    // CALL_INTERFACE (59): each call site owns a jump table indexed by the
+    // concrete type pool id stored in the object's native header. Dispatch is
+    // O(1) at runtime; table construction resolves methods while compiling.
+    private method virtualCall(output: NativeAssembly, stack: NativeOwnership, image: NativeImage, methodIndex: int, argumentCount: int, label: string): unit {
+        stack.upgradeRange(output, 0, argumentCount)
+        let receiverOffset = 16 * (argumentCount - 1)
+        output.line("ldr x9, [sp, #" + output.decimal(receiverOffset) + "]")
+        output.line("ldr x10, [sp, #" + output.decimal(receiverOffset + 8) + "]")
+        output.line("cmp x10, #5")
+        output.line("b.ne " + label + "_invalid")
+        output.line("ldr x16, [x9, #8]")
+        output.loadConstant("x9", image.poolCount())
+        output.line("cmp x16, x9")
+        output.line("b.hs " + label + "_invalid")
+        if output.targetKind == 1 {
+            output.line("adrp x17, " + label + "_table@PAGE")
+            output.line("add x17, x17, " + label + "_table@PAGEOFF")
+        } else {
+            output.line("adrp x17, " + label + "_table")
+            output.line("add x17, x17, :lo12:" + label + "_table")
+        }
+        output.line("ldr x17, [x17, x16, lsl #3]")
+        output.line("blr x17")
+        output.offset("sp", "sp", 16 * argumentCount, false)
+        var dropped = 0
+        while dropped < argumentCount {
+            stack.popSlot()
+            dropped = dropped + 1
+        }
+        output.pushPair()
+        stack.pushSlot(-1)
+        let afterCall = label + "_after_call"
+        output.line("b " + afterCall)
+        output.label(label + "_invalid")
+        output.callFail(2, 59)
+        output.label(afterCall)
+        output.dispatchDirective(".p2align 3")
+        output.dispatchLabel(label + "_table")
+        var typeIndex = 0
+        while typeIndex < image.poolCount() {
+            let target = image.findMethod(typeIndex, methodIndex)
+            if target < 0 {
+                output.dispatchDirective(".quad " + label + "_invalid")
+            } else {
+                output.dispatchDirective(".quad " + output.symbol(target))
+            }
+            typeIndex = typeIndex + 1
+        }
+    }
+
     private method loadLocal(output: NativeAssembly, stack: NativeOwnership, slot: int): unit {
         output.localAddress(slot)
         output.line("ldp x0, x1, [x10]")
@@ -277,7 +336,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
         } else if opcode == 35 {
             returnValue(output, stack)
         } else if opcode == 36 {
-            values.fromStack(output, stack, output.roleObjectFromStack(), image.u32(operandAt + 4))
+            values.newObject(output, stack, image.u32(operandAt + 4), image.u32(operandAt))
         } else if opcode == 37 {
             values.getField(output, stack, image.u32(operandAt), label)
         } else if opcode == 38 {
@@ -300,6 +359,8 @@ class NativeInstructionEmitter {    public var functionIndex: int
             values.twoValueCall(output, stack, output.rolePushValue(), true)
         } else if opcode == 58 {
             values.arrayPop(output, stack, label)
+        } else if opcode == 59 {
+            virtualCall(output, stack, image, image.u32(operandAt), image.u32(operandAt + 4), label)
         } else if opcode == 52 {
             stopWith(output, stack, 5, functionIndex)
         } else if opcode == 57 {

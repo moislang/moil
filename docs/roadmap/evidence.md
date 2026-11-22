@@ -36,7 +36,7 @@ This file started with no technical results. Entries must record observed facts,
 ## 2026-11-21 — importable modules and camelCase names
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
-- Organization: compiler modules in `bootstrap/src/`, functions and types in `camelCase`, files under 400 lines. `api.snl` imports `snova.compiler`; `apiConsumer.snl` imports `snova.compiler.api`.
+- Organization at that historical checkpoint: compiler modules in `bootstrap/src/`, functions and types in `camelCase`, files under 400 lines. The current convention is `PascalCase` for types and source files, and `camelCase` for functions, methods and variables. Historical module names in this entry predate the current naming convention.
 - Commands: `snl check --project bootstrap/src`, `make bootstrap-smoke`, `make bootstrap-diagnostics`, `make bootstrap-fixed-point`.
 - Observed result: cross-package imports and the multi-file project passed the check; smoke test and diagnostics passed; the Snova joiner generated the seed unit, which compiled the sources and reached byte-for-byte equality.
 - SHA-256 of the stage 1 and 2 SnBC images: `6dab7126700e6416ade1ba2df110ea8486dc6cae989954d484330a0919c42740`.
@@ -46,15 +46,15 @@ This file started with no technical results. Entries must record observed facts,
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
 - Commands: `make bootstrap-fixed-point`, `make bootstrap-smoke`, `make bootstrap-diagnostics`.
-- Observed result: the multi-file project binary accepted input/output paths as arguments; without arguments it compiled its own sources through `sourceJoin.snl` and used `SNL_OUTPUT`. The generated SnBC repeated the compilation without the external joiner, and the two images matched byte for byte. Smoke test and diagnostics passed with the new CLI.
+- Observed result: the multi-file project binary accepted input/output paths as arguments; without arguments it compiled its own sources through `SourceJoin.snl` and used `SNL_OUTPUT`. The generated SnBC repeated the compilation without the external joiner, and the two images matched byte for byte. Smoke test and diagnostics passed with the new CLI.
 - SHA-256 of the two SnBC images: `4d00222c46e427a3308bf1f7ede3935d8a6744222f7d074a2f7ac115b2482716`.
-- Limitations: `runtime.snl` wraps the argument, environment and byte calls, but those primitives and SnBC execution still come from the reference runtime. The internal assembly lists the compiler's own modules; general imports, full semantics, a Snova native backend and full compatibility with `snovac` remain pending.
+- Limitations: `Runtime.snl` wraps the argument, environment and byte calls, but those primitives and SnBC execution still come from the reference runtime. The internal assembly lists the compiler's own modules; general imports, full semantics, a Snova native backend and full compatibility with `snovac` remain pending.
 
 ## 2026-11-21 — structural SnBC reader in Snova
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
 - Commands: `make bootstrap-image-check`, `make bootstrap-fixed-point`.
-- Observed result: `imageReader.snl` accepted the image produced by the compiler, rejected a truncated image and was compiled as part of the compiler itself in the next generation. The stage 1 and 2 images matched byte for byte.
+- Observed result: `ImageReader.snl` accepted the image produced by the compiler, rejected a truncated image and was compiled as part of the compiler itself in the next generation. The stage 1 and 2 images matched byte for byte.
 - SHA-256 of both images: `8ecf10657461d96e7033ed391ba1fdfd60400579e503e36ff7d5dd5cec4952cd`.
 - Limitations: validation covers structure, sizes and the main indexes; it did not yet validate instructions/opcodes, did not execute SnBC in Snova and did not replace the reference runtime or backend.
 
@@ -62,7 +62,7 @@ This file started with no technical results. Entries must record observed facts,
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
 - Commands: `make bootstrap-fixed-point`, `make bootstrap-image-check`, `make bootstrap-smoke`; images derived from `stage1.snbc` with an invalid opcode and an out-of-image jump were rejected by the Snova compiler.
-- Observed result: `imageCode.snl` checked instruction bounds, the last opcode, string/local/function indexes, arity, runtime calls, jumps and not-yet-implemented opcodes; the stage 1 and 2 images matched byte for byte.
+- Observed result: `ImageCode.snl` checked instruction bounds, the last opcode, string/local/function indexes, arity, runtime calls, jumps and not-yet-implemented opcodes; the stage 1 and 2 images matched byte for byte.
 - SHA-256 of both images: `d85c9e395f93e2b16d8156dc47589f619b8d6693f6d935b79ddbc00b8100d3ee`.
 - Limitations: this validator does not execute bytecode, does not prove parity for every corpus, and still uses the previous runtime to build/run the stage images.
 
@@ -93,7 +93,7 @@ This file started with no technical results. Entries must record observed facts,
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`.
 - Commands: `make bootstrap-diagnostics bootstrap-vm bootstrap-fixed-point bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
-- Observed result: `warnMismatch.snl` compiled with status 0 and two `warning[SNW0001]` diagnostics, at lines 10 (`"seven" == 7`) and 13 (struct `!=` int); `warnCompare.snl` compiled without diagnostics and returned 7 on the Snova executor. Compiling the compiler's own sources emitted no warnings. All quick gates passed.
+- Observed result: `WarnMismatch.snl` compiled with status 0 and two `warning[SNW0001]` diagnostics, at lines 10 (`"seven" == 7`) and 13 (struct `!=` int); `WarnCompare.snl` compiled without diagnostics and returned 7 on the Snova executor. Compiling the compiler's own sources emitted no warnings. All quick gates passed.
 - Observed result: the Snova executor ran the compiler image again with the current sources; `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched byte for byte. SHA-256: `e5aa78db2ad50a0898e2eaaea287b6ac6a66a39063a6f3fbc8c259ab4ddef2dc`. Time: 3 min 09 s (187.5 s of CPU). This hash replaced the previous entry's hash as the current state.
 - Observed in `snl run-snbc` v0.3.0: in `warnCompare`, `true == (1 < 2)` gives false (status 3), while the Snova executor gives true (status 7). So the gate checks that fixture only through the Snova executor.
 - Limitations: the warning only covers known static types (literals, typed locals, parameters, fields); calls and indexing have an unknown type and produce no warning. The span is only the line. Address comparison (`&T`) does not exist in the subset yet.
@@ -102,7 +102,7 @@ This file started with no technical results. Entries must record observed facts,
 
 - Environment: `snl v0.3.0`, `aarch64-apple-darwin`; `as`/`ld` from the Command Line Tools (`-platform_version macos` = SDK version, `-lSystem`).
 - Commands: `make bootstrap-native bootstrap-fixed-point bootstrap-vm bootstrap-diagnostics bootstrap-image-check bootstrap-smoke`, `make bootstrap-vm-self`, `git diff --check`.
-- Observed result: the Snova compiler emitted aarch64 assembly for `numericVm`, `numericFlow` and `nativeCalls`; the assembled and linked arm64 Mach-O executables returned 48, 48 and 126, equal to the Snova executor and `snl run-snbc`. `hello.snl` was refused with `unsupported opcode for native backend: 3`. Two emissions of the same source gave identical `.s` files (SHA-256 of `nativeCalls.s`: `62345b3011b88abbfc36cb0ac6524a5cd76a00b2c05876f6569f63518f67fe4c`).
+- Observed result: the Snova compiler emitted aarch64 assembly for `numericVm`, `numericFlow` and `nativeCalls`; the assembled and linked arm64 Mach-O executables returned 48, 48 and 126, equal to the Snova executor and `snl run-snbc`. `Hello.snl` was refused with `unsupported opcode for native backend: 3`. Two emissions of the same source gave identical `.s` files (SHA-256 of `nativeCalls.s`: `62345b3011b88abbfc36cb0ac6524a5cd76a00b2c05876f6569f63518f67fe4c`).
 - Observed result: with the native modules in the sources, the fixed point and the executor gate kept passing; `stage1.snbc`, `stage2.snbc` and `vm-stage.snbc` matched. SHA-256: `47469d977b858b6b463acec9bce71475a3d87a7d23115e547fe5a2c939959951`.
 - Limitations: N1 covered only the numeric subset (no strings, arrays, structs, printing or I/O); the compiler itself still runs in the `snl build` executable (SnBC + C VM); assembling and linking use the system `as`/`ld`; the generated code has no register allocation. There is no native fixed point and no native compiler (N3).
 
@@ -158,3 +158,18 @@ This file started with no technical results. Entries must record observed facts,
 - Commands: `make bootstrap-diagnostics bootstrap-native`, `make bootstrap-vm-self bootstrap-native-self`, `python3 scripts/validate-planning-docs.py`, `git diff --check`.
 - Observed result: `ARRAY_POP` removes and returns the final element in both the Snova SnBC executor and the native backend. Integer and string fixtures pass; both backends report `runtime error: pop from empty array` with status 70. Native ownership reporting confirms zero live blocks at exit for successful pop fixtures.
 - Limitations: the native backend supports the existing array layout and ownership model; this change does not add static array element typing or bounds/index assignment.
+
+## 2026-11-21 — native target resolution groundwork
+
+- Environment: `snl v0.3.0`, Apple Silicon/macOS, `aarch64-apple-darwin`.
+- Commands: `make bootstrap-native-self`, `make bootstrap-vm-self`, `make bootstrap-build`, explicit `native x86_64-unknown-linux-gnu` invocation, `git diff --check`.
+- Observed result: native stage1/stage2/stage3 assembly matched; VM-generated stage2 SnBC matched stage1. The native boundary now gets its text/constant/BSS sections and symbol prefix from resolver metadata. An explicit x86-64/Linux argument is rejected before assembly output.
+- Limitations: this is target-selection groundwork, not multi-target support. The driver cannot compare explicit triples because seed string equality is identity-based; it rejects explicit target arguments. Interface contracts exist, but seed interface calls cannot lower to SnBC (`SNOVA0400`). x86-64 instructions, SysV ABI emission, ELF/Linux runtime and GNU linking remain unimplemented, so a pre-release must not claim x86-64/Linux support.
+
+## 2026-11-22 — Linux ARM64 ELF runtime and platform CLI matrix
+
+- Environment: Docker/Colima, Ubuntu 24.04 ARM64; seed source `snovac` revision `2b5048aaf221527e22ea844f858b5d0f33f149c9`; image base digest `sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289`.
+- Commands: `docker build --platform linux/arm64 -f ci/linux-aarch64.Dockerfile -t snova-linux-aarch64:ci ci`; `docker run --rm --platform linux/arm64 ... make bootstrap-cli-linux-ci bootstrap-native-linux-aarch64-ci`.
+- Observed result: seed built in Linux; CLI smoke, SnBC fixed point, VM differential and OOP fixtures passed. Linux AArch64 ELF executables linked statically and matched the SnBC VM for 13 fixtures (Hello, arithmetic/control flow, calls, composites, equality, static methods, arrays, interface/trait dispatch and memory loop). Linux boundary uses `_start`, AAPCS64 syscalls and Linux open flags. Darwin remains the default target.
+- CI added Docker builds for Linux x86_64 and ARM64, and host-runner CLI build jobs for macOS x86_64/ARM64 and Windows x86_64/ARM64. Those hosted jobs have not run in this workspace. The x86_64 Docker image build also has not passed locally yet; the local ARM64 emulator stalled during the initial x86_64 toolchain install.
+- Limitations: Linux AArch64 native self-host assembly differed between the first compiler and the generated native compiler, so no Linux native fixed point is claimed. Linux x86_64 is CLI/VM-tested in the pipeline definition only; its native emitter is not implemented. This matrix does not qualify native Windows or macOS Intel output.

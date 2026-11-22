@@ -3,13 +3,13 @@ package bootstrap.fixture
 import builtin.io.console
 import builtin.runtime
 
-struct record {
+struct Record {
     public var label: string
     public var items: int[]
 }
 
-struct holder {
-    public var current: record
+struct Holder {
+    public var current: Record
     public var history: string
 }
 
@@ -18,18 +18,18 @@ func describe(position: int): string {
     return "odd" + "-" + "item"
 }
 
-func labelOf(item: record): string {
+func labelOf(item: Record): string {
     return item.label
 }
 
-func thirdOf(item: record): int {
+func thirdOf(item: Record): int {
     return item.items[2]
 }
 
-func build(position: int): record {
+func build(position: int): Record {
     var items = [position, position + 1]
     items.push(position + 2)
-    return record { label: describe(position) + "!", items: items }
+    return Record { label: describe(position) + "!", items: items }
 }
 
 // Native memory gate: every iteration allocates strings, arrays and
@@ -37,7 +37,7 @@ func build(position: int): record {
 // must not depend on the iteration count (20000 per program argument).
 func main(): int {
     let iterations = 20000 * Runtime.argumentCount()
-    var box = holder { current: build(0), history: "" }
+    var box = Holder { current: build(0), history: "" }
     var total = 0
     var position = 0
     while position < iterations {

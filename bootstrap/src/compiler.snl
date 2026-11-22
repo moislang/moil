@@ -3,7 +3,7 @@ package snova.compiler
 import snova.compiler.runtime
 import snova.compiler.backend
 
-func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]): unit {
+func writeImage(src: int[], bg: CompilerState, cx: CompilerContext, image: int[]): unit {
     image.push(83)
     image.push(78)
     image.push(66)
@@ -37,7 +37,7 @@ func writeImage(src: int[], bg: compilerState, cx: compilerContext, image: int[]
     }
 }
 
-func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
+func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     if cx.error_phase == 1 {
         Console.print("error[SNV1001]: lexical error at line ")
         Console.print(cx.error_line)
@@ -104,6 +104,16 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         Console.printline("")
         return
     }
+    if cx.error_phase == 7 {
+        Console.print("error[SNV5001]: type does not satisfy declared contract at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_end)
+        Console.printline("")
+        return
+    }
     Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
     Console.print(cx.error_line)
     Console.print(", function #")
@@ -113,7 +123,7 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
 
 // Warnings do not stop compilation. SNW0001: `==`/`!=` between operands
 // whose static types are known and different.
-func reportWarnings(bg: compilerState): unit {
+func reportWarnings(bg: CompilerState): unit {
     var index = 0
     while index < bg.warningCodes.len() {
         Console.print("warning[SNW000")
@@ -126,7 +136,7 @@ func reportWarnings(bg: compilerState): unit {
 }
 
 func compileSource(src: int[], image: int[]): int {
-    var bg = compilerState {
+    var bg = CompilerState {
         tk: [], ts: [], tn: [], tv: [], tl: [],
         nk: [], na: [], nb: [], nc: [], nd: [],
         loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [],
@@ -138,17 +148,17 @@ func compileSource(src: int[], image: int[]): int {
         pool_b: [], pool_s: [], pool_n: [],
         allc: [],
         fn_own: [], fn_async: [], fn_pulsar: [], fn_static: [],
-        st_kind: [], fd_init: [],
+        fn_return_ty: [], st_kind: [], impl_owner: [], impl_ns: [], impl_nl: [], fd_init: [],
         va_ns: [], va_nl: [], va_en: [],
         lp_id: [], lp_known: [], lp_pos: [],
         brk_at: [], brk_lv: [], cont_at: [], cont_lv: [],
         warningCodes: [], warningLines: []
     }
-    var cx = compilerContext {
+    var cx = CompilerContext {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
         owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
-        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, line: 1
+        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_end: -1, error_line: 1, line: 1
     }
     lexAll(src, bg, cx)
     if cx.failed != 0 {
@@ -199,7 +209,7 @@ func main(): int {
         return 0
     }
     if argc != 0 && argc < 2 {
-        Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native | snl <image.snbc> [run [args...]]")
+        Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native [target-triple: pending] | snl <image.snbc> [run [args...]]")
         return 2
     }
     var src: int[] = []
@@ -210,7 +220,7 @@ func main(): int {
         if isImageBytes(src) {
             return runImage(src, 2)
         }
-        if argc == 3 { appendNativeRuntime(src) }
+        if argc >= 3 { appendNativeRuntime(src) }
     }
     var image: int[] = []
     if compileSource(src, image) != 0 {
@@ -220,9 +230,23 @@ func main(): int {
         Console.printline("invalid generated SnBC image")
         return 1
     }
-    if argc == 3 {
+    if argc == 3 || argc == 4 {
+        let resolver = NativeTargetResolver()
+        var targetKind = 1
+        if argc == 4 {
+            let scratchPath = imagePath() + ".target.tmp"
+            targetKind = resolver.status(Runtime.argument(3), scratchPath)
+            if targetKind == 0 {
+                Console.printline(resolver.diagnostic(targetKind))
+                return 1
+            }
+            if targetKind == 2 {
+                Console.printline(resolver.diagnostic(targetKind))
+                return 1
+            }
+        }
         let backend = NativeBackend()
-        let unsupported = backend.emit(image, imagePath())
+        let unsupported = backend.emit(image, imagePath(), targetKind)
         if unsupported < 0 {
             Console.printline("native runtime missing from image")
             return 1

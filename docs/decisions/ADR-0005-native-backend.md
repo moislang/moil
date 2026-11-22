@@ -48,7 +48,7 @@ against `libSystem`. Vertical slices, each with its own gate:
 
 ## State
 
-N1, N2 and N3 are implemented in `bootstrap/src/native*.snl` and
+N1, N2 and N3 are implemented in `bootstrap/src/Native*.snl` and
 `bootstrap/runtime/*.snl`. `make bootstrap-native-self` builds the compiler's
 ordered source modules with the transitional seed, links a native compiler,
 and requires two further native compiler generations to emit identical

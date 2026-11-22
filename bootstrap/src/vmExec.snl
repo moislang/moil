@@ -18,7 +18,7 @@ func vmConstInt(data: int[], at: int): int {
     return high * 4294967296 + low
 }
 
-func vmEnterLocals(vm: vmState, callee: int, argumentCount: int): unit {
+func vmEnterLocals(vm: VmState, callee: int, argumentCount: int): unit {
     var slot = argumentCount
     while slot < vm.functionLocals[callee] {
         vmPush(vm, 0, 0)
@@ -26,16 +26,16 @@ func vmEnterLocals(vm: vmState, callee: int, argumentCount: int): unit {
     }
 }
 
-func vmSaveFrame(vm: vmState, functionIndex: int, base: int, floor: int, resume: int): unit {
+func vmSaveFrame(vm: VmState, functionIndex: int, base: int, floor: int, resume: int): unit {
     if vm.frames.len() == vm.depth - 1 {
-        vm.frames.push(vmFrameRecord { functionIndex: functionIndex, base: base, floor: floor, resume: resume })
+        vm.frames.push(VmFrameRecord { functionIndex: functionIndex, base: base, floor: floor, resume: resume })
     } else {
         frameSave(vm.frames[vm.depth - 1], functionIndex, base, floor, resume)
     }
     vm.depth = vm.depth + 1
 }
 
-func vmRuntimeCall(vm: vmState, callId: int): unit {
+func vmRuntimeCall(vm: VmState, callId: int): unit {
     if callId == 6 {
         vmPush(vm, 1, Runtime.argumentCount() - vm.argumentBase)
         return
@@ -77,7 +77,7 @@ func vmRuntimeCall(vm: vmState, callId: int): unit {
     vmFail(vm, 2, 57)
 }
 
-func vmHostBytes(vm: vmState, array: vmArray): int[] {
+func vmHostBytes(vm: VmState, array: VmArray): int[] {
     if array.mixed == 0 { return array.values }
     var bytes: int[] = []
     var index = 0
@@ -93,10 +93,10 @@ func vmHostBytes(vm: vmState, array: vmArray): int[] {
 }
 
 // READ_BYTES (47), WRITE_BYTES (48), ARRAY_LEN (49) e ARRAY_PUSH (50).
-func arrayRemoveLast(array: vmArray): vmCell {
+func arrayRemoveLast(array: VmArray): VmCell {
     let length = array.values.len()
     let lastIndex = length - 1
-    let result = vmCell { tag: arrayTag(array, lastIndex), value: arrayValue(array, lastIndex) }
+    let result = VmCell { tag: arrayTag(array, lastIndex), value: arrayValue(array, lastIndex) }
     var values: int[] = []
     var tags: int[] = []
     var index = 0
@@ -110,7 +110,7 @@ func arrayRemoveLast(array: vmArray): vmCell {
     return result
 }
 
-func vmArrayOp(vm: vmState, opcode: int): unit {
+func vmArrayOp(vm: VmState, opcode: int): unit {
     if opcode == 58 {
         let targetTag = vmTopTag(vm)
         let targetHandle = vmPop(vm)

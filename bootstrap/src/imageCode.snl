@@ -7,12 +7,12 @@ func codeU32(data: int[], offset: int): int {
 
 func opcodeWidth(op: int): int {
     if op == 1 || op == 2 || op == 33 || op == 34 || op == 36 || op == 42 ||
-        op == 53 || op == 54 || op == 55 || op == 57 { return 8 }
+        op == 53 || op == 54 || op == 55 || op == 57 || op == 59 { return 8 }
     if op == 3 || op == 8 || op == 9 || op == 10 || op == 11 ||
         op == 30 || op == 31 || op == 32 || op == 37 || op == 38 ||
         op == 39 || op == 43 || op == 44 { return 4 }
     if op == 4 || op == 45 { return 1 }
-    if op >= 0 && op <= 58 { return 0 }
+    if op >= 0 && op <= 59 { return 0 }
     return -1
 }
 
@@ -65,6 +65,7 @@ public func validateCode(data: int[], start: int, length: int, stringCount: int,
             if (op == 53 || op == 55) && second > 8 { return 0 }
         }
         if op == 57 && validRuntimeCall(first, second) == 0 { return 0 }
+        if op == 59 && (first >= stringCount || second == 0 || second > 256) { return 0 }
         if op == 30 || op == 31 || op == 32 {
             var displacement = first
             if displacement >= 2147483648 { displacement = displacement - 4294967296 }

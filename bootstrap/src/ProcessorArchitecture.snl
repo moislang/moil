@@ -1,0 +1,19 @@
+package snova.compiler.backend
+
+interface ProcessorArchitecture {
+    method triple(): string
+    method instructionSet(): string
+    method canEmitNative(): bool
+}
+
+class Aarch64ProcessorArchitecture implements ProcessorArchitecture {
+    method triple(): string { return "aarch64" }
+    method instructionSet(): string { return "AArch64" }
+    method canEmitNative(): bool { return true }
+}
+
+class X86_64ProcessorArchitecture implements ProcessorArchitecture {
+    method triple(): string { return "x86_64" }
+    method instructionSet(): string { return "x86-64" }
+    method canEmitNative(): bool { return false }
+}

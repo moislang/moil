@@ -1,0 +1,95 @@
+package snova.compiler.backend
+
+import builtin.runtime
+
+// Supplies target-specific metadata after the driver selects a target kind.
+// String-based triple resolution is blocked by identity-only seed equality.
+class NativeTargetResolver {
+    private method equalsAsciiFile(value: string, scratchPath: string, expected: int[]): bool {
+        if Runtime.writeText(scratchPath, value) == false { return false }
+        let actual = read_bytes(scratchPath)
+        if actual.len() != expected.len() { return false }
+        var index = 0
+        while index < expected.len() {
+            if actual[index] != expected[index] { return false }
+            index = index + 1
+        }
+        return true
+    }
+
+    // Returns 1 for AArch64 Darwin, 2 for pending x86-64 Linux, 3 for
+    // AArch64 Linux, and 0 for an unknown triple. Host strings in the seed are
+    // identity-equal, so compare their bytes at this boundary (O(n)).
+    public method status(target: string, scratchPath: string): int {
+        if equalsAsciiFile(target, scratchPath, [97, 97, 114, 99, 104, 54, 52, 45, 97, 112, 112, 108, 101, 45, 100, 97, 114, 119, 105, 110]) { return 1 }
+        if equalsAsciiFile(target, scratchPath, [120, 56, 54, 95, 54, 52, 45, 117, 110, 107, 110, 111, 119, 110, 45, 108, 105, 110, 117, 120, 45, 103, 110, 117]) { return 2 }
+        if equalsAsciiFile(target, scratchPath, [97, 97, 114, 99, 104, 54, 52, 45, 117, 110, 107, 110, 111, 119, 110, 45, 108, 105, 110, 117, 120, 45, 103, 110, 117]) { return 3 }
+        return 0
+    }
+
+    public method diagnostic(targetKind: int): string {
+        if targetKind == 2 { return "native target recognized but Linux x86-64 backend is not implemented" }
+        if targetKind == 3 { return "native target is Linux AArch64" }
+        return "native target is unknown or unsupported"
+    }
+
+    public method symbolPrefix(targetKind: int): string {
+        if targetKind == 1 { return "_" }
+        return ""
+    }
+
+    public method textSection(targetKind: int): string {
+        if targetKind == 1 { return ".section __TEXT,__text,regular,pure_instructions" }
+        return ".section .text"
+    }
+
+    public method constSection(targetKind: int): string {
+        if targetKind == 1 { return ".section __TEXT,__const" }
+        return ".section .rodata"
+    }
+
+    public method bssSection(targetKind: int): string {
+        if targetKind == 1 { return ".zerofill __DATA,__bss,_snova_state,256,4" }
+        return ".section .bss"
+    }
+
+    public method instructionSet(targetKind: int): string {
+        if targetKind == 1 { return "AArch64" }
+        if targetKind == 2 { return "x86-64" }
+        if targetKind == 3 { return "AArch64" }
+        return "unknown"
+    }
+
+    public method operatingSystem(targetKind: int): string {
+        if targetKind == 1 { return "Darwin" }
+        if targetKind == 2 || targetKind == 3 { return "Linux" }
+        return "unknown"
+    }
+
+    public method callingConvention(targetKind: int): string {
+        if targetKind == 1 { return "AAPCS64" }
+        if targetKind == 2 { return "SysV AMD64" }
+        if targetKind == 3 { return "AAPCS64" }
+        return "unknown"
+    }
+
+    public method executableFormat(targetKind: int): string {
+        if targetKind == 1 { return "Mach-O" }
+        if targetKind == 2 || targetKind == 3 { return "ELF" }
+        return "unknown"
+    }
+
+    public method assemblerCommand(targetKind: int): string {
+        if targetKind == 1 { return "as -arch arm64" }
+        if targetKind == 2 { return "as --64" }
+        if targetKind == 3 { return "aarch64-linux-gnu-as" }
+        return ""
+    }
+
+    public method linkerCommand(targetKind: int): string {
+        if targetKind == 1 { return "ld -arch arm64 -lSystem" }
+        if targetKind == 2 { return "ld -m elf_x86_64" }
+        if targetKind == 3 { return "aarch64-linux-gnu-ld -m aarch64linux" }
+        return ""
+    }
+}
