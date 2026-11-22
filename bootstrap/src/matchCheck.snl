@@ -196,3 +196,130 @@ func emitArgsChecked(src: int[], bg: compilerState, cx: compilerContext, code: i
         i = i + 1
     }
 }
+
+// SNV4008 / SNV4009: operator and index operand types (SNOVA0133 / SNOVA0134).
+// The span is the operator or the opening `[`, the column `snl check` reports.
+func isBoolType(ty: int): bool {
+    if ty == -2 { return true }
+    return false
+}
+
+func isIntType(ty: int): bool {
+    if ty == -1 { return true }
+    return false
+}
+
+func isStringType(ty: int): bool {
+    if ty == -3 { return true }
+    return false
+}
+
+func isEqOp(op: int): bool {
+    if op == 28 { return true }
+    if op == 29 { return true }
+    return false
+}
+
+func isRelOp(op: int): bool {
+    if op == 30 { return true }
+    if op == 31 { return true }
+    if op == 32 { return true }
+    if op == 33 { return true }
+    return false
+}
+
+func isCompareOp(op: int): bool {
+    if isEqOp(op) { return true }
+    if isRelOp(op) { return true }
+    return false
+}
+
+func isAddOp(op: int): bool {
+    if op == 34 { return true }
+    return false
+}
+
+func checkBinaryTypes(src: int[], cx: compilerContext, op: int, left: int, right: int, start: int): int {
+    if cx.failed != 0 { return 1 }
+    if op == 43 || op == 44 {
+        if left != 0 && isBoolType(left) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        if right != 0 && isBoolType(right) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isRelOp(op) {
+        if left != 0 && isIntType(left) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        if right != 0 && isIntType(right) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isEqOp(op) {
+        if typesClash(left, right) {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isAddOp(op) {
+        if left == 0 || right == 0 { return 0 }
+        if left == right && (isIntType(left) || isStringType(left)) { return 0 }
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    if left != 0 && isIntType(left) == false {
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    if right != 0 && isIntType(right) == false {
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    return 0
+}
+
+func binaryExprType(op: int, left: int, right: int): int {
+    if op == 43 || op == 44 { return -2 }
+    if isCompareOp(op) { return -2 }
+    if isAddOp(op) {
+        if left == 0 || right == 0 { return 0 }
+        if isIntType(left) && isIntType(right) { return -1 }
+        if isStringType(left) && isStringType(right) { return -3 }
+        return 0
+    }
+    if left == 0 || right == 0 { return 0 }
+    return -1
+}
+
+func reportBinOpType(cx: compilerContext): unit {
+    Console.print("error[SNV4008]: operator cannot be applied to these operand types at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func reportUnaryOrIndexType(cx: compilerContext): unit {
+    if cx.error_found == 1 {
+        Console.print("error[SNV4009]: index must be an integer type at line ")
+    } else {
+        Console.print("error[SNV4009]: invalid operand type for unary operator at line ")
+    }
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}

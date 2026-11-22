@@ -116,6 +116,14 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
         reportArgType(cx)
         return
     }
+    if cx.error_phase == 11 {
+        reportBinOpType(cx)
+        return
+    }
+    if cx.error_phase == 12 {
+        reportUnaryOrIndexType(cx)
+        return
+    }
     if cx.error_phase == 8 {
         Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
         Console.print(cx.error_line)
@@ -133,8 +141,8 @@ func reportFailure(src: int[], bg: compilerState, cx: compilerContext): unit {
     Console.printline("")
 }
 
-// Warnings do not stop compilation. SNW0001: `==`/`!=` between operands
-// whose static types are known and different.
+// Warnings do not stop compilation. SNW0001 used to warn about `==`/`!=`
+// between known, different types; those cases are now SNV4008 errors.
 func reportWarnings(bg: compilerState): unit {
     var index = 0
     while index < bg.warningCodes.len() {

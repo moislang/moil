@@ -1,0 +1,6 @@
+package bootstrap.fixture
+
+func main(): int {
+    if true < false { return 1 }
+    return 0
+}
