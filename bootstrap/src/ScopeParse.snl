@@ -82,7 +82,7 @@ func scopeTakeMods(src: int[], bg: CompilerState, cx: CompilerContext): unit {
 
 func scopeFailContract(src: int[], cx: CompilerContext, start: int, length: int): unit {
     cx.failed = 1
-    cx.error_phase = 14
+    cx.error_phase = 30
     cx.error_start = start
     cx.error_end = start + length
     cx.error_line = 1

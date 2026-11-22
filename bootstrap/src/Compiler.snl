@@ -128,7 +128,7 @@ func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
         reportNonBoolCondition(cx)
         return
     }
-    if cx.error_phase == 14 {
+    if cx.error_phase == 30 {
         Console.print("error[SNV5001]: type does not satisfy declared contract at line ")
         Console.print(cx.error_line)
         Console.print(", span ")
