@@ -131,6 +131,32 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236" $(BUILD_DIR)/method-arg-type-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidPushType.snl $(BUILD_DIR)/invalidPushType.snbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
 	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81" $(BUILD_DIR)/push-type-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/hello.snl $(BUILD_DIR)/hello.s native
+	test -s $(BUILD_DIR)/hello.s
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidArgType.snl $(BUILD_DIR)/invalidArgType.s native > $(BUILD_DIR)/arg-type-native-error.txt; then echo "expected argument type failure in native mode"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119" $(BUILD_DIR)/arg-type-native-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/operatorTypes.snl $(BUILD_DIR)/operatorTypes.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/operatorTypes.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidBinaryType.snl $(BUILD_DIR)/invalidBinaryType.snbc > $(BUILD_DIR)/binary-type-error.txt; then echo "expected binary operator type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 6, span 107..108" $(BUILD_DIR)/binary-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidCompareType.snl $(BUILD_DIR)/invalidCompareType.snbc > $(BUILD_DIR)/compare-type-error.txt; then echo "expected comparison type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 5, span 79..80" $(BUILD_DIR)/compare-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidStringOrder.snl $(BUILD_DIR)/invalidStringOrder.snbc > $(BUILD_DIR)/string-order-error.txt; then echo "expected string ordering type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 57..58" $(BUILD_DIR)/string-order-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidBoolOrder.snl $(BUILD_DIR)/invalidBoolOrder.snbc > $(BUILD_DIR)/bool-order-error.txt; then echo "expected bool ordering type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 58..59" $(BUILD_DIR)/bool-order-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidUnaryNeg.snl $(BUILD_DIR)/invalidUnaryNeg.snbc > $(BUILD_DIR)/unary-neg-error.txt; then echo "expected unary type failure"; exit 1; fi
+	grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 81..82" $(BUILD_DIR)/unary-neg-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidUnaryNot.snl $(BUILD_DIR)/invalidUnaryNot.snbc > $(BUILD_DIR)/unary-not-error.txt; then echo "expected unary type failure"; exit 1; fi
+	grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 72..73" $(BUILD_DIR)/unary-not-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidIndexType.snl $(BUILD_DIR)/invalidIndexType.snbc > $(BUILD_DIR)/index-type-error.txt; then echo "expected index type failure"; exit 1; fi
+	grep -Fqx "error[SNV4009]: index must be an integer type at line 5, span 79..80" $(BUILD_DIR)/index-type-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/boolConditions.snl $(BUILD_DIR)/boolConditions.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/boolConditions.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidIfCondition.snl $(BUILD_DIR)/invalidIfCondition.snbc > $(BUILD_DIR)/if-condition-error.txt; then echo "expected non-bool if condition"; exit 1; fi
+	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73" $(BUILD_DIR)/if-condition-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidWhileCondition.snl $(BUILD_DIR)/invalidWhileCondition.snbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
+	grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76" $(BUILD_DIR)/while-condition-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
@@ -138,8 +164,8 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "runtime error: pop from empty array" $(BUILD_DIR)/vmArrayPopEmpty.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopString.snl $(BUILD_DIR)/vmArrayPopString.snbc
 	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopString.snbc run)" = "popped"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt
-	printf 'warning[SNW0001]: comparison between different types at line 10\nwarning[SNW0001]: comparison between different types at line 13\n' | cmp - $(BUILD_DIR)/warn-mismatch.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/warnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt; then echo "expected comparison type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 10, span 171..172" $(BUILD_DIR)/warn-mismatch.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/warnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt
 	test ! -s $(BUILD_DIR)/warn-compare.txt
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/warnCompare.snbc run; test "$$?" -eq 7
