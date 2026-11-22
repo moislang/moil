@@ -26,7 +26,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4005` | Assignment to an immutable binding (`let`, parameter, `for` or `match` binding) | `SNOVA0047` | Binding name in the assignment | `invalidImmutableLet`, `invalidImmutableParam`, `invalidImmutableFor` |
 | `SNV4006` | Call argument count differs from the parameter count (function, static or instance method, `defer`/`pulsar` call), or a constructor receives more arguments than the class has fields | `SNOVA0131` | Called name | `invalidCallArity`, `invalidMethodArity`, `invalidConstructorArity` |
 | `SNV4007` | Argument type does not match the parameter (function, static or instance method, positional constructor field, or `push` element type) | `SNOVA0132` | Opening `(` of the call | `invalidArgType`, `invalidMethodArgType`, `invalidConstructorType`, `invalidPushType` |
-| `SNV4008` | Binary, comparison or logical operator applied to known incompatible operand types | `SNOVA0133` | Operator token | `invalidBinaryType`, `invalidCompareType`, `warnMismatch` |
+| `SNV4008` | Binary, comparison or logical operator applied to known incompatible operand types | `SNOVA0133` | Operator token | `invalidBinaryType`, `invalidCompareType`, `invalidStringOrder`, `invalidBoolOrder`, `warnMismatch` |
 | `SNV4009` | Unary operand of a known incompatible type, or a known non-`int` index | `SNOVA0134` | Operator or opening `[` | `invalidUnaryNeg`, `invalidUnaryNot`, `invalidIndexType` |
 | `SNW0001` | (unused) Was a warning for `==`/`!=` between known, different types; those cases are now `SNV4008` | `SNOVA0133` rejects them as errors | — | — |
 
@@ -57,7 +57,7 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 | Argument of known wrong type (function, constructor, method, `push`) | `SNOVA0132` | `SNV4007` | Closed | — |
 | `if`/`while` condition of known non-`bool` type | `SNOVA0135` | Accepted | Missing check | 2 |
 | Unary `-` on `string`, `!` on `int` | `SNOVA0134` | `SNV4009` | Closed | — |
-| Binary or ordering operator on known different types | `SNOVA0133` | `SNV4008` (it used to warn with `SNW0001` only for `==`/`!=`) | Closed | — |
+| Binary or ordering operator on known different types, or `<`/`>`/`<=`/`>=` on strings or bools | `SNOVA0133` | `SNV4008` (it used to warn with `SNW0001` only for `==`/`!=`) | Closed | — |
 | Index of known non-`int` type | `SNOVA0134` | `SNV4009` | Closed | — |
 | `return` type mismatch, value returned from `unit` function | `SNOVA0136` | Accepted | Function return types are not tracked | 3 |
 | Initializer from a call of known return type | `SNOVA0138` | Accepted | Same: return types; also blocks `match f()` in `SNV4004` | 3 |
