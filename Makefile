@@ -141,6 +141,10 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 6, span 107..108" $(BUILD_DIR)/binary-type-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidCompareType.snl $(BUILD_DIR)/invalidCompareType.snbc > $(BUILD_DIR)/compare-type-error.txt; then echo "expected comparison type failure"; exit 1; fi
 	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 5, span 79..80" $(BUILD_DIR)/compare-type-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidStringOrder.snl $(BUILD_DIR)/invalidStringOrder.snbc > $(BUILD_DIR)/string-order-error.txt; then echo "expected string ordering type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 57..58" $(BUILD_DIR)/string-order-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidBoolOrder.snl $(BUILD_DIR)/invalidBoolOrder.snbc > $(BUILD_DIR)/bool-order-error.txt; then echo "expected bool ordering type failure"; exit 1; fi
+	grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 58..59" $(BUILD_DIR)/bool-order-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidUnaryNeg.snl $(BUILD_DIR)/invalidUnaryNeg.snbc > $(BUILD_DIR)/unary-neg-error.txt; then echo "expected unary type failure"; exit 1; fi
 	grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 81..82" $(BUILD_DIR)/unary-neg-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidUnaryNot.snl $(BUILD_DIR)/invalidUnaryNot.snbc > $(BUILD_DIR)/unary-not-error.txt; then echo "expected unary type failure"; exit 1; fi
