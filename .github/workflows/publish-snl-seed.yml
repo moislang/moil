@@ -56,7 +56,7 @@ jobs:
         with:
           msystem: CLANGARM64
           update: false
-          install: make git grep gawk diffutils python unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
+          install: make git grep gawk diffutils python zip unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
       - name: Check the tag commit
         run: |
           actual=$(git -C snl-src rev-parse HEAD)
@@ -91,7 +91,8 @@ jobs:
           test -f dist/stage/builtin/io/console/Console.snl
           "dist/stage/bin/$exe" --version
           if [ "$RUNNER_OS" = Windows ]; then
-            (cd dist/stage && powershell -NoProfile -Command "Compress-Archive -Path bin, builtin -DestinationPath ../$name.zip")
+            # zip writes '/' separators; Windows PowerShell's Compress-Archive writes '\\'.
+            (cd dist/stage && zip -qr "../$name.zip" bin builtin)
             archive="$name.zip"
           else
             tar -czf "dist/$name.tar.gz" -C dist/stage bin builtin
