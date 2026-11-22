@@ -339,11 +339,11 @@ This file started with no technical results. Entries must record observed facts,
 
 ## 2026-11-21 — non-bool if/while conditions (SNV4010)
 
-- Environment: `snl v0.3.0` official Linux release, `x86_64-unknown-linux-gnu` (shared box). Branch `feature/nonbool-condition`, stacked on snl#13 (← #12), on `dba36d4`.
+- Environment: `snl v0.3.0` official Linux release, `x86_64-unknown-linux-gnu` (shared box). Branch `feature/nonbool-condition`, rebased onto `feature/operator-types` (snl#13) after the native hotfix (snl#17).
 - Probe (reference): `snl check` reports `SNOVA0135` ("condition must be `bool`") at the start of a known non-`bool` `if` or `while` condition. Before this change the seed accepted those programs.
 - Implementation: after the condition is typed, a known non-`bool` type fails with `error[SNV4010]: condition must be bool at line L, span a..b` at the start of the condition expression. It corresponds to `SNOVA0135` ([diagnostics.md](diagnostics.md)). A condition of unknown type is still accepted.
 - Differential: `invalidIfCondition` and `invalidWhileCondition` are rejected by both compilers on the same line, and the seed span starts at the reference column's byte (seed spans 72..73 and 75..76; reference 5:8 and 5:11). The positive `boolConditions` fixture compiles and returns 42 under `snl run-snbc` and the Snova executor.
 - Commands: `make bootstrap-diagnostics bootstrap-smoke bootstrap-image-check bootstrap-fixed-point bootstrap-vm` (pass), `make bootstrap-seed-fixed-point` (pass; the committed seed still compiles these sources), `make bootstrap-vm-self` (pass), the Linux half of `bootstrap-library` and `make bootstrap-library-root` (pass), `sh scripts/hooks/validate-planning-docs.sh`, `git diff --check`.
-- Observed result: `stage1.snbc` = `stage2.snbc` = `seed-stage1.snbc` = `seed-stage2.snbc`, SHA-256 `dec1da4bab252e04de8ccdf9a8e34e95ad62b22b53ed2468a889f9c021a6fe14`.
+- Observed result: `stage1.snbc` = `stage2.snbc` = `seed-stage1.snbc` = `seed-stage2.snbc`, SHA-256 `8354ca44e7b1fe96b0137255477eb7438d3d728732b5d330f0b27543f8a31b08`. The committed seed remains `cf64d0d31cb50b124af68b7f2dc78b9788f011a149528d36bef7ee4430397706`.
 - Not verified: macOS native gates.
 - Limitations: only `if` and `while` are checked. After merge of this stack, run `make bootstrap-seed-refresh`; no new file was added to `ownSource()`.
