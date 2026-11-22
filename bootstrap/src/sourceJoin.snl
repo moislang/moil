@@ -103,7 +103,13 @@ public func ownSource(): int[] {
 
 // Native mode (ADR-0006): the Snova runtime is appended to the program
 // source and compiled with it, so the backend sees one image. Paths are
-// relative to the repository root, like ownSource.
+// relative to the repository root, like ownSource. String APIs in the
+// runtime use the language `string` type, not `int`. Argument type
+// checks are not applied in the appendix (`start >= user_end`): the
+// language requires a parameter type and has no untyped payload, so
+// Primitive.tagged keeps `payload: int` even when Runtime.address
+// passes a string. Line numbers are taken from the user prefix
+// (`user_end` / `sourceLine`).
 public func appendNativeRuntime(source: int[]): unit {
     source.push(10)
     appendFile(source, "bootstrap/runtime/primitive.snl", 0)
