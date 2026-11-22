@@ -1,0 +1,301 @@
+package snova.compiler
+
+func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    if cx.failed != 0 { return }
+    if nd < 0 {
+        fail(cx)
+        return
+    }
+    let k = bg.nk[nd]
+    cx.expr_ty = 0
+    if scopeEmitExpr(src, bg, cx, code, fat, fb, nd) != 0 { return }
+    if k == 1 {
+        code.push(1)
+        pushI64(code, bg.na[nd])
+        cx.expr_ty = -1
+        return
+    }
+    if k == 2 {
+        code.push(4)
+        code.push(bg.na[nd])
+        cx.expr_ty = -2
+        return
+    }
+    if k == 3 {
+        var tmp: int[] = []
+        decodeString(src, bg.na[nd], bg.nb[nd], tmp)
+        let si = internBytes(tmp, bg)
+        code.push(3)
+        pushU32(code, si)
+        cx.expr_ty = -3
+        return
+    }
+    if k == 4 {
+        let slot = findLocal(src, bg, cx, bg.na[nd], bg.nb[nd])
+        if slot >= 0 {
+            code.push(8)
+            pushU32(code, slot)
+            cx.expr_ty = localTypeOf(bg, cx, slot)
+            return
+        }
+        let fn = findFunc(src, bg, bg.na[nd], bg.nb[nd])
+        if fn >= 0 {
+            code.push(1)
+            pushI64(code, fn)
+            cx.expr_ty = 0
+            return
+        }
+        fail(cx)
+        return
+    }
+    if k == 5 {
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let operandType = cx.expr_ty
+        let start = tokenStart(bg, bg.nd[nd])
+        if bg.na[nd] == 35 {
+            if operandType != 0 && isIntType(operandType) == false {
+                typeFail(src, cx, 12, start)
+                return
+            }
+            code.push(17)
+            cx.expr_ty = -1
+        } else {
+            if bg.na[nd] == 42 {
+                if operandType != 0 && isBoolType(operandType) == false {
+                    typeFail(src, cx, 12, start)
+                    return
+                }
+                code.push(18)
+                cx.expr_ty = -2
+            } else {
+                fail(cx)
+            }
+        }
+        return
+    }
+    if k == 6 {
+        let start = tokenStart(bg, bg.nd[nd])
+        if bg.na[nd] == 43 {
+            emitAnd(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
+            return
+        }
+        if bg.na[nd] == 44 {
+            emitOr(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], start)
+            return
+        }
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let leftType = cx.expr_ty
+        emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        let rightType = cx.expr_ty
+        if checkBinaryTypes(src, cx, bg.na[nd], leftType, rightType, start) != 0 { return }
+        let op = binOp(bg.na[nd])
+        if op < 0 {
+            fail(cx)
+            return
+        }
+        code.push(op)
+        cx.expr_ty = binaryExprType(bg.na[nd], leftType, rightType)
+        return
+    }
+    if k == 7 {
+        emitCall(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd], bg.nd[nd])
+        return
+    }
+    if k == 8 {
+        emitForward(src, bg, cx, code, fat, fb, bg.nc[nd], 0)
+        code.push(39)
+        pushU32(code, consCount(bg, bg.nc[nd]))
+        cx.expr_ty = 0
+        return
+    }
+    if k == 9 {
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        let recvType = cx.expr_ty
+        emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        let indexType = cx.expr_ty
+        if indexType != 0 && isIntType(indexType) == false {
+            typeFail(src, cx, 12, tokenStart(bg, bg.nd[nd]))
+            cx.error_found = 1
+            return
+        }
+        code.push(40)
+        if isArrayType(recvType) {
+            cx.expr_ty = elementType(recvType)
+        } else {
+            cx.expr_ty = 0
+        }
+        return
+    }
+    if k == 10 {
+        emitMember(src, bg, cx, code, fat, fb, nd)
+        return
+    }
+    if k == 11 {
+        emitStruct(src, bg, cx, code, fat, fb, nd)
+        return
+    }
+    if k == 12 {
+        emitAssign(src, bg, cx, code, fat, fb, bg.nb[nd], bg.nc[nd])
+        return
+    }
+    fail(cx)
+}
+
+func emitStmt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    let saved = cx.line
+    if nd >= 0 && nd < bg.nline.len() && bg.nline[nd] > 0 { cx.line = bg.nline[nd] }
+    emitStmtAt(src, bg, cx, code, fat, fb, nd)
+    if cx.failed == 0 { cx.line = saved }
+}
+
+func emitStmtAt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
+    if cx.failed != 0 { return }
+    if nd < 0 {
+        fail(cx)
+        return
+    }
+    let k = bg.nk[nd]
+    if scopeEmitStmt(src, bg, cx, code, fat, fb, nd) != 0 { return }
+    if k == 20 {
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        code.push(6)
+        return
+    }
+    if k == 21 || k == 36 {
+        let declaredType = bg.nd[nd]
+        if bg.nc[nd] >= 0 {
+            emitExpr(src, bg, cx, code, fat, fb, bg.nc[nd])
+        } else {
+            code.push(5)
+            cx.expr_ty = 0
+        }
+        let inferredType = cx.expr_ty
+        if declaredType != 0 && inferredType != 0 && declaredType != inferredType {
+            cx.failed = 1
+            cx.error_phase = 4
+            cx.error_start = bg.na[nd]
+            cx.error_line = 1
+            var byteIndex = 0
+            while byteIndex < bg.na[nd] {
+                if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
+                byteIndex = byteIndex + 1
+            }
+            return
+        }
+        var ty = inferredType
+        if declaredType != 0 { ty = declaredType }
+        var mutable = 1
+        if k == 36 { mutable = 0 }
+        let slot = addLocalWith(bg, cx, bg.na[nd], bg.nb[nd], ty, mutable)
+        code.push(9)
+        pushU32(code, slot)
+        code.push(6)
+        return
+    }
+    if k == 23 {
+        if bg.nb[nd] >= 0 {
+            emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+            if checkReturnType(src, bg, cx, nd, cx.expr_ty) != 0 { return }
+        } else {
+            code.push(5)
+            if checkReturnType(src, bg, cx, nd, -4) != 0 { return }
+        }
+        code.push(35)
+        return
+    }
+    if k == 24 {
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
+        let jelse = emitJump(code, 31)
+        emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
+        if bg.nd[nd] >= 0 {
+            let jend = emitJump(code, 30)
+            patchAt(code, fat, fb, jelse)
+            emitStmt(src, bg, cx, code, fat, fb, bg.nd[nd])
+            patchAt(code, fat, fb, jend)
+        } else {
+            patchAt(code, fat, fb, jelse)
+        }
+        return
+    }
+    if k == 25 {
+        let start = code.len()
+        scopeLoopEnter(bg, cx, start, 1)
+        emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
+        let jexit = emitJump(code, 31)
+        emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
+        code.push(30)
+        let at = code.len()
+        let off = start - (at + 4)
+        pushU32(code, off)
+        patchAt(code, fat, fb, jexit)
+        scopePatchBrk(code, fat, fb, bg)
+        scopeLoopLeave(bg)
+        return
+    }
+    if k == 26 {
+        let saved = cx.locals
+        emitForward(src, bg, cx, code, fat, fb, bg.nc[nd], 1)
+        cx.locals = saved
+        return
+    }
+    fail(cx)
+}
+
+func emitFunc(src: int[], bg: CompilerState, cx: CompilerContext, fi: int): unit {
+    cx.locals = 0
+    cx.water = 0
+    cx.loc_base = bg.loc_slot.len()
+    cx.expr_ty = 0
+    cx.ret_ty = callResultType(bg, fi)
+    cx.owner = bg.fn_own[fi]
+    // A static method has no instance: no self local, no implicit fields.
+    if bg.fn_static[fi] != 0 { cx.owner = -1 }
+    if cx.owner >= 0 {
+        addLocal(bg, cx, 0, 0, bg.fn_own[fi] + 1)
+    }
+    var i = 0
+    while i < bg.par_fn.len() {
+        if bg.par_fn[i] == fi {
+            addLocalWith(bg, cx, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i], 0)
+        }
+        i = i + 1
+    }
+    var code: int[] = []
+    var fat: int[] = []
+    var fb: int[] = []
+    if bg.fn_body[fi] < 0 {
+        code.push(52)
+    } else {
+        emitStmt(src, bg, cx, code, fat, fb, bg.fn_body[fi])
+    }
+    code.push(5)
+    code.push(35)
+    cx.owner = -1
+    let off = bg.allc.len()
+    var j = 0
+    while j < code.len() {
+        bg.allc.push(byteAt(code, fat, fb, j))
+        j = j + 1
+    }
+    bg.fn_off.push(off)
+    bg.fn_len.push(code.len())
+    bg.fn_loc.push(cx.water)
+}
+
+func emitUnit(src: int[], bg: CompilerState, cx: CompilerContext): unit {
+    var fi = 0
+    while fi < bg.fn_ns.len() {
+        if cx.failed != 0 { return }
+        emitFunc(src, bg, cx, fi)
+        if cx.failed != 0 {
+            // SNV3001 reports the function index; typed diagnostics (phase
+            // 4 and above) keep their own token or span.
+            if cx.error_phase < 4 { cx.error_token = fi }
+            return
+        }
+        fi = fi + 1
+    }
+}
+

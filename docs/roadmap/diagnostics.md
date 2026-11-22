@@ -19,24 +19,25 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV1001` | Lexical error | Lexer diagnostics (no single code) | Whole line | `invalidLex` |
 | `SNV2001` | Parse error | Parser diagnostics, e.g. `SNOVA0106` | Failing token | `invalidParse` |
 | `SNV3001` | Unsupported construct or invalid lowering | No counterpart (seed subset limit) | Line and function index | `invalidRuntimeArity`, `invalidStaticCall` |
-| `SNV4001` | `let`/`var` annotation does not match initializer | `SNOVA0138` | Binding name | `invalidTypedLet`, `invalidCallResultType` |
+| `SNV4001` | `let`/`var` annotation does not match initializer | `SNOVA0138` | Binding name | `invalidTypedLet` |
 | `SNV4002` | Assignment type does not match local binding | `SNOVA0132` | Binding name | `invalidTypedAssignment` |
 | `SNV4003` | Assignment type does not match field | `SNOVA0132` | Field name | `invalidFieldAssignment` |
-| `SNV4004` | Non-exhaustive `match` on an enum | `SNOVA0205` | `match` keyword | `invalidMatchExpression`, `invalidMatchStatement`, `invalidMatchCall` |
+| `SNV4004` | Non-exhaustive `match` on an enum | `SNOVA0205` | `match` keyword | `invalidMatchExpression`, `invalidMatchStatement` |
 | `SNV4005` | Assignment to an immutable binding (`let`, parameter, `for` or `match` binding) | `SNOVA0047` | Binding name in the assignment | `invalidImmutableLet`, `invalidImmutableParam`, `invalidImmutableFor` |
 | `SNV4006` | Call argument count differs from the parameter count (function, static or instance method, `defer`/`pulsar` call), or a constructor receives more arguments than the class has fields | `SNOVA0131` | Called name | `invalidCallArity`, `invalidMethodArity`, `invalidConstructorArity` |
 | `SNV4007` | Argument type does not match the parameter (function, static or instance method, positional constructor field, or `push` element type) | `SNOVA0132` | Opening `(` of the call | `invalidArgType`, `invalidMethodArgType`, `invalidConstructorType`, `invalidPushType` |
 | `SNV4008` | Binary, comparison or logical operator applied to known incompatible operand types | `SNOVA0133` | Operator token | `invalidBinaryType`, `invalidCompareType`, `invalidStringOrder`, `invalidBoolOrder`, `warnMismatch` |
 | `SNV4009` | Unary operand of a known incompatible type, or a known non-`int` index | `SNOVA0134` | Operator or opening `[` | `invalidUnaryNeg`, `invalidUnaryNot`, `invalidIndexType` |
 | `SNV4010` | `if`/`while` condition of a known non-`bool` type | `SNOVA0135` | Start of the condition expression | `invalidIfCondition`, `invalidWhileCondition` |
-| `SNV4011` | Returned type does not match the function's declared return type (including a value returned from `unit`, or a bare `return` from a non-`unit` function) | `SNOVA0136` | `return` keyword (or the expression of a function shorthand) | `invalidReturnType`, `invalidReturnInUnit`, `invalidBareReturn`, `invalidMethodReturnType` |
-| `SNV5001` | Use of a moved value | `SNOVA0240` | Used binding | `invalidUseAfterMove`, `invalidConditionalMove` |
-| `SNV5002` | Cannot move a value out of a field or array element | `SNOVA0251` | `.` of a field, or `[` of an index | `invalidFieldMove`, `invalidElementMove` |
+| `SNV4011` | Returned type does not match the function's declared return type (including a value returned from `unit`, or a bare `return` from a non-`unit` function) | `SNOVA0136` | `return` keyword (or the expression of a function shorthand) | `InvalidReturnType`, `InvalidReturnInUnit`, `InvalidBareReturn`, `InvalidMethodReturnType` |
+| `SNV5001` | Use of a moved value | `SNOVA0240` | Used binding | `InvalidUseAfterMove`, `InvalidConditionalMove` |
+| `SNV5002` | Cannot move a value out of a field or array element | `SNOVA0251` | `.` of a field, or `[` of an index | `InvalidFieldMove`, `InvalidElementMove` |
+| `SNV4012` | Type does not satisfy its declared interface or trait contract (missing method, wrong arity or signature) | None: `snl check` v0.3.0 accepts the interface fixtures and rejects the trait fixtures earlier with `SNOVA0102` | Contract name in the declaration | `InterfaceMissingMethod`, `InterfaceWrongSignature`, `TraitMissingMethod`, `TraitWrongArity` |
 | `SNW0001` | (unused) Was a warning for `==`/`!=` between known, different types; those cases are now `SNV4008` | `SNOVA0133` rejects them as errors | — | — |
 
 In native mode the Snova runtime is appended to the user source. Line
 numbers and the `invalidArgType` span stay relative to the user file
-(`user_end` / `sourceLine`); the Linux gate compiles `hello.snl` to
+(`user_end` / `sourceLine`); the Linux gate compiles `Hello.snl` to
 `.s` with `native` and rechecks that fixture in native mode.
 
 Known divergences, all recorded in [evidence.md](evidence.md):
@@ -63,8 +64,8 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 | Unary `-` on `string`, `!` on `int` | `SNOVA0134` | `SNV4009` | Closed | — |
 | Binary or ordering operator on known different types, or `<`/`>`/`<=`/`>=` on strings or bools | `SNOVA0133` | `SNV4008` (it used to warn with `SNW0001` only for `==`/`!=`) | Closed | — |
 | Index of known non-`int` type | `SNOVA0134` | `SNV4009` | Closed | — |
-| `return` type mismatch, value returned from `unit` function | `SNOVA0136` | `SNV4011` | Closed | — |
-| Initializer from a call of known return type | `SNOVA0138` | `SNV4001` (return types are now tracked; `match f()` is checked by `SNV4004`) | Closed | — |
+| `return` type mismatch, value returned from `unit` function | `SNOVA0136` | Accepted | Function return types are not tracked | 3 |
+| Initializer from a call of known return type | `SNOVA0138` | Accepted | Same: return types; also blocks `match f()` in `SNV4004` | 3 |
 | Missing return on some path | `SNOVA0142` | Accepted | Needs control-flow analysis | 3 |
 | Undefined name or function | `SNOVA0023` | `SNV3001` at the statement line | Generic code | 4 |
 | Unknown field, method or enum member | `SNOVA0028` | `SNV3001` (field, method); enum member accepted | Generic code; enum member missing | 4 |
@@ -77,7 +78,7 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 | Array literal with mixed element types | `SNOVA0149` | Accepted | Array element types not tracked | 5 |
 | `for x: T` with the wrong element type | `SNOVA0150` | Accepted | Same | 5 |
 | Empty `while true {}` (warning) | `SNOVA0216` | No warning | Warning not implemented | 5 |
-| Move out of an array element (`let cell = cells[0]`) | `SNOVA0251` at the index expression | `SNV5002` at the `[` | Closed | — |
+| Move out of an array element (`let cell = cells[0]`) | `SNOVA0251` at the index expression | `SNV3001` on the next statement that uses `cell` (the field access on an unknown type), not on the move | Borrow checker: future `SNV5002` (SPEC-0002) | Borrow checker |
 | Method call through a local alias of a field (`let local = counter; local.bump()`) | Accepted by `snl check`; `snl build` fails with `SNOVA0400` (cannot lower call to SnBC) | Accepted and lowered | Not a seed gap: `SNOVA0400` is a reference back-end limit. The ownership side belongs to the borrow checker (SPEC-0002) | Borrow checker |
 | Instance method called through its type | Accepted by `snl check`; `snl build` fails with `SNOVA0400` | `SNV3001` at the statement line | Seed rejects earlier; a specific code is optional | 5 |
 | Duplicate `let` in one scope | Accepted | Accepted | None | — |

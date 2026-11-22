@@ -1,0 +1,111 @@
+package snova.runtime
+
+// Ownership of heap values (ADR-0006, following snovac
+// docs/spec/memory-safety.md): every owning slot (a local, an operand stack
+// temporary, an object field or an array element) holds one owner count in
+// the block header. Borrows proven by the backend do not count. When the
+// last owner goes away the value is destroyed exactly once and its children
+// are released. Strong cycles are rejected when a store would create one, so
+// every value reaches zero owners and nothing accumulates until exit.
+//
+// Constants in __TEXT,__const have a negative count and are never counted
+// or freed. Runtime types manage raw addresses themselves and are not
+// instrumented by the backend.
+class Ownership {
+    // Runtime Int is a signed 32-bit value. Keep the refcount below its
+    // maximum so retain cannot wrap into the negative constant sentinel.
+    private static method maxOwnerCount(): int { return 2147483647 }
+
+    private static method isHeapTag(tag: int): bool {
+        return tag >= 3 && tag <= 5
+    }
+
+    public static method retain(tag: int, payload: int): unit {
+        if Ownership.isHeapTag(tag) == false { return }
+        let count = Primitive.load(payload - 16)
+        if count < 0 { return }
+        if count == 0 { Runtime.fail(12, 1) }
+        if count >= Ownership.maxOwnerCount() { Runtime.fail(13, 1) }
+        Primitive.store(payload - 16, count + 1)
+    }
+
+    public static method release(tag: int, payload: int): unit {
+        if Ownership.isHeapTag(tag) == false { return }
+        let count = Primitive.load(payload - 16)
+        if count < 0 { return }
+        if count == 0 { Runtime.fail(12, 2) }
+        if count > 1 {
+            Primitive.store(payload - 16, count - 1)
+            return
+        }
+        Primitive.store(payload - 16, 0)
+        Ownership.destroy(tag, payload)
+    }
+
+    // Called when the owner count reached zero: releases the children and
+    // frees the blocks. The backend's inline release calls this directly.
+    public static method destroy(tag: int, payload: int): unit {
+        if tag == 4 {
+            let length = Container.arrayLength(payload)
+            var index = 0
+            while index < length {
+                let slot = Container.slot(payload, index)
+                Ownership.release(Primitive.load(slot + 8), Primitive.load(slot))
+                index = index + 1
+            }
+            Heap.free(Primitive.load(payload + 16))
+        }
+        if tag == 5 {
+            let count = Container.fieldCount(payload)
+            var index = 0
+            while index < count {
+                let slot = Container.fieldSlot(payload, index)
+                Ownership.release(Primitive.load(slot + 8), Primitive.load(slot))
+                index = index + 1
+            }
+        }
+        Heap.free(payload)
+    }
+
+    // Releases count consecutive slots (payload, tag) starting at address;
+    // the backend calls it for the locals of a returning function.
+    public static method releaseSlots(address: int, count: int): unit {
+        var index = 0
+        while index < count {
+            Ownership.release(Primitive.load(address + 16 * index + 8), Primitive.load(address + 16 * index))
+            index = index + 1
+        }
+    }
+
+    // True when target (an array or object) is reachable from the value. The
+    // heap is acyclic by construction, so the search always ends.
+    public static method reaches(tag: int, payload: int, target: int): bool {
+        if tag != 4 && tag != 5 { return false }
+        if payload == target { return true }
+        var count = 0
+        if tag == 4 { count = Container.arrayLength(payload) } else { count = Container.fieldCount(payload) }
+        var index = 0
+        while index < count {
+            var slot = 0
+            if tag == 4 { slot = Container.slot(payload, index) } else { slot = Container.fieldSlot(payload, index) }
+            if Ownership.reaches(Primitive.load(slot + 8), Primitive.load(slot), target) { return true }
+            index = index + 1
+        }
+        return false
+    }
+
+    // SET_FIELD (38) with an array or object value: rejects a strong cycle,
+    // then stores the value with its own owner count and releases the old
+    // field value. Object and value are borrowed from the caller's stack.
+    public static method storeField(objectTag: int, object: int, field: int, valueTag: int, value: int): unit {
+        if objectTag != 5 || field >= Container.fieldCount(object) { Runtime.fail(8, field) }
+        if Ownership.reaches(valueTag, value, object) { Runtime.fail(10, 38) }
+        let slot = Container.fieldSlot(object, field)
+        let oldPayload = Primitive.load(slot)
+        let oldTag = Primitive.load(slot + 8)
+        Ownership.retain(valueTag, value)
+        Primitive.store(slot, value)
+        Primitive.store(slot + 8, valueTag)
+        Ownership.release(oldTag, oldPayload)
+    }
+}

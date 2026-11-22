@@ -1,0 +1,172 @@
+name: Publish snl seed binaries
+
+# One release in this repository, `snl-seed-<version>`, holds every snl
+# binary CI needs, so nothing downloads from the snl sources' repository:
+# - macOS x86_64 and Windows ARM64 have no official binary: this workflow
+#   builds them ONCE from the commit of the official tag, with the official
+#   flags and archive layout (bin/snl + builtin/);
+# - the three official archives (macOS ARM64, Linux x86_64, Windows x86_64)
+#   are copied unchanged, after checking their pinned SHA-256.
+# .github/actions/setup-snl downloads from that release. This is the only
+# workflow that touches the snl sources' repository, which is private: it
+# needs the SNL_SOURCE_TOKEN secret (read access to snovalang/snovac).
+#
+# Run: push the tag `snl-seed-v0.3.0`, or `gh workflow run publish-snl-seed.yml`
+# (workflow_dispatch builds and uploads artifacts without a release).
+
+on:
+  push:
+    tags: ['snl-seed-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SNL_VERSION: v0.3.0
+  # Commit of the official snl v0.3.0 tag; the build fails if the tag moved.
+  SNL_COMMIT: 590a490d45719a742fb0e487753ab70cc6f91656
+
+jobs:
+  build:
+    name: snl ${{ matrix.asset_platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - asset_platform: darwin-x86_64
+            runner: macos-15-intel
+            shell: bash
+          - asset_platform: windows-aarch64
+            runner: windows-11-arm
+            shell: msys2 {0}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+      - name: Check the source token
+        shell: bash
+        env:
+          SNL_SOURCE_TOKEN: ${{ secrets.SNL_SOURCE_TOKEN }}
+        run: |
+          if [ -z "$SNL_SOURCE_TOKEN" ]; then
+            echo "::error::set the SNL_SOURCE_TOKEN secret (read access to the private snovalang/snovac)"; exit 1
+          fi
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: snovalang/snovac
+          ref: ${{ env.SNL_VERSION }}
+          path: snl-src
+          token: ${{ secrets.SNL_SOURCE_TOKEN }}
+      - if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: CLANGARM64
+          update: false
+          install: make git grep gawk diffutils python zip unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
+      - name: Check the tag commit
+        run: |
+          actual=$(git -C snl-src rev-parse HEAD)
+          if [ "$actual" != "$SNL_COMMIT" ]; then
+            echo "::error::$SNL_VERSION is $actual, expected $SNL_COMMIT"; exit 1
+          fi
+      - name: Build snl (macOS)
+        if: runner.os == 'macOS'
+        run: make -C snl-src clean && make -C snl-src -j4
+      - name: Build snl (Windows, static like the official release)
+        if: runner.os == 'Windows'
+        run: |
+          if ! command -v python > /dev/null 2>&1; then
+            mkdir -p /usr/local/bin
+            printf '%s\n' '#!/bin/sh' 'exec python3 "$@"' > /usr/local/bin/python
+            chmod +x /usr/local/bin/python
+          fi
+          make -C snl-src clean OS=Windows_NT
+          make -C snl-src -j4 OS=Windows_NT CC=clang EXTRA_LIBS="-lws2_32 -static"
+          # A static build imports only DLLs that ship with Windows.
+          llvm-objdump -p snl-src/build/snl.exe | sed -n 's/^\s*DLL Name: //p' | tr -d '\r' | tee dlls.txt
+          if grep -viE '^(kernel32|msvcrt|ucrtbase|advapi32|user32|shell32|ws2_32|bcrypt|ntdll|api-ms-win-.*)\.dll$' dlls.txt; then
+            echo "::error::snl.exe imports DLLs that Windows does not provide"; exit 1
+          fi
+      - name: Package
+        run: |
+          exe=snl; [ "$RUNNER_OS" = Windows ] && exe=snl.exe
+          name="snl-$SNL_VERSION-${{ matrix.asset_platform }}"
+          mkdir -p dist/stage/bin
+          cp "snl-src/build/$exe" "dist/stage/bin/$exe"
+          cp -R snl-src/builtin dist/stage/builtin
+          test -f dist/stage/builtin/io/console/Console.snl
+          "dist/stage/bin/$exe" --version
+          if [ "$RUNNER_OS" = Windows ]; then
+            # zip writes '/' separators; Windows PowerShell's Compress-Archive writes '\\'.
+            (cd dist/stage && zip -qr "../$name.zip" bin builtin)
+            archive="$name.zip"
+          else
+            tar -czf "dist/$name.tar.gz" -C dist/stage bin builtin
+            archive="$name.tar.gz"
+          fi
+          (cd dist && { command -v sha256sum > /dev/null && sha256sum "$archive" || shasum -a 256 "$archive"; } > "$name.sha256")
+          cat "dist/$name.sha256"
+      - name: Smoke test the packaged snl on this repository
+        run: |
+          mkdir -p check && cd check
+          case "$RUNNER_OS" in
+            Windows) unzip -q ../dist/*.zip ;;
+            *) tar -xzf ../dist/*.tar.gz ;;
+          esac
+          cd ..
+          exe=snl; [ "$RUNNER_OS" = Windows ] && exe=snl.exe
+          make -C repo bootstrap-smoke SNL="$PWD/check/bin/$exe"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: snl-${{ matrix.asset_platform }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish snl-seed release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: snl-*
+          path: dist
+          merge-multiple: true
+      - name: Copy the official archives (pinned SHA-256)
+        env:
+          GH_TOKEN: ${{ secrets.SNL_SOURCE_TOKEN }}
+        run: |
+          copy() {
+            gh release download "$SNL_VERSION" -R snovalang/snovac -p "$1" -O "dist/$3"
+            echo "$2  dist/$3" | sha256sum -c -
+            (cd dist && sha256sum "$3" > "${3%.*}.sha256")
+          }
+          copy snovac-darwin-aarch64.tar.gz 6ddee0ca86e1876398c5e68017de132aa7c05e856fdc40f540f87af08c0acf8b "snl-$SNL_VERSION-darwin-aarch64.tar.gz"
+          copy snovac-linux-x86_64.tar.gz f7d39f967407cdedc522b6bb1d21c199b188789dc27b00ba9e7100bc419ed8f8 "snl-$SNL_VERSION-linux-x86_64.tar.gz"
+          copy snovac-windows-x86_64.zip 6400c05fd6371f8eb5d522f09cedcdc40149fb67c945c1b09fce0f9abbb4b988 "snl-$SNL_VERSION-windows-x86_64.zip"
+          # ${name%.*} leaves .tar for tarballs; drop it so every checksum is <archive base>.sha256.
+          for f in dist/*.tar.sha256; do [ -e "$f" ] && mv "$f" "${f%.tar.sha256}.sha256"; done
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          ls -l dist
+          if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$tag" -R "$GITHUB_REPOSITORY" --prerelease --verify-tag \
+              --title "snl $SNL_VERSION binaries for CI" \
+              --notes "snl $SNL_VERSION for CI: the official archives copied unchanged (macOS ARM64, Linux x86_64, Windows x86_64) and builds from the official tag commit $SNL_COMMIT for macOS x86_64 and Windows ARM64. Used by .github/actions/setup-snl. Not a Snovalang Compiler release."
+          fi
+          gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber dist/*

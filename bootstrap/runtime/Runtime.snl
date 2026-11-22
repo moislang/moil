@@ -1,0 +1,120 @@
+package snova.runtime
+
+// Process-level services of the native runtime: output, runtime errors and
+// the exit path that reports live memory. Messages match the SnBC
+// executor's vmErrorText, the differential oracle.
+class Runtime {
+    // Writes length bytes from address to the descriptor, retrying partial
+    // writes.
+    public static method output(descriptor: int, address: int, length: int): bool {
+        var written = 0
+        while written < length {
+            let count = System.write(descriptor, address + written, length - written)
+            if count <= 0 { return false }
+            written = written + count
+        }
+        return true
+    }
+
+    public static method outputByte(descriptor: int, value: int): unit {
+        let scratch = Primitive.state() + 96
+        Primitive.storeByte(scratch, value)
+        Runtime.output(descriptor, scratch, 1)
+    }
+
+    // Retags a language string as an int handle so address arithmetic
+    // (`text + 8`, Primitive.load) does not take the string path of
+    // Value.binary. The parameter is `string` because literals and
+    // string values are not ints; the result is the address of a
+    // `[length:8][bytes]` block.
+    public static method address(value: string): int {
+        return Primitive.tagged(1, value)
+    }
+
+    public static method outputString(text: string): unit {
+        Runtime.outputStringTo(1, text)
+    }
+
+    public static method outputStringTo(descriptor: int, text: string): unit {
+        let address = Runtime.address(text)
+        Runtime.output(descriptor, address + 8, Primitive.load(address))
+    }
+
+    // Writes a native string handle (address of `[length:8][bytes]`),
+    // already tagged as int. Used when display() prints a string or
+    // variant payload that is not a language string value.
+    public static method outputHandle(text: int): unit {
+        Runtime.output(1, text + 8, Primitive.load(text))
+    }
+
+    public static method outputInteger(value: int): unit {
+        Runtime.outputIntegerTo(1, value)
+    }
+
+    // Signed decimal, including the smallest 64-bit integer: digits are taken
+    // from the value without negating it first.
+    public static method outputIntegerTo(descriptor: int, value: int): unit {
+        let buffer = Primitive.state() + 64
+        var position = 32
+        var rest = value
+        if rest == 0 {
+            position = 31
+            Primitive.storeByte(buffer + position, 48)
+        }
+        while rest != 0 {
+            var digit = rest % 10
+            if digit < 0 { digit = 0 - digit }
+            position = position - 1
+            Primitive.storeByte(buffer + position, 48 + digit)
+            rest = rest / 10
+        }
+        if value < 0 {
+            position = position - 1
+            Primitive.storeByte(buffer + position, 45)
+        }
+        Runtime.output(descriptor, buffer + position, 32 - position)
+    }
+
+    // Prints the runtime error and exits with status 70.
+    public static method fail(code: int, detail: int): unit {
+        Runtime.outputString("runtime error: ")
+        if code == 1 { Runtime.outputString("value stack underflow") }
+        if code == 2 { Runtime.outputString("operand type mismatch for opcode ") }
+        if code == 3 { Runtime.outputString("Stack overflow") }
+        if code == 4 { Runtime.outputString("unsupported opcode ") }
+        if code == 5 { Runtime.outputString("bodyless routine trapped") }
+        if code == 8 { Runtime.outputString("field assignment rejected at index ") }
+        if code == 9 { Runtime.outputString("out of memory") }
+        if code == 10 { Runtime.outputString("strong reference cycle rejected for opcode ") }
+        if code == 11 { Runtime.outputString("pop from empty array") }
+        if code == 12 { Runtime.outputString("invalid owner count (operation ") }
+        if code == 13 { Runtime.outputString("owner count overflow (operation ") }
+        if code == 2 || code == 4 || code == 8 || code == 10 || code == 12 || code == 13 { Runtime.outputInteger(detail) }
+        if code == 12 || code == 13 { Runtime.outputByte(1, 41) }
+        Runtime.outputByte(1, 10)
+        System.exit(70)
+    }
+
+    // Called by _main after the program's main returns; exits with status.
+    // With SNOVA_MEMORY_REPORT set (non-empty), writes the live and peak
+    // counters to stderr; the gate requires zero live blocks.
+    public static method finish(status: int): unit {
+        let state = Primitive.state()
+        let liveBlocks = Primitive.load(state + 48)
+        let liveBytes = Primitive.load(state + 56)
+        let peakBytes = Primitive.load(state + 104)
+        let setting = Host.environment(Runtime.address("SNOVA_MEMORY_REPORT"))
+        let enabled = Text.byteCount(setting) > 0
+        Heap.free(setting)
+        if enabled {
+            Runtime.outputStringTo(2, "snova memory: live blocks ")
+            Runtime.outputIntegerTo(2, liveBlocks)
+            Runtime.outputStringTo(2, ", live bytes ")
+            Runtime.outputIntegerTo(2, liveBytes)
+            Runtime.outputStringTo(2, ", peak bytes ")
+            Runtime.outputIntegerTo(2, peakBytes)
+            Runtime.outputByte(2, 10)
+        }
+        System.exit(status)
+    }
+}

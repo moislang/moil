@@ -1,0 +1,95 @@
+package snova.compiler.runtime
+
+import builtin.runtime
+
+// Guest strings keep the host string (for printing and paths) and its bytes
+// in vm.stringBytes. stringSpans[handle] uses tag = start and value = length;
+// tag -1 means the bytes are not known yet (a host string). Host string `==`
+// compares identity in snl v0.3.0, so guest equality compares bytes.
+func vmNewString(vm: VmState, text: string): int {
+    vm.strings.push(text)
+    vm.stringSpans.push(VmCell { tag: -1, value: 0 })
+    return vm.strings.len() - 1
+}
+
+func vmNewStringFrom(vm: VmState, text: string, source: int[], start: int, length: int): int {
+    vm.strings.push(text)
+    vm.stringSpans.push(VmCell { tag: vm.stringBytes.len(), value: length })
+    var index = 0
+    while index < length {
+        vm.stringBytes.push(source[start + index])
+        index = index + 1
+    }
+    return vm.strings.len() - 1
+}
+
+// Provisional boundary (ADR-0004): converts a host string into bytes by
+// writing it to a scratch file and reading the bytes back. Native programs do
+// not need it (ADR-0006); it goes away once the executor is built natively.
+// The directory comes from the environment because a native Windows
+// executable has no /tmp: TEMP/TMP on Windows, TMPDIR on macOS, else /tmp.
+// An unset variable compares equal to "" in the seed; a variable set to an
+// empty value does not (identity comparison), which is not handled here.
+func vmScratchPath(): string {
+    var directory = Runtime.environment("TEMP")
+    if directory == "" { directory = Runtime.environment("TMP") }
+    if directory == "" { directory = Runtime.environment("TMPDIR") }
+    if directory == "" { directory = "/tmp" }
+    return directory + "/snova-vm-string.bin"
+}
+
+func vmStringStart(vm: VmState, handle: int): int {
+    let known = cellTag(vm.stringSpans[handle])
+    if known >= 0 { return known }
+    let path = vmScratchPath()
+    Runtime.writeText(path, vm.strings[handle])
+    let bytes = read_bytes(path)
+    let start = vm.stringBytes.len()
+    var index = 0
+    while index < bytes.len() {
+        vm.stringBytes.push(bytes[index])
+        index = index + 1
+    }
+    cellSet(vm.stringSpans[handle], start, bytes.len())
+    return start
+}
+
+func vmStringLength(vm: VmState, handle: int): int {
+    vmStringStart(vm, handle)
+    return cellValue(vm.stringSpans[handle])
+}
+
+func vmStringsEqual(vm: VmState, leftHandle: int, rightHandle: int): bool {
+    if leftHandle == rightHandle { return true }
+    let length = vmStringLength(vm, leftHandle)
+    if length != vmStringLength(vm, rightHandle) { return false }
+    let leftStart = vmStringStart(vm, leftHandle)
+    let rightStart = vmStringStart(vm, rightHandle)
+    var index = 0
+    while index < length {
+        if vm.stringBytes[leftStart + index] != vm.stringBytes[rightStart + index] { return false }
+        index = index + 1
+    }
+    return true
+}
+
+func vmConcatStrings(vm: VmState, leftHandle: int, rightHandle: int): int {
+    let leftLength = vmStringLength(vm, leftHandle)
+    let rightLength = vmStringLength(vm, rightHandle)
+    let leftStart = vmStringStart(vm, leftHandle)
+    let rightStart = vmStringStart(vm, rightHandle)
+    let start = vm.stringBytes.len()
+    var index = 0
+    while index < leftLength {
+        vm.stringBytes.push(vm.stringBytes[leftStart + index])
+        index = index + 1
+    }
+    index = 0
+    while index < rightLength {
+        vm.stringBytes.push(vm.stringBytes[rightStart + index])
+        index = index + 1
+    }
+    vm.strings.push(vm.strings[leftHandle] + vm.strings[rightHandle])
+    vm.stringSpans.push(VmCell { tag: start, value: leftLength + rightLength })
+    return vm.strings.len() - 1
+}

@@ -1,0 +1,342 @@
+package snova.compiler
+
+import snova.compiler.runtime
+import snova.compiler.backend
+
+func writeImage(src: int[], bg: CompilerState, cx: CompilerContext, image: int[]): unit {
+    image.push(83)
+    image.push(78)
+    image.push(66)
+    image.push(67)
+    pushU32(image, 1)
+    pushU32(image, cx.main_idx)
+    pushU32(image, bg.pool_n.len())
+    var i = 0
+    while i < bg.pool_n.len() {
+        pushU32(image, bg.pool_n[i])
+        var j = 0
+        while j < bg.pool_n[i] {
+            image.push(bg.pool_b[bg.pool_s[i] + j])
+            j = j + 1
+        }
+        i = i + 1
+    }
+    pushU32(image, bg.fn_ns.len())
+    i = 0
+    while i < bg.fn_ns.len() {
+        scopeWriteFnName(src, bg, image, i)
+        pushU32(image, bg.fn_ar[i])
+        pushU32(image, bg.fn_loc[i])
+        pushU32(image, bg.fn_len[i])
+        var j = 0
+        while j < bg.fn_len[i] {
+            image.push(bg.allc[bg.fn_off[i] + j])
+            j = j + 1
+        }
+        i = i + 1
+    }
+}
+
+func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
+    if cx.error_phase == 1 {
+        Console.print("error[SNV1001]: lexical error at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        var start = 0
+        var line = 1
+        while start < src.len() && line < cx.error_line {
+            if src[start] == 10 { line = line + 1 }
+            start = start + 1
+        }
+        var end = start
+        while end < src.len() && src[end] != 10 { end = end + 1 }
+        Console.print(start)
+        Console.print("..")
+        Console.print(end)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 2 {
+        var errorLine = 1
+        var start = 0
+        var end = 0
+        if cx.error_token >= 0 && cx.error_token < bg.tl.len() {
+            errorLine = bg.tl[cx.error_token]
+            start = bg.ts[cx.error_token]
+            end = start + bg.tn[cx.error_token]
+        }
+        Console.print("error[SNV2001]: parse error at line ")
+        Console.print(errorLine)
+        Console.print(", span ")
+        Console.print(start)
+        Console.print("..")
+        Console.print(end)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 4 {
+        Console.print("error[SNV4001]: annotation type does not match initializer at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 5 {
+        Console.print("error[SNV4002]: assignment type does not match local binding at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 6 {
+        Console.print("error[SNV4003]: assignment type does not match field at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 7 {
+        reportNonExhaustive(src, bg, cx)
+        return
+    }
+    if cx.error_phase == 9 {
+        reportArity(cx)
+        return
+    }
+    if cx.error_phase == 10 {
+        reportArgType(cx)
+        return
+    }
+    if cx.error_phase == 11 {
+        reportBinOpType(cx)
+        return
+    }
+    if cx.error_phase == 12 {
+        reportUnaryOrIndexType(cx)
+        return
+    }
+    if cx.error_phase == 13 {
+        reportNonBoolCondition(cx)
+        return
+    }
+    if cx.error_phase == 14 {
+        reportReturnType(cx)
+        return
+    }
+    if cx.error_phase == 20 {
+        reportMovedValue(cx)
+        return
+    }
+    if cx.error_phase == 21 {
+        reportFieldOrElementMove(cx)
+        return
+    }
+    if cx.error_phase == 30 {
+        Console.print("error[SNV4012]: type does not satisfy declared contract at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_end)
+        Console.printline("")
+        return
+    }
+    if cx.error_phase == 8 {
+        Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_start + 1)
+        Console.printline("")
+        return
+    }
+    Console.print("error[SNV3001]: unsupported construct or invalid lowering at line ")
+    Console.print(cx.error_line)
+    Console.print(", function #")
+    Console.print(cx.error_token)
+    Console.printline("")
+}
+
+// Warnings do not stop compilation. SNW0001 used to warn about `==`/`!=`
+// between known, different types; those cases are now SNV4008 errors.
+func reportWarnings(bg: CompilerState): unit {
+    var index = 0
+    while index < bg.warningCodes.len() {
+        Console.print("warning[SNW000")
+        Console.print(bg.warningCodes[index])
+        Console.print("]: comparison between different types at line ")
+        Console.print(bg.warningLines[index])
+        Console.printline("")
+        index = index + 1
+    }
+}
+
+func compileSource(src: int[], image: int[], userEnd: int): int {
+    var bg = CompilerState {
+        tk: [], ts: [], tn: [], tv: [], tl: [],
+        nk: [], na: [], nb: [], nc: [], nd: [],
+        loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [], loc_mut: [], nline: [], parse_line: 0,
+        fd_st: [], fd_ns: [], fd_nl: [], fd_ty: [],
+        st_ns: [], st_nl: [],
+        fn_ns: [], fn_nl: [], fn_ar: [], fn_ty: [], fn_body: [],
+        fn_off: [], fn_len: [], fn_loc: [],
+        par_fn: [], par_ns: [], par_nl: [], par_ty: [],
+        pool_b: [], pool_s: [], pool_n: [],
+        allc: [],
+        fn_own: [], fn_async: [], fn_pulsar: [], fn_static: [],
+        fn_return_ty: [], st_kind: [], impl_owner: [], impl_ns: [], impl_nl: [], fd_init: [],
+        va_ns: [], va_nl: [], va_en: [],
+        lp_id: [], lp_known: [], lp_pos: [],
+        brk_at: [], brk_lv: [], cont_at: [], cont_lv: [],
+        warningCodes: [], warningLines: []
+    }
+    var cx = CompilerContext {
+        pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0, ret_ty: 0,
+        no_struct: 0, loc_base: 0, main_idx: 0,
+        owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
+        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_end: -1, error_line: 1, error_expected: 0, error_found: 0, line: 1, user_end: userEnd
+    }
+    lexAll(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    parseFile(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    if bg.fn_ns.len() == 0 {
+        fail(cx)
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    if borrowCheck(src, bg, cx) != 0 {
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    cx.phase = 3
+    emitUnit(src, bg, cx)
+    if cx.failed != 0 {
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    if bg.fn_loc.len() != bg.fn_ns.len() {
+        fail(cx)
+        reportFailure(src, bg, cx)
+        return 1
+    }
+    reportWarnings(bg)
+    writeImage(src, bg, cx, image)
+    return 0
+}
+
+// Run mode is recognized by the SNBC magic of the first argument. The
+// second argument is the reserved word `run`; the rest belong to the program.
+func isImageBytes(data: int[]): bool {
+    if data.len() < 4 { return false }
+    return data[0] == 83 && data[1] == 78 && data[2] == 66 && data[3] == 67
+}
+
+func printUsage(): unit {
+    Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native [<target-triple>] | snl <input.snl> <output.s> [native] --target <target-triple> | snl <image.snbc> [run [args...]]")
+    Console.printline("targets: aarch64-apple-darwin (Mach-O, default), aarch64-unknown-linux-gnu (ELF), x86_64-unknown-linux-gnu (ELF, backend pending)")
+}
+
+// Native mode arguments after <input> <output>. Returns the argument index
+// of the target triple, 0 when none is given (default target), or -2 for
+// a malformed command line. Accepted forms:
+//   native | native <triple> | native --target <triple> | --target <triple>
+func nativeTargetIndex(resolver: NativeTargetResolver, scratchPath: string, argc: int): int {
+    let mode = resolver.optionKind(Runtime.argument(2), scratchPath)
+    if mode == 1 {
+        if argc == 3 { return 0 }
+        if argc == 4 && resolver.optionKind(Runtime.argument(3), scratchPath) != 2 { return 3 }
+        if argc == 5 && resolver.optionKind(Runtime.argument(3), scratchPath) == 2 { return 4 }
+        return -2
+    }
+    if mode == 2 && argc == 4 { return 3 }
+    return -2
+}
+
+func main(): int {
+    let argc = cliArgumentCount()
+    if argc == 1 {
+        if validateImage(readSource(sourcePath())) == 0 {
+            Console.printline("invalid SnBC image")
+            return 1
+        }
+        Console.printline("valid SnBC image")
+        return 0
+    }
+    if argc != 0 && argc < 2 {
+        printUsage()
+        return 2
+    }
+    var src: int[] = []
+    var userEnd = 0
+    if argc == 0 {
+        src = ownSource()
+        userEnd = src.len()
+    } else {
+        src = readSource(sourcePath())
+        if isImageBytes(src) {
+            return runImage(src, 2)
+        }
+        userEnd = src.len()
+        if argc >= 3 { appendNativeRuntime(src) }
+    }
+    var image: int[] = []
+    if compileSource(src, image, userEnd) != 0 {
+        return 1
+    }
+    if validateImage(image) == 0 {
+        Console.printline("invalid generated SnBC image")
+        return 1
+    }
+    if argc >= 3 {
+        let resolver = NativeTargetResolver()
+        let scratchPath = imagePath() + ".target.tmp"
+        let targetIndex = nativeTargetIndex(resolver, scratchPath, argc)
+        if targetIndex == -2 {
+            printUsage()
+            return 2
+        }
+        var targetKind = 1
+        if targetIndex > 0 {
+            targetKind = resolver.status(Runtime.argument(targetIndex), scratchPath)
+            if targetKind == 0 {
+                Console.printline(resolver.diagnostic(targetKind))
+                return 1
+            }
+            if targetKind == 2 {
+                Console.printline(resolver.diagnostic(targetKind))
+                return 1
+            }
+        }
+        let backend = NativeBackend()
+        let unsupported = backend.emit(image, imagePath(), targetKind)
+        if unsupported < 0 {
+            Console.printline("native runtime missing from image")
+            return 1
+        }
+        if unsupported != 0 {
+            Console.print("unsupported opcode for native backend: ")
+            Console.printline(unsupported)
+            return 1
+        }
+        return 0
+    }
+    writeImageFile(imagePath(), image)
+    return 0
+}

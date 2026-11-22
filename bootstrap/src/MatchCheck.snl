@@ -1,0 +1,390 @@
+package snova.compiler
+
+import snova.compiler.runtime
+
+// Match exhaustiveness (SNV4004), the rule of snovac's
+// sn_check_match_exhaustiveness: a match whose subject has a known enum type
+// needs a wildcard or binding arm, or a variant pattern for every variant of
+// the enum. Subjects with another or unknown static type are not checked.
+// Variant patterns are compared by member name, as in snovac. A bare name
+// that is not a known variant binds, so it covers every case (the emitter
+// lowers it the same way). The seed has no arm guards.
+func matchArmsCatchAll(src: int[], bg: CompilerState, arms: int): int {
+    var cursor = arms
+    while cursor >= 0 {
+        let pat = bg.na[bg.nb[cursor]]
+        if pat < 0 || bg.na[pat] == 1 || bg.na[pat] == 4 { return 1 }
+        cursor = bg.nc[cursor]
+    }
+    return 0
+}
+
+func matchArmsCover(src: int[], bg: CompilerState, arms: int, variant: int): int {
+    var cursor = arms
+    while cursor >= 0 {
+        let pat = bg.na[bg.nb[cursor]]
+        if bg.na[pat] == 3 && spanEq(src, bg.va_ns[variant], bg.va_nl[variant], bg.nb[pat], bg.nc[pat]) { return 1 }
+        cursor = bg.nc[cursor]
+    }
+    return 0
+}
+
+func matchCheckExhaustive(src: int[], bg: CompilerState, cx: CompilerContext, subjectType: int, arms: int, matchToken: int): unit {
+    if cx.failed != 0 || subjectType <= 0 || arms < 0 { return }
+    let st = subjectType - 1
+    if st >= bg.st_kind.len() || bg.st_kind[st] != 3 { return }
+    if matchArmsCatchAll(src, bg, arms) != 0 { return }
+    var variant = 0
+    while variant < bg.va_ns.len() {
+        if bg.va_en[variant] == st && matchArmsCover(src, bg, arms, variant) == 0 {
+            cx.failed = 1
+            cx.error_phase = 7
+            cx.error_token = matchToken
+            cx.error_start = variant
+            return
+        }
+        variant = variant + 1
+    }
+}
+
+func reportNonExhaustive(src: int[], bg: CompilerState, cx: CompilerContext): unit {
+    let variant = cx.error_start
+    let st = bg.va_en[variant]
+    Console.print("error[SNV4004]: non-exhaustive match on `")
+    printSourceSpan(src, bg.st_ns[st], bg.st_nl[st])
+    Console.print("`: missing variant `")
+    printSourceSpan(src, bg.va_ns[variant], bg.va_nl[variant])
+    Console.print("` at line ")
+    Console.print(bg.tl[cx.error_token])
+    Console.print(", span ")
+    Console.print(bg.ts[cx.error_token])
+    Console.print("..")
+    Console.print(bg.ts[cx.error_token] + bg.tn[cx.error_token])
+    Console.printline("")
+}
+
+// SNV4006: a call's argument count differs from the callee's parameter count
+// (snl check SNOVA0131). `passed` counts the receiver of an instance method,
+// as fn_ar does; `receiver` is 1 then, so messages show source counts.
+// `nameStart` is the byte offset of the called name.
+func arityMismatch(src: int[], bg: CompilerState, cx: CompilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
+    if cx.failed != 0 || bg.fn_ar[fn] == passed { return 0 }
+    arityFail(src, cx, bg.fn_ar[fn] - receiver, passed - receiver, nameStart)
+    return 1
+}
+
+// Line of a byte offset in the compile buffer. When the native runtime
+// has been appended, offsets in the appendix are reported at the end of
+// the user file instead of a line past EOF.
+func sourceLine(src: int[], start: int, userEnd: int): int {
+    var line = 1
+    var byteIndex = 0
+    var limit = start
+    if userEnd > 0 && start >= userEnd {
+        limit = userEnd
+    }
+    while byteIndex < limit {
+        if src[byteIndex] == 10 { line = line + 1 }
+        byteIndex = byteIndex + 1
+    }
+    return line
+}
+
+func arityFail(src: int[], cx: CompilerContext, expected: int, found: int, nameStart: int): unit {
+    cx.failed = 1
+    cx.error_phase = 9
+    cx.error_expected = expected
+    cx.error_found = found
+    cx.error_start = nameStart
+    cx.error_line = sourceLine(src, nameStart, cx.user_end)
+}
+
+func reportArity(cx: CompilerContext): unit {
+    Console.print("error[SNV4006]: expected ")
+    Console.print(cx.error_expected)
+    Console.print(" argument(s), found ")
+    Console.print(cx.error_found)
+    Console.print(" at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+// SNV4007: an argument's known type does not match the parameter (or
+// constructor field, or `push` element type). Corresponds to SNOVA0132.
+// The span is the opening `(` of the call, the column `snl check` reports.
+func typeFail(src: int[], cx: CompilerContext, phase: int, start: int): unit {
+    if cx.failed != 0 { return }
+    cx.failed = 1
+    cx.error_phase = phase
+    cx.error_start = start
+    cx.error_line = sourceLine(src, start, cx.user_end)
+}
+
+func tokenStart(bg: CompilerState, token: int): int {
+    if token >= 0 && token < bg.ts.len() { return bg.ts[token] }
+    return 0
+}
+
+func typesClash(want: int, got: int): bool {
+    if want == 0 { return false }
+    if got == 0 { return false }
+    if want == got { return false }
+    return true
+}
+
+func paramTypeAt(bg: CompilerState, fn: int, index: int): int {
+    var i = 0
+    var seen = 0
+    while i < bg.par_fn.len() {
+        if bg.par_fn[i] == fn {
+            if seen == index { return bg.par_ty[i] }
+            seen = seen + 1
+        }
+        i = i + 1
+    }
+    return 0
+}
+
+func fieldTypeByIndex(bg: CompilerState, st: int, index: int): int {
+    var i = 0
+    var seen = 0
+    while i < bg.fd_st.len() {
+        if bg.fd_st[i] == st {
+            if seen == index { return bg.fd_ty[i] }
+            seen = seen + 1
+        }
+        i = i + 1
+    }
+    return 0
+}
+
+// User-program argument type check (SNV4007). Calls in the appended
+// native runtime are exempt: the language requires a type on every
+// parameter and has no untyped or union payload, so Primitive.tagged
+// must keep `payload: int` even when Runtime.address passes a string.
+func checkArgType(src: int[], bg: CompilerState, cx: CompilerContext, want: int, got: int, start: int): int {
+    if cx.failed != 0 { return 1 }
+    if cx.user_end > 0 && start >= cx.user_end { return 0 }
+    if typesClash(want, got) {
+        typeFail(src, cx, 10, start)
+        return 1
+    }
+    return 0
+}
+
+func reportArgType(cx: CompilerContext): unit {
+    Console.print("error[SNV4007]: argument type does not match parameter at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func emitArgsChecked(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], args: int, fn: int, start: int): unit {
+    let argc = consCount(bg, args)
+    var i = 0
+    while i < argc {
+        emitExpr(src, bg, cx, code, fat, fb, scopeArgAt(bg, args, i))
+        if cx.failed != 0 { return }
+        if checkArgType(src, bg, cx, paramTypeAt(bg, fn, i), cx.expr_ty, start) != 0 { return }
+        i = i + 1
+    }
+}
+
+// SNV4008 / SNV4009: operator and index operand types (SNOVA0133 / SNOVA0134).
+// The span is the operator or the opening `[`, the column `snl check` reports.
+func isBoolType(ty: int): bool {
+    if ty == -2 { return true }
+    return false
+}
+
+func isIntType(ty: int): bool {
+    if ty == -1 { return true }
+    return false
+}
+
+func isStringType(ty: int): bool {
+    if ty == -3 { return true }
+    return false
+}
+
+func isEqOp(op: int): bool {
+    if op == 28 { return true }
+    if op == 29 { return true }
+    return false
+}
+
+func isRelOp(op: int): bool {
+    if op == 30 { return true }
+    if op == 31 { return true }
+    if op == 32 { return true }
+    if op == 33 { return true }
+    return false
+}
+
+func isCompareOp(op: int): bool {
+    if isEqOp(op) { return true }
+    if isRelOp(op) { return true }
+    return false
+}
+
+func isAddOp(op: int): bool {
+    if op == 34 { return true }
+    return false
+}
+
+func checkBinaryTypes(src: int[], cx: CompilerContext, op: int, left: int, right: int, start: int): int {
+    if cx.failed != 0 { return 1 }
+    if op == 43 || op == 44 {
+        if left != 0 && isBoolType(left) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        if right != 0 && isBoolType(right) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isRelOp(op) {
+        if left != 0 && isIntType(left) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        if right != 0 && isIntType(right) == false {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isEqOp(op) {
+        if typesClash(left, right) {
+            typeFail(src, cx, 11, start)
+            return 1
+        }
+        return 0
+    }
+    if isAddOp(op) {
+        if left == 0 || right == 0 { return 0 }
+        if left == right && (isIntType(left) || isStringType(left)) { return 0 }
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    if left != 0 && isIntType(left) == false {
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    if right != 0 && isIntType(right) == false {
+        typeFail(src, cx, 11, start)
+        return 1
+    }
+    return 0
+}
+
+func binaryExprType(op: int, left: int, right: int): int {
+    if op == 43 || op == 44 { return -2 }
+    if isCompareOp(op) { return -2 }
+    if isAddOp(op) {
+        if left == 0 || right == 0 { return 0 }
+        if isIntType(left) && isIntType(right) { return -1 }
+        if isStringType(left) && isStringType(right) { return -3 }
+        return 0
+    }
+    if left == 0 || right == 0 { return 0 }
+    return -1
+}
+
+func reportBinOpType(cx: CompilerContext): unit {
+    Console.print("error[SNV4008]: operator cannot be applied to these operand types at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func reportUnaryOrIndexType(cx: CompilerContext): unit {
+    if cx.error_found == 1 {
+        Console.print("error[SNV4009]: index must be an integer type at line ")
+    } else {
+        Console.print("error[SNV4009]: invalid operand type for unary operator at line ")
+    }
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func exprStart(bg: CompilerState, nd: int): int {
+    if nd < 0 { return 0 }
+    let k = bg.nk[nd]
+    if k == 1 || k == 2 { return bg.nb[nd] }
+    if k == 3 || k == 4 { return bg.na[nd] }
+    if k == 5 { return tokenStart(bg, bg.nd[nd]) }
+    if k == 6 { return exprStart(bg, bg.nb[nd]) }
+    if k == 7 { return exprStart(bg, bg.nb[nd]) }
+    if k == 9 { return exprStart(bg, bg.nb[nd]) }
+    if k == 10 { return exprStart(bg, bg.nb[nd]) }
+    if k == 11 { return bg.na[nd] }
+    if k == 12 { return exprStart(bg, bg.nb[nd]) }
+    return 0
+}
+
+func checkBoolCondition(src: int[], bg: CompilerState, cx: CompilerContext, cond: int, ty: int): int {
+    if cx.failed != 0 { return 1 }
+    if ty != 0 && isBoolType(ty) == false {
+        typeFail(src, cx, 13, exprStart(bg, cond))
+        return 1
+    }
+    return 0
+}
+
+func reportNonBoolCondition(cx: CompilerContext): unit {
+    Console.print("error[SNV4010]: condition must be bool at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func callResultType(bg: CompilerState, fn: int): int {
+    if fn < 0 { return 0 }
+    if fn >= bg.fn_return_ty.len() { return 0 }
+    return bg.fn_return_ty[fn]
+}
+
+// SNV4011: a return's known type does not match the function's declared
+// return type (snl check SNOVA0136). A bare `return` has type unit. The
+// span is the `return` keyword, or the expression of a function shorthand.
+func checkReturnType(src: int[], bg: CompilerState, cx: CompilerContext, nd: int, got: int): int {
+    if cx.failed != 0 { return 1 }
+    if cx.ret_ty == 0 { return 0 }
+    if typesClash(cx.ret_ty, got) {
+        var start = tokenStart(bg, bg.nd[nd])
+        if start == 0 { start = exprStart(bg, bg.nb[nd]) }
+        typeFail(src, cx, 14, start)
+        return 1
+    }
+    return 0
+}
+
+func reportReturnType(cx: CompilerContext): unit {
+    Console.print("error[SNV4011]: returned type does not match the function's declared return type at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}

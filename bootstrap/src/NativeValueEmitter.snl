@@ -1,0 +1,349 @@
+package snova.compiler.backend
+
+// Composite SnBC operations of the native backend (N2). Field and index
+// access use the object and array layouts of bootstrap/runtime/Container.snl
+// inline; allocation, printing, I/O and the general binary path call the
+// Snova runtime. Semantics follow the SnBC executor (VmFast.snl, VmOps.snl).
+//
+// Ownership (NativeOwnership): runtime roles borrow their value arguments,
+// except the elements of NEW_ARRAY/NEW_OBJECT and the element of
+// ARRAY_PUSH, which move into the container. Owned operands are released
+// after use; stash registers carry values across release calls.
+// The operations are a stateless strategy object over the shared assembly
+// and ownership model, which arrive as typed parameters.
+class NativeValueEmitter {
+    public method constantString(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
+        poolValue(output, stack, poolIndex, 3)
+    }
+
+    // VARIANT (42) without payload: tag 7 whose payload is the address of
+    // the interned variant name in the constant pool. Pool entries are never
+    // counted or freed, so the value needs no ownership work.
+    public method variant(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
+        poolValue(output, stack, poolIndex, 7)
+    }
+
+    private method poolValue(output: NativeAssembly, stack: NativeOwnership, poolIndex: int, tag: int): unit {
+        poolAddress(output, "x0", poolIndex)
+        output.line("mov x1, #" + output.decimal(tag))
+        output.pushPair()
+        stack.pushSlot(-1)
+    }
+
+    private method poolAddress(output: NativeAssembly, target: string, poolIndex: int): unit {
+        let pool = "l_snova_pool_" + output.decimal(poolIndex)
+        if output.targetKind == 1 {
+            output.line("adrp " + target + ", " + pool + "@PAGE")
+            output.line("add " + target + ", " + target + ", " + pool + "@PAGEOFF")
+        } else {
+            output.line("adrp " + target + ", " + pool)
+            output.line("add " + target + ", " + target + ", :lo12:" + pool)
+        }
+    }
+
+    // IS_VARIANT (43): the pool interns names by content, so the subject
+    // matches when its tag is 7 and its payload is the same pool address.
+    public method isVariant(output: NativeAssembly, stack: NativeOwnership, poolIndex: int): unit {
+        let origin = stack.popSlot()
+        output.popPair("x0", "x1")
+        poolAddress(output, "x2", poolIndex)
+        output.line("cmp x1, #7")
+        output.line("ccmp x0, x2, #0, eq")
+        output.line("cset x2, eq")
+        output.line("mov x3, #2")
+        output.pushRegisters("x2", "x3")
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, "x0", "x1")
+    }
+
+    // NEW_ARRAY (39) and NEW_OBJECT (36): the runtime moves count owned slots
+    // from the operand stack through its top address; the slots are dropped
+    // without release.
+    public method fromStack(output: NativeAssembly, stack: NativeOwnership, role: int, count: int): unit {
+        stack.upgradeRange(output, 0, count)
+        output.beginArguments()
+        output.line("mov x9, sp")
+        output.pushInteger("x9")
+        output.loadConstant("x9", count)
+        output.pushInteger("x9")
+        output.callRole(role, 2)
+        if count > 0 { output.offset("sp", "sp", 16 * count, false) }
+        var dropped = 0
+        while dropped < count {
+            stack.popSlot()
+            dropped = dropped + 1
+        }
+        output.pushPair()
+        stack.pushSlot(-1)
+    }
+
+    // NEW_OBJECT (36) also stores the concrete type's string-pool index in
+    // the runtime header for O(1) native virtual dispatch.
+    public method newObject(output: NativeAssembly, stack: NativeOwnership, count: int, typeIndex: int): unit {
+        stack.upgradeRange(output, 0, count)
+        output.beginArguments()
+        output.line("mov x9, sp")
+        output.pushInteger("x9")
+        output.loadConstant("x9", count)
+        output.pushInteger("x9")
+        output.loadConstant("x9", typeIndex)
+        output.pushInteger("x9")
+        output.callRole(output.roleObjectFromStack(), 3)
+        if count > 0 { output.offset("sp", "sp", 16 * count, false) }
+        var dropped = 0
+        while dropped < count {
+            stack.popSlot()
+            dropped = dropped + 1
+        }
+        output.pushPair()
+        stack.pushSlot(-1)
+    }
+
+    // x2/x3 = field of the object in x0/x1, or unit when the value is not an
+    // object or the field is missing (cellLoadField).
+    private method loadField(output: NativeAssembly, stack: NativeOwnership, field: int, label: string): unit {
+        output.line("mov x2, #0")
+        output.line("mov x3, #0")
+        output.line("cmp x1, #5")
+        output.line("b.ne " + label + "_loaded")
+        output.line("ldr x4, [x0]")
+        output.loadConstant("x5", field)
+        output.line("cmp x4, x5")
+        output.line("b.ls " + label + "_loaded")
+        output.offset("x5", "x0", 16 + 16 * field, false)
+        output.line("ldp x2, x3, [x5]")
+        output.label(label + "_loaded")
+    }
+
+    // GET_FIELD (37): the result is a new owner of the field value.
+    public method getField(output: NativeAssembly, stack: NativeOwnership, field: int, label: string): unit {
+        let objectOrigin = stack.popSlot()
+        output.popPair("x0", "x1")
+        loadField(output, stack, field, label)
+        stack.retain(output, "x2", "x3")
+        output.pushRegisters("x2", "x3")
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, objectOrigin, "x0", "x1")
+    }
+
+    // SET_FIELD (38): the object is on top and the value below it; the
+    // object is dropped and the value stays (cellStoreField). The field
+    // becomes one more owner of the value and the old field value loses one.
+    // Array and object values go through Ownership.storeField, which rejects
+    // strong cycles.
+    public method setField(output: NativeAssembly, stack: NativeOwnership, field: int, label: string): unit {
+        let objectOrigin = stack.popSlot()
+        let objectPayload = stack.stash(21)
+        let objectTag = stack.stash(22)
+        output.line("ldp x0, x1, [sp]")
+        output.line("ldp x2, x3, [sp, #16]")
+        output.line("cmp x1, #5")
+        output.line("b.ne " + label + "_slow")
+        output.line("sub x9, x3, #4")
+        output.line("cmp x9, #1")
+        output.line("b.ls " + label + "_slow")
+        output.line("ldr x4, [x0]")
+        output.loadConstant("x5", field)
+        output.line("cmp x4, x5")
+        output.line("b.ls " + label + "_slow")
+        output.offset("x5", "x0", 16 + 16 * field, false)
+        stack.retain(output, "x2", "x3")
+        output.line("ldp x6, x7, [x5]")
+        output.line("stp x2, x3, [x5]")
+        output.line("mov " + objectPayload + ", x0")
+        output.line("mov " + objectTag + ", x1")
+        stack.release(output, "x6", "x7")
+        output.line("b " + label + "_stored")
+        output.label(label + "_slow")
+        output.beginArguments()
+        output.pushInteger("x1")
+        output.pushInteger("x0")
+        output.loadConstant("x9", field)
+        output.pushInteger("x9")
+        output.pushInteger("x3")
+        output.pushInteger("x2")
+        output.callRole(output.roleStoreField(), 5)
+        output.line("ldp " + objectPayload + ", " + objectTag + ", [sp]")
+        output.label(label + "_stored")
+        output.line("add sp, sp, #16")
+        stack.releaseIfOwned(output, objectOrigin, objectPayload, objectTag)
+    }
+
+    // GET_INDEX (40): unit for a non-array, a non-int index or an index out
+    // of range (the unsigned compare also rejects negative indexes).
+    public method getIndex(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
+        let indexOrigin = stack.popSlot()
+        let arrayOrigin = stack.popSlot()
+        output.popPair("x2", "x3")
+        output.popPair("x0", "x1")
+        output.line("mov x4, #0")
+        output.line("mov x5, #0")
+        output.line("cmp x1, #4")
+        output.line("b.ne " + label + "_loaded")
+        output.line("cmp x3, #1")
+        output.line("b.ne " + label + "_loaded")
+        output.line("ldr x6, [x0]")
+        output.line("cmp x2, x6")
+        output.line("b.hs " + label + "_loaded")
+        output.line("ldr x6, [x0, #16]")
+        output.line("add x6, x6, x2, lsl #4")
+        output.line("ldp x4, x5, [x6]")
+        output.label(label + "_loaded")
+        stack.retain(output, "x4", "x5")
+        output.pushRegisters("x4", "x5")
+        stack.pushSlot(-1)
+        output.line("mov " + stack.stash(21) + ", x0")
+        output.line("mov " + stack.stash(22) + ", x1")
+        stack.releaseIfOwned(output, indexOrigin, "x2", "x3")
+        stack.releaseIfOwned(output, arrayOrigin, stack.stash(21), stack.stash(22))
+    }
+
+    // ARRAY_LEN (49).
+    public method arrayLength(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
+        let origin = stack.popSlot()
+        output.popPair("x0", "x1")
+        output.line("cmp x1, #4")
+        output.line("b.eq " + label + "_array")
+        output.callFail(2, 49)
+        output.label(label + "_array")
+        output.line("ldr x2, [x0]")
+        output.line("mov x3, #1")
+        output.pushRegisters("x2", "x3")
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, "x0", "x1")
+    }
+
+    // ARRAY_POP (58) transfers the last element owner from the array to the
+    // result and clears its former slot so array destruction cannot release
+    // the value twice.
+    public method arrayPop(output: NativeAssembly, stack: NativeOwnership, label: string): unit {
+        let origin = stack.popSlot()
+        let arrayPayload = stack.stash(21)
+        let arrayTag = stack.stash(22)
+        output.popPair("x0", "x1")
+        output.line("mov " + arrayPayload + ", x0")
+        output.line("mov " + arrayTag + ", x1")
+        output.line("cmp x1, #4")
+        output.line("b.ne " + label + "_invalid")
+        output.line("ldr x2, [x0]")
+        output.line("cbz x2, " + label + "_empty")
+        output.line("sub x2, x2, #1")
+        output.line("ldr x5, [x0, #16]")
+        output.line("add x5, x5, x2, lsl #4")
+        output.line("ldp x3, x4, [x5]")
+        output.line("stp xzr, xzr, [x5]")
+        output.line("str x2, [x0]")
+        output.line("mov x0, x3")
+        output.line("mov x1, x4")
+        output.pushPair()
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, arrayPayload, arrayTag)
+        let done = output.newLabel()
+        output.line("b " + done)
+        output.label(label + "_invalid")
+        output.callFail(2, 58)
+        output.label(label + "_empty")
+        output.callFail(11, 58)
+        output.label(done)
+    }
+
+    // NEG (17) requires an int; NOT (18) is true for a zero payload.
+    public method unary(output: NativeAssembly, stack: NativeOwnership, opcode: int, label: string): unit {
+        let origin = stack.popSlot()
+        output.popPair("x0", "x1")
+        if opcode == 17 {
+            output.line("cmp x1, #1")
+            output.line("b.eq " + label + "_int")
+            output.callFail(2, 17)
+            output.label(label + "_int")
+            output.line("neg x2, x0")
+            output.line("mov x3, #1")
+        } else {
+            output.line("cmp x0, #0")
+            output.line("cset x2, eq")
+            output.line("mov x3, #2")
+        }
+        output.pushRegisters("x2", "x3")
+        stack.pushSlot(-1)
+        stack.releaseIfOwned(output, origin, "x0", "x1")
+    }
+
+    // PRINT (45): Value.display(tag, payload, newline) borrows the value.
+    public method display(output: NativeAssembly, stack: NativeOwnership, newline: int): unit {
+        let origin = stack.popSlot()
+        let payload = stack.stash(21)
+        let tag = stack.stash(22)
+        output.popPair(payload, tag)
+        output.beginArguments()
+        output.pushInteger(tag)
+        output.pushInteger(payload)
+        output.line("mov x2, #" + output.decimal(newline))
+        output.pushInteger("x2")
+        output.callRole(output.roleDisplay(), 3)
+        stack.releaseIfOwned(output, origin, payload, tag)
+    }
+
+    // Pushes the result in x0/x1 after releasing owned operands kept in the
+    // stash registers.
+    private method finishCall(output: NativeAssembly, stack: NativeOwnership, firstOrigin: int, secondOrigin: int): unit {
+        output.line("mov " + stack.stash(19) + ", x0")
+        output.line("mov " + stack.stash(20) + ", x1")
+        stack.releaseIfOwned(output, firstOrigin, stack.stash(21), stack.stash(22))
+        stack.releaseIfOwned(output, secondOrigin, stack.stash(23), stack.stash(24))
+        output.pushRegisters(stack.stash(19), stack.stash(20))
+        stack.pushSlot(-1)
+    }
+
+    // ARRAY_PUSH (50, the element moves), WRITE_BYTES (48) and
+    // Runtime.writeText (57, call 4): two value operands, one runtime call.
+    public method twoValueCall(output: NativeAssembly, stack: NativeOwnership, role: int, movesSecond: bool): unit {
+        if movesSecond { stack.upgrade(output, 0) }
+        var secondOrigin = stack.popSlot()
+        let firstOrigin = stack.popSlot()
+        output.popPair(stack.stash(23), stack.stash(24))
+        output.popPair(stack.stash(21), stack.stash(22))
+        output.beginArguments()
+        output.pushInteger(stack.stash(22))
+        output.pushInteger(stack.stash(21))
+        output.pushInteger(stack.stash(24))
+        output.pushInteger(stack.stash(23))
+        output.callRole(role, 4)
+        if movesSecond { secondOrigin = 0 }
+        finishCall(output, stack, firstOrigin, secondOrigin)
+    }
+
+    // READ_BYTES (47).
+    public method readBytes(output: NativeAssembly, stack: NativeOwnership): unit {
+        let origin = stack.popSlot()
+        output.popPair(stack.stash(21), stack.stash(22))
+        output.beginArguments()
+        output.pushInteger(stack.stash(22))
+        output.pushInteger(stack.stash(21))
+        output.callRole(output.roleReadBytes(), 2)
+        finishCall(output, stack, origin, 0)
+    }
+
+    // RUNTIME_CALL (57): 6 argumentCount, 4 writeText, the rest take one
+    // value.
+    public method runtimeCall(output: NativeAssembly, stack: NativeOwnership, callId: int): unit {
+        if callId == 6 {
+            output.callRole(output.roleArgumentCount(), 0)
+            output.pushPair()
+            stack.pushSlot(-1)
+            return
+        }
+        if callId == 4 {
+            twoValueCall(output, stack, output.roleWriteText(), false)
+            return
+        }
+        let origin = stack.popSlot()
+        output.popPair(stack.stash(21), stack.stash(22))
+        output.beginArguments()
+        output.loadConstant("x2", callId)
+        output.pushInteger("x2")
+        output.pushInteger(stack.stash(22))
+        output.pushInteger(stack.stash(21))
+        output.callRole(output.roleHostCall(), 3)
+        finishCall(output, stack, origin, 0)
+    }
+}

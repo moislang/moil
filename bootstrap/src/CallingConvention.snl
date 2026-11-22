@@ -1,0 +1,19 @@
+package snova.compiler.backend
+
+interface CallingConvention {
+    method name(): string
+    method stackAlignment(): int
+    method canEmitNative(): bool
+}
+
+class Aapcs64CallingConvention implements CallingConvention {
+    method name(): string { return "AAPCS64" }
+    method stackAlignment(): int { return 16 }
+    method canEmitNative(): bool { return true }
+}
+
+class SysvAmd64CallingConvention implements CallingConvention {
+    method name(): string { return "SysV AMD64" }
+    method stackAlignment(): int { return 16 }
+    method canEmitNative(): bool { return false }
+}

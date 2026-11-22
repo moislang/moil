@@ -1,0 +1,44 @@
+name: Set up snl
+description: >-
+  Download snl v0.3.0 from this repository's `snl-seed-v0.3.0` release,
+  verify its pinned SHA-256 and put it on PATH. No source build and no
+  download from any other repository (docs/roadmap/evidence.md).
+outputs:
+  snl:
+    description: Path to the snl executable (forward slashes, usable from bash, MSYS2 and PowerShell)
+    value: ${{ steps.install.outputs.snl }}
+runs:
+  using: composite
+  steps:
+    - id: install
+      shell: bash
+      env:
+        SNL_VERSION: v0.3.0
+      run: |
+        set -euo pipefail
+        # Release snl-seed-v0.3.0 of this repository. The first three archives
+        # are the official v0.3.0 archives copied unchanged (same SHA-256);
+        # macOS x86_64 and Windows ARM64 were built by publish-snl-seed.yml.
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          macOS-ARM64)   asset=snl-$SNL_VERSION-darwin-aarch64.tar.gz;  sha=6ddee0ca86e1876398c5e68017de132aa7c05e856fdc40f540f87af08c0acf8b; exe=snl ;;
+          Linux-X64)     asset=snl-$SNL_VERSION-linux-x86_64.tar.gz;    sha=f7d39f967407cdedc522b6bb1d21c199b188789dc27b00ba9e7100bc419ed8f8; exe=snl ;;
+          Windows-X64)   asset=snl-$SNL_VERSION-windows-x86_64.zip;     sha=6400c05fd6371f8eb5d522f09cedcdc40149fb67c945c1b09fce0f9abbb4b988; exe=snl.exe ;;
+          macOS-X64)     asset=snl-$SNL_VERSION-darwin-x86_64.tar.gz;   sha=4bea8c6167ee28a9c3588afa98d2c425b65a79c262e1059d9f1f13b49206f3d7; exe=snl ;;
+          Windows-ARM64) asset=snl-$SNL_VERSION-windows-aarch64.zip;    sha=da8fcdf62f6843abab071f53428aaf63484f54483ef5f685add87eda5a089066; exe=snl.exe ;;
+          *) echo "::error::no snl $SNL_VERSION binary for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+        esac
+        dir="$RUNNER_TEMP/snl-$SNL_VERSION"
+        if command -v cygpath > /dev/null; then dir=$(cygpath -u "$dir"); fi
+        mkdir -p "$dir"
+        curl -fsSL --retry 3 -o "$dir/$asset" "https://github.com/snovalang/snl/releases/download/snl-seed-$SNL_VERSION/$asset"
+        if command -v sha256sum > /dev/null; then actual=$(sha256sum "$dir/$asset" | cut -d' ' -f1); else actual=$(shasum -a 256 "$dir/$asset" | cut -d' ' -f1); fi
+        if [ "$actual" != "$sha" ]; then echo "::error::$asset SHA-256 $actual, expected $sha"; exit 1; fi
+        case "$asset" in
+          *.zip) if command -v unzip > /dev/null; then unzip -q -o "$dir/$asset" -d "$dir"; else pwsh -NoProfile -Command "Expand-Archive -Force -Path '$(cygpath -w "$dir/$asset")' -DestinationPath '$(cygpath -w "$dir")'"; fi ;;
+          *) tar -xzf "$dir/$asset" -C "$dir" ;;
+        esac
+        snl="$dir/bin/$exe"
+        if command -v cygpath > /dev/null; then snl=$(cygpath -m "$snl"); fi
+        "$snl" --version
+        echo "snl=$snl" >> "$GITHUB_OUTPUT"
+        echo "$(dirname "$snl")" >> "$GITHUB_PATH"

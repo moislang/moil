@@ -30,15 +30,15 @@
 ## Current state
 
 - Ownership is analysed only in the backend, over SnBC stack slots
-  (`bootstrap/src/nativeOwnership.snl`, runtime type `Ownership` in
-  `bootstrap/runtime/ownership.snl`): each local, temporary, field and
+  (`bootstrap/src/NativeOwnership.snl`, runtime type `Ownership` in
+  `bootstrap/runtime/Ownership.snl`): each local, temporary, field and
   element holds a count; `LOAD_LOCAL` produces an uncounted borrow until it
   escapes (ADR-0006, decision 6).
-- Type checks live inside the emitters (`emitExpr.snl`, `emit.snl`;
-  `SNV4001`–`SNV4003` printed by `compiler.snl`). There is no separate
+- Type checks live inside the emitters (`EmitExpr.snl`, `Emit.snl`;
+  `SNV4001`–`SNV4003` printed by `Compiler.snl`). There is no separate
   semantic pass on master. Irineu's open PRs add `SNV4004` (non-exhaustive
   `match`, [snl#4](https://github.com/snovalang/snl/pull/4), in its own
-  `matchCheck.snl` called from lowering), `SNV4005` (assignment to an
+  `MatchCheck.snl` called from lowering), `SNV4005` (assignment to an
   immutable binding, [snl#7](https://github.com/snovalang/snl/pull/7)) and
   `SNV4006` (argument count, [snl#9](https://github.com/snovalang/snl/pull/9)).
 - The seed's reaction to a move out of an array element is understood
@@ -71,7 +71,7 @@
 Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
 
 1. **Diagnostic namespace.** The seed keeps its own codes, one block per
-   phase. In `bootstrap/src/compiler.snl` today: `SNV1xxx` lexer
+   phase. In `bootstrap/src/Compiler.snl` today: `SNV1xxx` lexer
    (`SNV1001`), `SNV2xxx` parser (`SNV2001`), `SNV3xxx` lowering
    (`SNV3001`), `SNV4xxx` types (`SNV4001`–`SNV4003` on master;
    `SNV4004`–`SNV4006` are taken by snl#4, #7 and #9), and `SNW0001` for the
@@ -80,8 +80,8 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    Reference codes (`SNOVA02xx`) never appear in seed output, so the prefix
    always says which compiler produced an error.
 2. **Placement.** The checker is a separate pass between analysis and
-   emission, in its own module `bootstrap/src/borrowCheck.snl`. The emitters
-   (`emit.snl`, `emitExpr.snl`, `emitStmt.snl`) do not change, which is what
+   emission, in its own module `bootstrap/src/BorrowCheck.snl`. The emitters
+   (`Emit.snl`, `EmitExpr.snl`, `EmitStmt.snl`) do not change, which is what
    guarantees the "identical SnBC images" criterion below.
 
 ## Proposed surface
@@ -128,13 +128,15 @@ No new syntax in B1–B2.
 - **Field and element moves:** binding a field or an array element of
   movable type to a local fails with `SNV5002`. Passing it as a call
   argument stays allowed (SPEC-0001, rule 4).
+  Assigning a local into a field or array element does not move from that
+  local; only assignment to another local transfers its move state.
 
 ## Slices
 
 - **B0 — probes.** Done for the table above; extend to `return`, `while`,
   method receivers and struct fields of struct type before B1 starts.
-- **B1 — use after move** (`SNV5001`): create `borrowCheck.snl`, add it to
-  `ownSource()` in `sourceJoin.snl`, and call it from the driver after
+- **B1 — use after move** (`SNV5001`): create `BorrowCheck.snl`, add it to
+  `ownSource()` in `SourceJoin.snl`, and call it from the driver after
   parsing and before emission; straight-line code first, then `if`/`while`
   joins. Add the `SNV5001` row to `diagnostics.md`.
 - **B2 — move out of a field or element** (`SNV5002`), in the same pass;
@@ -150,10 +152,10 @@ No new syntax in B1–B2.
 
 ## Fixtures
 
-- Valid: `moveSemantics.snl` (moves, string and int copies, argument
+- Valid: `MoveSemantics.snl` (moves, string and int copies, argument
   borrow, move then use of the destination).
-- Invalid: `invalidUseAfterMove.snl`, `invalidConditionalMove.snl`,
-  `invalidFieldMove.snl`, with exact lines and spans asserted in
+- Invalid: `InvalidUseAfterMove.snl`, `InvalidConditionalMove.snl`,
+  `InvalidFieldMove.snl`, with exact lines and spans asserted in
   `bootstrap-diagnostics`.
 
 ## Acceptance criteria
@@ -210,7 +212,7 @@ until they are repeated on `aarch64-apple-darwin`.
 ## Risks
 
 - The separate pass needs the types the emitters compute today
-  (`fieldTypeAt` in `emit.snl`); it must recompute or share them without
+  (`fieldTypeAt` in `Emit.snl`); it must recompute or share them without
   changing emission.
 - Being stricter than `snl check` would break the compiler build; being
   looser leaves gaps the backend must still cover dynamically.
