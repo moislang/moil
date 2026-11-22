@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+class Holder {
+    public var items: int[]
+}
+
+func main(): int {
+    var holder = Holder { items: [1, 2] }
+    var taken = holder.items
+    return 0
+}

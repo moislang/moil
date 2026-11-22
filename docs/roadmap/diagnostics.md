@@ -30,6 +30,8 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4009` | Unary operand of a known incompatible type, or a known non-`int` index | `SNOVA0134` | Operator or opening `[` | `invalidUnaryNeg`, `invalidUnaryNot`, `invalidIndexType` |
 | `SNV4010` | `if`/`while` condition of a known non-`bool` type | `SNOVA0135` | Start of the condition expression | `invalidIfCondition`, `invalidWhileCondition` |
 | `SNV4011` | Returned type does not match the function's declared return type (including a value returned from `unit`, or a bare `return` from a non-`unit` function) | `SNOVA0136` | `return` keyword (or the expression of a function shorthand) | `invalidReturnType`, `invalidReturnInUnit`, `invalidBareReturn`, `invalidMethodReturnType` |
+| `SNV5001` | Use of a moved value | `SNOVA0240` | Used binding | `invalidUseAfterMove`, `invalidConditionalMove` |
+| `SNV5002` | Cannot move a value out of a field or array element | `SNOVA0251` | `.` of a field, or `[` of an index | `invalidFieldMove`, `invalidElementMove` |
 | `SNW0001` | (unused) Was a warning for `==`/`!=` between known, different types; those cases are now `SNV4008` | `SNOVA0133` rejects them as errors | — | — |
 
 In native mode the Snova runtime is appended to the user source. Line
@@ -75,7 +77,7 @@ passes) and with the seed. Recorded in [evidence.md](evidence.md) on
 | Array literal with mixed element types | `SNOVA0149` | Accepted | Array element types not tracked | 5 |
 | `for x: T` with the wrong element type | `SNOVA0150` | Accepted | Same | 5 |
 | Empty `while true {}` (warning) | `SNOVA0216` | No warning | Warning not implemented | 5 |
-| Move out of an array element (`let cell = cells[0]`) | `SNOVA0251` at the index expression | `SNV3001` on the next statement that uses `cell` (the field access on an unknown type), not on the move | Borrow checker: future `SNV5002` (SPEC-0002) | Borrow checker |
+| Move out of an array element (`let cell = cells[0]`) | `SNOVA0251` at the index expression | `SNV5002` at the `[` | Closed | — |
 | Method call through a local alias of a field (`let local = counter; local.bump()`) | Accepted by `snl check`; `snl build` fails with `SNOVA0400` (cannot lower call to SnBC) | Accepted and lowered | Not a seed gap: `SNOVA0400` is a reference back-end limit. The ownership side belongs to the borrow checker (SPEC-0002) | Borrow checker |
 | Instance method called through its type | Accepted by `snl check`; `snl build` fails with `SNOVA0400` | `SNV3001` at the statement line | Seed rejects earlier; a specific code is optional | 5 |
 | Duplicate `let` in one scope | Accepted | Accepted | None | — |

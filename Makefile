@@ -171,6 +171,16 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 8, span 94..95" $(BUILD_DIR)/call-result-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidMatchCall.snl $(BUILD_DIR)/invalidMatchCall.snbc > $(BUILD_DIR)/match-call-error.txt; then echo "expected non-exhaustive match on a call"; exit 1; fi
 	grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 14, span 150..155' $(BUILD_DIR)/match-call-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/moveSemantics.snl $(BUILD_DIR)/moveSemantics.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/moveSemantics.snbc run; test "$$?" -eq 11
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidUseAfterMove.snl $(BUILD_DIR)/invalidUseAfterMove.snbc > $(BUILD_DIR)/use-after-move-error.txt; then echo "expected use after move"; exit 1; fi
+	grep -Fqx "error[SNV5001]: use of a moved value at line 6, span 93..94" $(BUILD_DIR)/use-after-move-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidConditionalMove.snl $(BUILD_DIR)/invalidConditionalMove.snbc > $(BUILD_DIR)/conditional-move-error.txt; then echo "expected use after conditional move"; exit 1; fi
+	grep -Fqx "error[SNV5001]: use of a moved value at line 8, span 119..120" $(BUILD_DIR)/conditional-move-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidFieldMove.snl $(BUILD_DIR)/invalidFieldMove.snbc > $(BUILD_DIR)/field-move-error.txt; then echo "expected field move"; exit 1; fi
+	grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 156..157" $(BUILD_DIR)/field-move-error.txt
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidElementMove.snl $(BUILD_DIR)/invalidElementMove.snbc > $(BUILD_DIR)/element-move-error.txt; then echo "expected element move"; exit 1; fi
+	grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 163..164" $(BUILD_DIR)/element-move-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
@@ -283,7 +293,7 @@ bootstrap-native: bootstrap-build
 # native assembly, then use the generated executable for two further builds.
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
-NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch matchCheck
+NATIVE_COMPILER_SOURCES := unit lex parse parseDecl emit emitExpr emitStmt runtime imageReader imageCode vmValue vmText vmString vmOps vmExec vmDecode vmFast vmFrame vmLoad nativeImage nativeRoles nativeAssembly nativeSlot nativeOwnership nativeValueEmitter nativeInstructionEmitter nativeBoundary nativeBackend sourceJoin compiler scopeParse scopeEmit scopeMatch matchCheck borrowCheck
 NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native

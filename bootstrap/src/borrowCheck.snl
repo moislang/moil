@@ -1,0 +1,474 @@
+package snova.compiler
+
+// Frontend borrow checker (SPEC-0002, slices B1 and B2). A separate pass
+// after parsing and before emission; the emitters are not changed.
+// SNV5001 is use of a moved (or maybe-moved) local; SNV5002 is a move of
+// a movable value out of a field or array element. Arrays and objects are
+// movable; ints, bools, strings and enums are copied. A call argument is
+// not a move.
+
+struct borrowLocals {
+    public var ns: int[]
+    public var nl: int[]
+    public var ty: int[]
+    public var st: int[]
+    public var n: int
+}
+
+func isMovedState(state: int): bool {
+    if state != 0 { return true }
+    return false
+}
+
+func isObjectType(bg: compilerState, ty: int): bool {
+    if ty <= 0 { return false }
+    let st = ty - 1
+    if st < 0 { return false }
+    if st >= bg.st_kind.len() { return false }
+    if bg.st_kind[st] == 3 { return false }
+    return true
+}
+
+func isMovableType(bg: compilerState, ty: int): bool {
+    if isArrayType(ty) { return true }
+    if isObjectType(bg, ty) { return true }
+    return false
+}
+
+func joinMoveState(a: int, b: int): int {
+    if a == 0 && b == 0 { return 0 }
+    if a == 1 && b == 1 { return 1 }
+    return 2
+}
+
+func borrowFail(src: int[], cx: compilerContext, phase: int, start: int): unit {
+    if cx.failed != 0 { return }
+    cx.failed = 1
+    cx.error_phase = phase
+    cx.error_start = start
+    cx.error_line = sourceLine(src, start, cx.user_end)
+}
+
+func reportMovedValue(cx: compilerContext): unit {
+    Console.print("error[SNV5001]: use of a moved value at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+func reportFieldOrElementMove(cx: compilerContext): unit {
+    Console.print("error[SNV5002]: cannot move a value out of a field or array element at line ")
+    Console.print(cx.error_line)
+    Console.print(", span ")
+    Console.print(cx.error_start)
+    Console.print("..")
+    Console.print(cx.error_start + 1)
+    Console.printline("")
+}
+
+// snl v0.3.0 cannot lower `xs[i] = ...`, so slots are rewritten by
+// copying into a new array, the way setLocalTy shadows a type.
+func borrowPush(frame: borrowLocals, ns: int, nl: int, ty: int): unit {
+    if frame.n == frame.ns.len() {
+        frame.ns.push(ns)
+        frame.nl.push(nl)
+        frame.ty.push(ty)
+        frame.st.push(0)
+        frame.n = frame.n + 1
+        return
+    }
+    var nss: int[] = []
+    var nls: int[] = []
+    var tys: int[] = []
+    var sts: int[] = []
+    var i = 0
+    while i < frame.n {
+        nss.push(frame.ns[i])
+        nls.push(frame.nl[i])
+        tys.push(frame.ty[i])
+        sts.push(frame.st[i])
+        i = i + 1
+    }
+    nss.push(ns)
+    nls.push(nl)
+    tys.push(ty)
+    sts.push(0)
+    frame.ns = nss
+    frame.nl = nls
+    frame.ty = tys
+    frame.st = sts
+    frame.n = frame.n + 1
+}
+
+func borrowSetState(frame: borrowLocals, idx: int, state: int): unit {
+    var sts: int[] = []
+    var i = 0
+    while i < frame.n {
+        if i == idx {
+            sts.push(state)
+        } else {
+            sts.push(frame.st[i])
+        }
+        i = i + 1
+    }
+    frame.st = sts
+}
+
+func borrowSetType(frame: borrowLocals, idx: int, ty: int): unit {
+    var tys: int[] = []
+    var i = 0
+    while i < frame.n {
+        if i == idx {
+            tys.push(ty)
+        } else {
+            tys.push(frame.ty[i])
+        }
+        i = i + 1
+    }
+    frame.ty = tys
+}
+
+func borrowFind(src: int[], frame: borrowLocals, s: int, n: int): int {
+    var i = frame.n - 1
+    while i >= 0 {
+        if spanEq(src, frame.ns[i], frame.nl[i], s, n) { return i }
+        i = i - 1
+    }
+    return -1
+}
+
+func borrowSnapshot(frame: borrowLocals): int[] {
+    var out: int[] = []
+    var i = 0
+    while i < frame.n {
+        out.push(frame.st[i])
+        i = i + 1
+    }
+    return out
+}
+
+func borrowRestore(frame: borrowLocals, saved: int[], n: int): unit {
+    var sts: int[] = []
+    var i = 0
+    while i < n {
+        var state = 0
+        if i < saved.len() { state = saved[i] }
+        sts.push(state)
+        i = i + 1
+    }
+    frame.st = sts
+    frame.n = n
+}
+
+func borrowJoinInto(frame: borrowLocals, first: int[], second: int[], n: int): unit {
+    var sts: int[] = []
+    var i = 0
+    while i < n {
+        var a = 0
+        var b = 0
+        if i < first.len() { a = first[i] }
+        if i < second.len() { b = second[i] }
+        sts.push(joinMoveState(a, b))
+        i = i + 1
+    }
+    frame.st = sts
+    frame.n = n
+}
+
+func borrowSameStates(left: int[], right: int[], n: int): bool {
+    var i = 0
+    while i < n {
+        var a = 0
+        var b = 0
+        if i < left.len() { a = left[i] }
+        if i < right.len() { b = right[i] }
+        if a != b { return false }
+        i = i + 1
+    }
+    return true
+}
+
+func fieldDotStart(src: int[], ns: int): int {
+    if ns > 0 && src[ns - 1] == 46 { return ns - 1 }
+    return ns
+}
+
+func arrayLiteralType(src: int[], bg: compilerState, cx: compilerContext, frame: borrowLocals, head: int): int {
+    var cur = head
+    var elem = 0
+    var seen = 0
+    while cur >= 0 {
+        let ty = borrowExpr(src, bg, cx, frame, bg.nb[cur], 0)
+        if cx.failed != 0 { return 0 }
+        if seen == 0 {
+            elem = ty
+            seen = 1
+        } else {
+            if ty != 0 && elem != 0 && ty != elem { elem = 0 }
+            if elem == 0 && ty != 0 { elem = ty }
+        }
+        cur = bg.nc[cur]
+    }
+    if seen == 0 { return 0 }
+    return arrayOf(elem)
+}
+
+func borrowExpr(src: int[], bg: compilerState, cx: compilerContext, frame: borrowLocals, nd: int, consume: int): int {
+    if cx.failed != 0 { return 0 }
+    if nd < 0 { return 0 }
+    let k = bg.nk[nd]
+    if k == 1 { return -1 }
+    if k == 2 { return -2 }
+    if k == 3 { return -3 }
+    if k == 4 {
+        let idx = borrowFind(src, frame, bg.na[nd], bg.nb[nd])
+        if idx < 0 { return 0 }
+        if isMovedState(frame.st[idx]) {
+            borrowFail(src, cx, 20, bg.na[nd])
+            return 0
+        }
+        if consume != 0 && isMovableType(bg, frame.ty[idx]) {
+            borrowSetState(frame, idx, 1)
+        }
+        return frame.ty[idx]
+    }
+    if k == 5 {
+        return borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+    }
+    if k == 6 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return 0 }
+        borrowExpr(src, bg, cx, frame, bg.nc[nd], 0)
+        return 0
+    }
+    if k == 7 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return 0 }
+        var cur = bg.nc[nd]
+        while cur >= 0 {
+            borrowExpr(src, bg, cx, frame, bg.nb[cur], 0)
+            if cx.failed != 0 { return 0 }
+            cur = bg.nc[cur]
+        }
+        let callee = bg.nb[nd]
+        if callee >= 0 && bg.nk[callee] == 4 {
+            let fn = findFunc(src, bg, bg.na[callee], bg.nb[callee])
+            return callResultType(bg, fn)
+        }
+        return 0
+    }
+    if k == 8 {
+        return arrayLiteralType(src, bg, cx, frame, bg.nc[nd])
+    }
+    if k == 9 {
+        let recv = borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return 0 }
+        borrowExpr(src, bg, cx, frame, bg.nc[nd], 0)
+        if cx.failed != 0 { return 0 }
+        let elem = elementType(recv)
+        if consume != 0 && isMovableType(bg, elem) {
+            borrowFail(src, cx, 21, tokenStart(bg, bg.nd[nd]))
+            return 0
+        }
+        return elem
+    }
+    if k == 10 {
+        let recv = borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return 0 }
+        var fieldTy = 0
+        if recv > 0 {
+            fieldTy = fieldTypeAt(src, bg, recv - 1, bg.nc[nd], bg.nd[nd])
+        }
+        if consume != 0 && isMovableType(bg, fieldTy) {
+            borrowFail(src, cx, 21, fieldDotStart(src, bg.nc[nd]))
+            return 0
+        }
+        return fieldTy
+    }
+    if k == 11 {
+        var cur = bg.nc[nd]
+        while cur >= 0 {
+            let field = bg.nb[cur]
+            if field >= 0 && bg.nk[field] == 14 {
+                borrowExpr(src, bg, cx, frame, bg.nc[field], 0)
+            } else {
+                borrowExpr(src, bg, cx, frame, field, 0)
+            }
+            if cx.failed != 0 { return 0 }
+            cur = bg.nc[cur]
+        }
+        let st = findStruct(src, bg, bg.na[nd], bg.nb[nd])
+        if st >= 0 { return st + 1 }
+        return 0
+    }
+    if k == 12 {
+        borrowAssign(src, bg, cx, frame, bg.nb[nd], bg.nc[nd])
+        return 0
+    }
+    if k == 17 || k == 30 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return 0 }
+        borrowWalkCons(src, bg, cx, frame, bg.nc[nd], 1)
+        return 0
+    }
+    return 0
+}
+
+func borrowAssign(src: int[], bg: compilerState, cx: compilerContext, frame: borrowLocals, lhs: int, rhs: int): unit {
+    if cx.failed != 0 { return }
+    let got = borrowExpr(src, bg, cx, frame, rhs, 1)
+    if cx.failed != 0 { return }
+    if lhs < 0 { return }
+    if bg.nk[lhs] == 4 {
+        let idx = borrowFind(src, frame, bg.na[lhs], bg.nb[lhs])
+        if idx < 0 { return }
+        // Open question 1 in SPEC-0002: the reference rejects assigning
+        // to a moved var. The seed copies that rule so the differential
+        // has the same accept/reject outcome; the question stays open.
+        if isMovedState(frame.st[idx]) {
+            borrowFail(src, cx, 20, bg.na[lhs])
+            return
+        }
+        if got != 0 { borrowSetType(frame, idx, got) }
+        return
+    }
+    borrowExpr(src, bg, cx, frame, lhs, 0)
+}
+
+func borrowWalkCons(src: int[], bg: compilerState, cx: compilerContext, frame: borrowLocals, head: int, asStmt: int): unit {
+    if cx.failed != 0 { return }
+    if head < 0 { return }
+    // Cons lists are prepended, so the first source item is at the end of
+    // the chain. Recurse first, like emitForward, to walk in source order.
+    borrowWalkCons(src, bg, cx, frame, bg.nc[head], asStmt)
+    if cx.failed != 0 { return }
+    if asStmt != 0 {
+        let item = bg.nb[head]
+        if item >= 0 && bg.nk[item] == 34 {
+            borrowStmt(src, bg, cx, frame, bg.nc[item])
+        } else {
+            borrowStmt(src, bg, cx, frame, item)
+        }
+    } else {
+        borrowExpr(src, bg, cx, frame, bg.nb[head], 0)
+    }
+}
+
+func borrowStmt(src: int[], bg: compilerState, cx: compilerContext, frame: borrowLocals, nd: int): unit {
+    if cx.failed != 0 { return }
+    if nd < 0 { return }
+    let k = bg.nk[nd]
+    if k == 20 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        return
+    }
+    if k == 21 || k == 36 {
+        var ty = bg.nd[nd]
+        if bg.nc[nd] >= 0 {
+            let got = borrowExpr(src, bg, cx, frame, bg.nc[nd], 1)
+            if cx.failed != 0 { return }
+            if ty == 0 { ty = got }
+        }
+        borrowPush(frame, bg.na[nd], bg.nb[nd], ty)
+        return
+    }
+    if k == 12 {
+        borrowAssign(src, bg, cx, frame, bg.nb[nd], bg.nc[nd])
+        return
+    }
+    if k == 23 {
+        if bg.nb[nd] >= 0 {
+            borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        }
+        return
+    }
+    if k == 24 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return }
+        let n = frame.n
+        let entry = borrowSnapshot(frame)
+        borrowStmt(src, bg, cx, frame, bg.nc[nd])
+        if cx.failed != 0 { return }
+        let afterThen = borrowSnapshot(frame)
+        borrowRestore(frame, entry, n)
+        borrowStmt(src, bg, cx, frame, bg.nd[nd])
+        if cx.failed != 0 { return }
+        let afterElse = borrowSnapshot(frame)
+        borrowJoinInto(frame, afterThen, afterElse, n)
+        return
+    }
+    if k == 25 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return }
+        let n = frame.n
+        let entry = borrowSnapshot(frame)
+        borrowStmt(src, bg, cx, frame, bg.nc[nd])
+        if cx.failed != 0 { return }
+        let after = borrowSnapshot(frame)
+        borrowJoinInto(frame, entry, after, n)
+        let joined = borrowSnapshot(frame)
+        if borrowSameStates(entry, joined, n) == false {
+            borrowRestore(frame, joined, n)
+            borrowStmt(src, bg, cx, frame, bg.nc[nd])
+            if cx.failed != 0 { return }
+            borrowRestore(frame, joined, n)
+        }
+        return
+    }
+    if k == 26 {
+        let n = frame.n
+        borrowWalkCons(src, bg, cx, frame, bg.nc[nd], 1)
+        frame.n = n
+        return
+    }
+    if k == 17 || k == 30 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        if cx.failed != 0 { return }
+        borrowWalkCons(src, bg, cx, frame, bg.nc[nd], 1)
+        return
+    }
+    if k == 29 {
+        borrowExpr(src, bg, cx, frame, bg.nc[nd], 0)
+        if cx.failed != 0 { return }
+        let n = frame.n
+        borrowPush(frame, bg.na[nd], bg.nb[nd], 0)
+        borrowStmt(src, bg, cx, frame, bg.nd[nd])
+        frame.n = n
+        return
+    }
+    if k == 31 || k == 32 {
+        borrowExpr(src, bg, cx, frame, bg.nb[nd], 0)
+        return
+    }
+}
+
+func borrowCheckFunc(src: int[], bg: compilerState, cx: compilerContext, fi: int): unit {
+    var frame = borrowLocals { ns: [], nl: [], ty: [], st: [], n: 0 }
+    if bg.fn_own[fi] >= 0 && bg.fn_static[fi] == 0 {
+        borrowPush(frame, 0, 0, bg.fn_own[fi] + 1)
+    }
+    var i = 0
+    while i < bg.par_fn.len() {
+        if bg.par_fn[i] == fi {
+            borrowPush(frame, bg.par_ns[i], bg.par_nl[i], bg.par_ty[i])
+        }
+        i = i + 1
+    }
+    if bg.fn_body[fi] >= 0 {
+        borrowStmt(src, bg, cx, frame, bg.fn_body[fi])
+    }
+}
+
+func borrowCheck(src: int[], bg: compilerState, cx: compilerContext): int {
+    var fi = 0
+    while fi < bg.fn_ns.len() {
+        if cx.failed != 0 { return 1 }
+        borrowCheckFunc(src, bg, cx, fi)
+        fi = fi + 1
+    }
+    if cx.failed != 0 { return 1 }
+    return 0
+}
