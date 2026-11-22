@@ -1,0 +1,169 @@
+package snova.compiler.runtime
+
+import builtin.io.console
+import builtin.runtime
+
+func vmIntBinary(op: int, left: int, right: int): int {
+    if op == 12 { return left + right }
+    if op == 13 { return left - right }
+    if op == 14 { return left * right }
+    if op == 15 {
+        if right == 0 { return 0 }
+        return left / right
+    }
+    if op == 16 {
+        if right == 0 { return 0 }
+        return left % right
+    }
+    if op == 19 { return left & right }
+    if op == 20 { return left | right }
+    if op == 21 { return left ^ right }
+    if op == 22 { return left << (right & 63) }
+    return left >> (right & 63)
+}
+
+func vmCompare(op: int, left: int, right: int): int {
+    if op == 26 && left < right { return 1 }
+    if op == 27 && left <= right { return 1 }
+    if op == 28 && left > right { return 1 }
+    if op == 29 && left >= right { return 1 }
+    return 0
+}
+
+func vmSeenPair(seenLeft: int[], seenRight: int[], seenTag: int[], tag: int, left: int, right: int): bool {
+    var index = 0
+    while index < seenTag.len() {
+        if seenTag[index] == tag && seenLeft[index] == left && seenRight[index] == right { return true }
+        index = index + 1
+    }
+    return false
+}
+
+// Value equality, as in snovac/runtime/value/value_equal.c: strings by
+// content and arrays/objects element by element. Already visited pairs are
+// assumed equal, which ends the comparison of cyclic graphs.
+func vmEqualDeep(vm: VmState, leftTag: int, leftValue: int, rightTag: int, rightValue: int, seenLeft: int[], seenRight: int[], seenTag: int[]): bool {
+    if leftTag != rightTag { return false }
+    if leftTag == 0 || leftTag == 6 { return true }
+    if leftTag == 1 || leftTag == 2 || leftTag == 7 { return leftValue == rightValue }
+    if leftTag == 3 {
+        return vmStringsEqual(vm, leftValue, rightValue)
+    }
+    if leftValue == rightValue { return true }
+    if vmSeenPair(seenLeft, seenRight, seenTag, leftTag, leftValue, rightValue) { return true }
+    seenLeft.push(leftValue)
+    seenRight.push(rightValue)
+    seenTag.push(leftTag)
+    if leftTag == 4 {
+        return vmEqualArrays(vm, vm.arrays[leftValue], vm.arrays[rightValue], seenLeft, seenRight, seenTag)
+    }
+    if leftTag == 5 {
+        let count = vm.objectFieldCount[leftValue]
+        if count != vm.objectFieldCount[rightValue] { return false }
+        var fieldIndex = 0
+        while fieldIndex < count {
+            let leftSlot = vm.objectStart[leftValue] + fieldIndex
+            let rightSlot = vm.objectStart[rightValue] + fieldIndex
+            if false == vmEqualDeep(vm, cellTag(vm.fields[leftSlot]), cellValue(vm.fields[leftSlot]), cellTag(vm.fields[rightSlot]), cellValue(vm.fields[rightSlot]), seenLeft, seenRight, seenTag) {
+                return false
+            }
+            fieldIndex = fieldIndex + 1
+        }
+        return true
+    }
+    return false
+}
+
+func vmEqualArrays(vm: VmState, left: VmArray, right: VmArray, seenLeft: int[], seenRight: int[], seenTag: int[]): bool {
+    let count = arrayLen(left)
+    if count != arrayLen(right) { return false }
+    var index = 0
+    while index < count {
+        if false == vmEqualDeep(vm, arrayTag(left, index), arrayValue(left, index), arrayTag(right, index), arrayValue(right, index), seenLeft, seenRight, seenTag) {
+            return false
+        }
+        index = index + 1
+    }
+    return true
+}
+
+func vmBinary(vm: VmState, op: int): unit {
+    let rightTag = vmTopTag(vm)
+    let rightValue = vmPop(vm)
+    let leftTag = vmTopTag(vm)
+    let leftValue = vmPop(vm)
+    if vm.failed != 0 { return }
+    if op == 24 || op == 25 {
+        var seenLeft: int[] = []
+        var seenRight: int[] = []
+        var seenTag: int[] = []
+        var equal = vmEqualDeep(vm, leftTag, leftValue, rightTag, rightValue, seenLeft, seenRight, seenTag)
+        if op == 25 { equal = !equal }
+        if equal { vmPush(vm, 2, 1) } else { vmPush(vm, 2, 0) }
+        return
+    }
+    if op == 12 && leftTag == 3 && rightTag == 3 {
+        vmPush(vm, 3, vmConcatStrings(vm, leftValue, rightValue))
+        return
+    }
+    if leftTag != 1 && leftTag != 2 || rightTag != 1 && rightTag != 2 {
+        vmFail(vm, 2, op)
+        return
+    }
+    if op >= 26 && op <= 29 {
+        vmPush(vm, 2, vmCompare(op, leftValue, rightValue))
+        return
+    }
+    vmPush(vm, 1, vmIntBinary(op, leftValue, rightValue))
+}
+
+func vmUnary(vm: VmState, op: int): unit {
+    let tag = vmTopTag(vm)
+    let value = vmPop(vm)
+    if vm.failed != 0 { return }
+    if op == 17 {
+        if tag != 1 {
+            vmFail(vm, 2, op)
+            return
+        }
+        vmPush(vm, 1, 0 - value)
+        return
+    }
+    if value == 0 { vmPush(vm, 2, 1) } else { vmPush(vm, 2, 0) }
+}
+
+// VARIANT (42): a unit variant is the tag 7 value whose payload is the
+// string handle of its name; constant pool handles are shared by content, so
+// equal names give equal payloads. Payload variants stay unsupported.
+func vmVariant(vm: VmState, nameIndex: int, payloadCount: int): unit {
+    if payloadCount != 0 {
+        vmFail(vm, 4, 42)
+        return
+    }
+    vmPush(vm, 7, vm.poolHandles[nameIndex])
+}
+
+// IS_VARIANT (43): pops the subject and pushes whether it is the variant with
+// that name.
+func vmIsVariant(vm: VmState, nameIndex: int): unit {
+    let tag = vmTopTag(vm)
+    let value = vmPop(vm)
+    if vm.failed != 0 { return }
+    if tag == 7 && value == vm.poolHandles[nameIndex] { vmPush(vm, 2, 1) } else { vmPush(vm, 2, 0) }
+}
+
+func vmPrintValue(vm: VmState, tag: int, value: int, newline: int): unit {
+    if tag == 1 {
+        Console.print(value)
+    } else if tag == 2 {
+        if value != 0 { Console.print("true") } else { Console.print("false") }
+    } else if tag == 3 || tag == 7 {
+        Console.print(vm.strings[value])
+    } else if tag == 6 {
+        Console.print("null")
+    } else if tag != 0 {
+        vmFail(vm, 2, 45)
+        return
+    }
+    if newline != 0 { Console.printline("") }
+}

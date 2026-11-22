@@ -1,0 +1,161 @@
+package snova.compiler.runtime
+
+import builtin.io.console
+
+func compilerFiles(): string[] {
+    return [
+        "bootstrap/src/Unit.snl", "bootstrap/src/Lex.snl", "bootstrap/src/Parse.snl",
+        "bootstrap/src/ParseDecl.snl", "bootstrap/src/Emit.snl", "bootstrap/src/EmitExpr.snl",
+        "bootstrap/src/EmitStmt.snl", "bootstrap/src/Runtime.snl", "bootstrap/src/ImageReader.snl",
+        "bootstrap/src/ImageCode.snl", "bootstrap/src/VmValue.snl", "bootstrap/src/VmText.snl",
+        "bootstrap/src/VmString.snl", "bootstrap/src/VmOps.snl", "bootstrap/src/VmExec.snl",
+        "bootstrap/src/VmDecode.snl", "bootstrap/src/VmFast.snl", "bootstrap/src/VmFrame.snl",
+        "bootstrap/src/VmLoad.snl", "bootstrap/src/NativeImage.snl", "bootstrap/src/NativeRoles.snl",
+        "bootstrap/src/NativeAssembly.snl", "bootstrap/src/NativeSlot.snl", "bootstrap/src/NativeOwnership.snl",
+        "bootstrap/src/ProcessorArchitecture.snl", "bootstrap/src/OperatingSystemRuntime.snl",
+        "bootstrap/src/CallingConvention.snl", "bootstrap/src/ExecutableFormat.snl",
+        "bootstrap/src/NativeToolchain.snl", "bootstrap/src/NativeValueEmitter.snl",
+        "bootstrap/src/NativeInstructionEmitter.snl", "bootstrap/src/NativeTargetResolver.snl",
+        "bootstrap/src/NativeBoundary.snl", "bootstrap/src/NativeBackend.snl", "bootstrap/src/SourceJoin.snl",
+        "bootstrap/src/Compiler.snl", "bootstrap/src/ScopeParse.snl", "bootstrap/src/ScopeEmit.snl",
+        "bootstrap/src/ScopeMatch.snl", "bootstrap/src/MatchCheck.snl"
+    ]
+}
+
+func runtimeFiles(): string[] {
+    return [
+        "bootstrap/runtime/Primitive.snl", "bootstrap/runtime/System.snl",
+        "bootstrap/runtime/Heap.snl", "bootstrap/runtime/Runtime.snl",
+        "bootstrap/runtime/Text.snl", "bootstrap/runtime/Container.snl",
+        "bootstrap/runtime/Ownership.snl", "bootstrap/runtime/Value.snl",
+        "bootstrap/runtime/Host.snl"
+    ]
+}
+
+// Print the fixed input list first, then keep a single carriage-return
+// progress line below it. Updating that line does not append terminal rows.
+func startBuildProgress(files: string[]): unit {
+    Console.printline("Build inputs:")
+    var index = 0
+    while index < files.len() {
+        Console.print("  ")
+        Console.printline(files[index])
+        index = index + 1
+    }
+    Console.print("Progress [                    ] 0%")
+}
+
+func updateBuildProgress(completed: int, total: int, file: string): unit {
+    let percent = completed * 100 / total
+    let filled = percent / 5
+    Console.print("\r")
+    Console.print(file)
+    Console.print(" [")
+    var index = 0
+    while index < 20 {
+        if index < filled { Console.print("#") } else { Console.print(" ") }
+        index = index + 1
+    }
+    Console.print("] ")
+    Console.print(percent)
+    Console.print("%")
+    if completed == total { Console.printline("") }
+}
+
+func isPackageLine(data: int[], start: int, end: int): bool {
+    if end - start < 8 { return false }
+    if data[start] != 112 || data[start + 1] != 97 || data[start + 2] != 99 || data[start + 3] != 107 { return false }
+    if data[start + 4] != 97 || data[start + 5] != 103 || data[start + 6] != 101 || data[start + 7] != 32 { return false }
+    return true
+}
+
+func isImportLine(data: int[], start: int, end: int): bool {
+    if end - start < 7 { return false }
+    if data[start] != 105 || data[start + 1] != 109 || data[start + 2] != 112 { return false }
+    if data[start + 3] != 111 || data[start + 4] != 114 || data[start + 5] != 116 || data[start + 6] != 32 { return false }
+    return true
+}
+
+func appendFile(output: int[], path: string, keep_imports: int): unit {
+    let part = read_bytes(path)
+    var i = 0
+    while i < part.len() {
+        let start = i
+        while i < part.len() && part[i] != 10 {
+            i = i + 1
+        }
+        let end = i
+        var skip = 0
+        if isPackageLine(part, start, end) { skip = 1 }
+        if keep_imports == 0 && isImportLine(part, start, end) { skip = 1 }
+        if skip == 0 {
+            var j = start
+            while j < end {
+                output.push(part[j])
+                j = j + 1
+            }
+            if i < part.len() { output.push(10) }
+        }
+        if i < part.len() { i = i + 1 }
+    }
+}
+
+public func ownSource(): int[] {
+    var output: int[] = []
+    output.push(112)
+    output.push(97)
+    output.push(99)
+    output.push(107)
+    output.push(97)
+    output.push(103)
+    output.push(101)
+    output.push(32)
+    output.push(115)
+    output.push(110)
+    output.push(111)
+    output.push(118)
+    output.push(97)
+    output.push(46)
+    output.push(99)
+    output.push(111)
+    output.push(109)
+    output.push(112)
+    output.push(105)
+    output.push(108)
+    output.push(101)
+    output.push(114)
+    output.push(10)
+    output.push(10)
+    let files = compilerFiles()
+    startBuildProgress(files)
+    var index = 0
+    while index < files.len() {
+        var keepImports = 0
+        if index == 0 { keepImports = 1 }
+        appendFile(output, files[index], keepImports)
+        updateBuildProgress(index + 1, files.len(), files[index])
+        index = index + 1
+    }
+    return output
+}
+
+// Native mode (ADR-0006): the Snova runtime is appended to the program
+// source and compiled with it, so the backend sees one image. Paths are
+// relative to the repository root, like ownSource. String APIs in the
+// runtime use the language `string` type, not `int`. Argument type
+// checks are not applied in the appendix (`start >= user_end`): the
+// language requires a parameter type and has no untyped payload, so
+// Primitive.tagged keeps `payload: int` even when Runtime.address
+// passes a string. Line numbers are taken from the user prefix
+// (`user_end` / `sourceLine`).
+public func appendNativeRuntime(source: int[]): unit {
+    source.push(10)
+    let files = runtimeFiles()
+    startBuildProgress(files)
+    var index = 0
+    while index < files.len() {
+        appendFile(source, files[index], 0)
+        updateBuildProgress(index + 1, files.len(), files[index])
+        index = index + 1
+    }
+}

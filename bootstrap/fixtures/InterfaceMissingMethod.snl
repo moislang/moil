@@ -1,0 +1,10 @@
+package bootstrap.fixture
+
+interface ProcessorArchitecture {
+    method code(): int
+}
+
+class UnknownArchitecture implements ProcessorArchitecture {
+}
+
+func main(): int { return 0 }

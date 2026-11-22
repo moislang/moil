@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# Template: the release workflow replaces {{VERSION}}, {{INSTALLER_URL}},
+# {{INSTALLER_SHA256}} and {{PRODUCT_CODE}} (docs/decisions/ADR-0010).
+PackageIdentifier: Snovalang.Compiler
+PackageVersion: {{VERSION}}
+InstallerType: wix
+Scope: machine
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+Commands:
+  - snl
+Installers:
+  - Architecture: x64
+    InstallerUrl: {{INSTALLER_URL}}
+    InstallerSha256: {{INSTALLER_SHA256}}
+    ProductCode: '{{PRODUCT_CODE}}'
+ManifestType: installer
+ManifestVersion: 1.6.0

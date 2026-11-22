@@ -1,0 +1,28 @@
+package snova.compiler.backend
+
+interface ExecutableFormat {
+    method name(): string
+    method textSection(): string
+    method constSection(): string
+    method bssSection(): string
+    method symbol(name: string): string
+    method canEmitNative(): bool
+}
+
+class MachOExecutableFormat implements ExecutableFormat {
+    method name(): string { return "Mach-O" }
+    method textSection(): string { return ".section __TEXT,__text,regular,pure_instructions" }
+    method constSection(): string { return ".section __TEXT,__const" }
+    method bssSection(): string { return ".zerofill __DATA,__bss,_snova_state,256,4" }
+    method symbol(name: string): string { return "_" + name }
+    method canEmitNative(): bool { return true }
+}
+
+class ElfExecutableFormat implements ExecutableFormat {
+    method name(): string { return "ELF" }
+    method textSection(): string { return ".section .text" }
+    method constSection(): string { return ".section .rodata" }
+    method bssSection(): string { return ".section .bss" }
+    method symbol(name: string): string { return name }
+    method canEmitNative(): bool { return true }
+}

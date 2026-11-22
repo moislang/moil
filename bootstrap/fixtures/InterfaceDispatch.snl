@@ -1,0 +1,23 @@
+package bootstrap.fixture
+
+interface Architecture {
+    method code(): int
+}
+
+class Aarch64Architecture implements Architecture {
+    method code(): int { return 64 }
+}
+
+class X64Architecture implements Architecture {
+    method code(): int { return 86 }
+}
+
+func selectArchitecture(useAarch64: bool): Architecture {
+    if useAarch64 { return Aarch64Architecture() }
+    return X64Architecture()
+}
+
+func main(): int {
+    let architecture: Architecture = selectArchitecture(false)
+    return architecture.code()
+}

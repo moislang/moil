@@ -1,0 +1,204 @@
+package builtin.tools.documentation
+
+import builtin.io.console
+import builtin.runtime
+import builtin.core
+
+func quote(value: string): string {
+    var result = "\""
+    var index = 0
+    while index < value.length() {
+        let character = value.substring(index, index + 1)
+        if character == "\"" { result = result + "\\\"" }
+        else if character == "\\" { result = result + "\\\\" }
+        else if character == "\n" { result = result + "\\n" }
+        else if character == "\r" { result = result + "\\r" }
+        else if character == "\t" { result = result + "\\t" }
+        else { result = result + character }
+        index = index + 1
+    }
+    return result + "\""
+}
+
+func csv(value: string): string {
+    var result = "\""
+    var index = 0
+    while index < value.length() {
+        let character = value.substring(index, index + 1)
+        if character == "\"" { result = result + "\"\"" }
+        else { result = result + character }
+        index = index + 1
+    }
+    return result + "\""
+}
+
+func kindOf(declaration: string): string {
+    if declaration.contains("func ") { return "function" }
+    if declaration.contains("method ") { return "method" }
+    if declaration.contains("class ") { return "class" }
+    if declaration.contains("interface ") { return "interface" }
+    if declaration.contains("trait ") { return "trait" }
+    if declaration.contains("struct ") { return "struct" }
+    if declaration.contains("enum ") { return "enum" }
+    return "declaration"
+}
+
+func nameOf(declaration: string, kind: string): string {
+    var keyword = ""
+    if kind == "function" { keyword = "func " }
+    else if kind == "method" { keyword = "method " }
+    else if kind == "class" { keyword = "class " }
+    else if kind == "interface" { keyword = "interface " }
+    else if kind == "trait" { keyword = "trait " }
+    else if kind == "struct" { keyword = "struct " }
+    else if kind == "enum" { keyword = "enum " }
+    let keywordIndex = declaration.indexOf(keyword)
+    if keywordIndex < 0 { return "" }
+    let nameStart = keywordIndex + keyword.length()
+    let rest = declaration.substring(nameStart, declaration.length())
+    var nameEnd = rest.indexOf("(")
+    if nameEnd < 0 {
+        let space = rest.indexOf(" ")
+        let colon = rest.indexOf(":")
+        let brace = rest.indexOf("{")
+        nameEnd = rest.length()
+        if space >= 0 && space < nameEnd { nameEnd = space }
+        if colon >= 0 && colon < nameEnd { nameEnd = colon }
+        if brace >= 0 && brace < nameEnd { nameEnd = brace }
+    }
+    return rest.substring(0, nameEnd).trim()
+}
+
+func packageOf(lines: string[]): string {
+    var index = 0
+    while index < lines.len() {
+        let line = lines[index].trim()
+        if line.startsWith("package ") { return line.substring(8, line.length()).trim() }
+        index = index + 1
+    }
+    return ""
+}
+
+func descriptionBefore(lines: string[], annotationLine: int): string {
+    var start = annotationLine
+    var reading = true
+    while start > 0 && reading {
+        let previous = lines[start - 1].trim()
+        if previous.startsWith("///") { start = start - 1 }
+        else { reading = false }
+    }
+    var description = ""
+    while start < annotationLine {
+        let line = lines[start].trim().substring(3, lines[start].trim().length()).trim()
+        if description != "" { description = description + " " }
+        description = description + line
+        start = start + 1
+    }
+    return description
+}
+
+func declarationAfter(lines: string[], annotationLine: int): int {
+    var index = annotationLine + 1
+    while index < lines.len() {
+        let line = lines[index].trim()
+        if line == "" || line.startsWith("@") || line.startsWith("//") {
+            index = index + 1
+        } else {
+            return index
+        }
+    }
+    return -1
+}
+
+func yamlRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string): string {
+    return "- annotation: " + quote(annotation) + "\n" +
+        "  name: " + quote(name) + "\n" +
+        "  kind: " + quote(kind) + "\n" +
+        "  package: " + quote(packageName) + "\n" +
+        "  signature: " + quote(signature) + "\n" +
+        "  description: " + quote(description) + "\n" +
+        "  source: " + quote(source) + "\n"
+}
+
+func csvRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string): string {
+    return csv(annotation) + "," + csv(name) + "," + csv(kind) + "," + csv(packageName) + "," +
+        csv(signature) + "," + csv(description) + "," + csv(source) + "\n"
+}
+
+func jsonRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string, first: bool): string {
+    var prefix = ",\n"
+    if first { prefix = "" }
+    return prefix + "  {\"annotation\":" + quote(annotation) +
+        ",\"name\":" + quote(name) +
+        ",\"kind\":" + quote(kind) +
+        ",\"package\":" + quote(packageName) +
+        ",\"signature\":" + quote(signature) +
+        ",\"description\":" + quote(description) +
+        ",\"source\":" + quote(source) + "}"
+}
+
+func generateSource(sourcePath: string, format: string, first: bool): string {
+    let source = Runtime.readText(sourcePath)
+    var lines: string[] = []
+    var remaining = source
+    var reading = true
+    while reading {
+        let newline = remaining.indexOf("\n")
+        if newline < 0 {
+            lines.push(remaining)
+            reading = false
+        } else {
+            lines.push(remaining.substring(0, newline))
+            remaining = remaining.substring(newline + 1, remaining.length())
+        }
+    }
+    let packageName = packageOf(lines)
+    var output = ""
+    var firstRecord = first
+    var lineIndex = 0
+    while lineIndex < lines.len() {
+        if lines[lineIndex].trim() == "@Documented()" {
+            let declarationLine = declarationAfter(lines, lineIndex)
+            if declarationLine >= 0 {
+                let signature = lines[declarationLine].trim()
+                let kind = kindOf(signature)
+                let name = nameOf(signature, kind)
+                let description = descriptionBefore(lines, lineIndex)
+                if format == "json" { output = output + jsonRecord("@Documented()", name, kind, signature, description, packageName, sourcePath, firstRecord) }
+                else if format == "csv" { output = output + csvRecord("@Documented()", name, kind, signature, description, packageName, sourcePath) }
+                else { output = output + yamlRecord("@Documented()", name, kind, signature, description, packageName, sourcePath) }
+                firstRecord = false
+            }
+        }
+        lineIndex = lineIndex + 1
+    }
+    return output
+}
+
+func main(): int {
+    let formatValue = Runtime.environment("SNOVA_DOC_FORMAT")
+    var format = formatValue
+    if format == "yml" { format = "yaml" }
+    if format != "yaml" && format != "csv" && format != "json" {
+        Console.err("snl --doc expects yaml, yml, csv, or json\n")
+        return 2
+    }
+
+    let count = Runtime.argumentCount()
+    var output = ""
+    var first = true
+    if format == "json" { output = "[\n" }
+    if format == "csv" { output = "annotation,name,kind,package,signature,description,source\n" }
+    var index = 0
+    while index < count {
+        let sourcePath = Runtime.argument(index)
+        if sourcePath != "" {
+            output = output + generateSource(sourcePath, format, first)
+            if format == "json" && output != "[\n" { first = false }
+        }
+        index = index + 1
+    }
+    if format == "json" { output = output + "\n]\n" }
+    Console.print(output)
+    return 0
+}

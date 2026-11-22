@@ -1,0 +1,253 @@
+package snova.compiler
+
+func classify(src: int[], s: int, n: int): int {
+    if isWord(src, s, n, 7, 112, 97, 99, 107, 97, 103, 101, 0, 0, 0, 0, 0) { return 6 }
+    if isWord(src, s, n, 6, 105, 109, 112, 111, 114, 116, 0, 0, 0, 0, 0, 0) { return 7 }
+    if isWord(src, s, n, 6, 115, 116, 114, 117, 99, 116, 0, 0, 0, 0, 0, 0) { return 8 }
+    if isWord(src, s, n, 6, 112, 117, 98, 108, 105, 99, 0, 0, 0, 0, 0, 0) { return 10 }
+    if isWord(src, s, n, 6, 114, 101, 116, 117, 114, 110, 0, 0, 0, 0, 0, 0) { return 13 }
+    if isWord(src, s, n, 5, 102, 97, 108, 115, 101, 0, 0, 0, 0, 0, 0, 0) { return 5 }
+    if isWord(src, s, n, 5, 119, 104, 105, 108, 101, 0, 0, 0, 0, 0, 0, 0) { return 16 }
+    if isWord(src, s, n, 4, 102, 117, 110, 99, 0, 0, 0, 0, 0, 0, 0, 0) { return 9 }
+    if isWord(src, s, n, 4, 116, 114, 117, 101, 0, 0, 0, 0, 0, 0, 0, 0) { return 4 }
+    if isWord(src, s, n, 4, 101, 108, 115, 101, 0, 0, 0, 0, 0, 0, 0, 0) { return 15 }
+    if isWord(src, s, n, 3, 108, 101, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 11 }
+    if isWord(src, s, n, 3, 118, 97, 114, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 12 }
+    if isWord(src, s, n, 2, 105, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 14 }
+    return classifyScope(src, s, n)
+}
+
+func punctPair(src: int[], lx: LexerCursor, a: int, b: int): bool {
+    if lx.i + 1 >= src.len() { return false }
+    if src[lx.i] != a { return false }
+    if src[lx.i + 1] != b { return false }
+    return true
+}
+
+func lexString(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
+    let start = lx.i
+    let line = lx.line
+    lx.i = lx.i + 1
+    var go = 1
+    while go == 1 {
+        if lx.i >= src.len() {
+            fail(cx)
+            go = 0
+        } else {
+            let d = src[lx.i]
+            if d == 10 {
+                fail(cx)
+                go = 0
+            } else {
+                if d == 92 {
+                    lx.i = lx.i + 1
+                    if lx.i >= src.len() {
+                        fail(cx)
+                        go = 0
+                    } else {
+                        lx.i = lx.i + 1
+                    }
+                } else {
+                    if d == 34 {
+                        lx.i = lx.i + 1
+                        go = 0
+                    } else {
+                        lx.i = lx.i + 1
+                    }
+                }
+            }
+        }
+    }
+    if cx.failed == 0 {
+        pushTok(bg, 3, start, lx.i - start, 0, line)
+    }
+}
+
+func lexNumber(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
+    let start = lx.i
+    let line = lx.line
+    var v = 0
+    var digits = 0
+    var go = 1
+    while go == 1 {
+        if lx.i >= src.len() {
+            go = 0
+        } else {
+            if isDigit(src[lx.i]) {
+                if digits == 18 {
+                    fail(cx)
+                    go = 0
+                } else {
+                    v = v * 10 + (src[lx.i] - 48)
+                    lx.i = lx.i + 1
+                    digits = digits + 1
+                }
+            } else {
+                go = 0
+            }
+        }
+    }
+    if cx.failed == 0 {
+        pushTok(bg, 2, start, lx.i - start, v, line)
+    }
+}
+
+func lexIdent(src: int[], bg: CompilerState, lx: LexerCursor): unit {
+    let start = lx.i
+    let line = lx.line
+    lx.i = lx.i + 1
+    var go = 1
+    while go == 1 {
+        if lx.i >= src.len() {
+            go = 0
+        } else {
+            if isIdentCont(src[lx.i]) {
+                lx.i = lx.i + 1
+            } else {
+                go = 0
+            }
+        }
+    }
+    let n = lx.i - start
+    pushTok(bg, classify(src, start, n), start, n, 0, line)
+}
+
+func lexLineComment(src: int[], lx: LexerCursor): unit {
+    lx.i = lx.i + 2
+    var go = 1
+    while go == 1 {
+        if lx.i >= src.len() {
+            go = 0
+        } else {
+            if src[lx.i] == 10 {
+                go = 0
+            } else {
+                lx.i = lx.i + 1
+            }
+        }
+    }
+}
+
+func lexBlockComment(src: int[], cx: CompilerContext, lx: LexerCursor): unit {
+    lx.i = lx.i + 2
+    var go = 1
+    while go == 1 {
+        if lx.i >= src.len() {
+            fail(cx)
+            go = 0
+        } else {
+            let d = src[lx.i]
+            if d == 10 {
+                lx.line = lx.line + 1
+            }
+            if d == 42 && lx.i + 1 < src.len() && src[lx.i + 1] == 47 {
+                lx.i = lx.i + 2
+                go = 0
+            } else {
+                lx.i = lx.i + 1
+            }
+        }
+    }
+}
+
+// Annotations such as `@Native` produce no token: a bodyless method is
+// already native, and the seed attaches no other meaning to annotations.
+// A lone `@` is still a lexical error.
+func lexAnnotation(src: int[], lx: LexerCursor): unit {
+    lx.i = lx.i + 1
+    while lx.i < src.len() && isIdentCont(src[lx.i]) {
+        lx.i = lx.i + 1
+    }
+}
+
+func lexOne(src: int[], bg: CompilerState, cx: CompilerContext, lx: LexerCursor): unit {
+    let c = src[lx.i]
+    if isSpace(c) {
+        if c == 10 {
+            lx.line = lx.line + 1
+        }
+        lx.i = lx.i + 1
+        return
+    }
+    if c == 47 && punctPair(src, lx, 47, 47) {
+        lexLineComment(src, lx)
+        return
+    }
+    if c == 47 && punctPair(src, lx, 47, 42) {
+        lexBlockComment(src, cx, lx)
+        return
+    }
+    if c == 34 {
+        lexString(src, bg, cx, lx)
+        return
+    }
+    if isDigit(c) {
+        lexNumber(src, bg, cx, lx)
+        return
+    }
+    if isIdentStart(c) {
+        lexIdent(src, bg, lx)
+        return
+    }
+    if c == 64 && lx.i + 1 < src.len() && isIdentStart(src[lx.i + 1]) {
+        lexAnnotation(src, lx)
+        return
+    }
+    let line = lx.line
+    let start = lx.i
+    if punctPair(src, lx, 61, 61) { pushTok(bg, 28, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 33, 61) { pushTok(bg, 29, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 60, 61) { pushTok(bg, 31, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 62, 61) { pushTok(bg, 33, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 38, 38) { pushTok(bg, 43, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 124, 124) { pushTok(bg, 44, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 60, 60) { pushTok(bg, 45, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 62, 62) { pushTok(bg, 46, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if punctPair(src, lx, 45, 62) { pushTok(bg, 62, start, 2, 0, line); lx.i = lx.i + 2; return }
+    if c == 40 { pushTok(bg, 17, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 41 { pushTok(bg, 18, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 123 { pushTok(bg, 19, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 125 { pushTok(bg, 20, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 91 { pushTok(bg, 21, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 93 { pushTok(bg, 22, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 58 { pushTok(bg, 23, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 59 { pushTok(bg, 24, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 44 { pushTok(bg, 25, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 46 { pushTok(bg, 26, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 61 { pushTok(bg, 27, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 60 { pushTok(bg, 30, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 62 { pushTok(bg, 32, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 43 { pushTok(bg, 34, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 45 { pushTok(bg, 35, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 42 { pushTok(bg, 36, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 47 { pushTok(bg, 37, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 37 { pushTok(bg, 38, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 38 { pushTok(bg, 39, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 124 { pushTok(bg, 40, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 94 { pushTok(bg, 41, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 33 { pushTok(bg, 42, start, 1, 0, line); lx.i = lx.i + 1; return }
+    if c == 63 { pushTok(bg, 63, start, 1, 0, line); lx.i = lx.i + 1; return }
+    fail(cx)
+    lx.i = lx.i + 1
+}
+
+func lexAll(src: int[], bg: CompilerState, cx: CompilerContext): unit {
+    var lx = LexerCursor { i: 0, line: 1 }
+    cx.phase = 1
+    var go = 1
+    while go == 1 {
+        if cx.failed != 0 {
+            go = 0
+        } else {
+            if lx.i >= src.len() {
+                go = 0
+            } else {
+                cx.line = lx.line
+                lexOne(src, bg, cx, lx)
+            }
+        }
+    }
+    if cx.failed == 0 {
+        pushTok(bg, 0, lx.i, 0, 0, lx.line)
+    }
+}

@@ -1,0 +1,17 @@
+package bootstrap.fixture
+
+struct Point {
+    public var horizontal: int
+}
+
+func main(): int {
+    let origin = Point { horizontal: 0 }
+    var matches = 0
+    if "seven" == 7 {
+        matches = matches + 1
+    }
+    if origin != 0 {
+        matches = matches + 2
+    }
+    return matches
+}
