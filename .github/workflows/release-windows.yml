@@ -1,0 +1,232 @@
+name: Windows release
+
+# Builds the Snovalang Compiler MSI (command: snl), tests install and
+# uninstall, and renders the winget manifests (docs/decisions/ADR-0010).
+# - pull_request / workflow_dispatch: build, test and upload artifacts only.
+# - tag vX.Y.Z[-pre]: also attach the MSI to the GitHub release and, when
+#   the WINGET_TOKEN secret exists, submit Snovalang.Compiler to winget.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - '.github/actions/setup-snl/**'
+      - '.github/workflows/release-windows.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-pre); no release or winget submission'
+        required: false
+        default: ''
+
+# A newer push to the same PR cancels the run in progress; tag runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+permissions:
+  contents: read
+
+jobs:
+  msi:
+    name: Build and test MSI (x64)
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: msys2 {0}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: MINGW64
+          update: false
+          cache: true
+          install: make diffutils mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils
+      - id: snl
+        uses: ./.github/actions/setup-snl
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          elif [ -n "$INPUT_VERSION" ]; then
+            version="$INPUT_VERSION"
+          else
+            version="0.0.0-ci.$GITHUB_RUN_NUMBER"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::version '$version' is not MAJOR.MINOR.PATCH[-pre]"
+            exit 1
+          fi
+          # MSI versions are numeric. The trailing number of a pre-release
+          # (e.g. preview.2) goes in the fourth field for display only: MSI
+          # ignores it for upgrades, which AllowSameVersionUpgrades handles.
+          base="${version%%-*}"
+          build=0
+          case "$version" in
+            *-*) suffix="${version#*-}"; digits=$(printf '%s' "$suffix" | sed -n 's/.*[^0-9]\([0-9][0-9]*\)$/\1/p'); if [ -n "$digits" ]; then build="$digits"; fi;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "msi_version=$base.$build" >> "$GITHUB_OUTPUT"
+          echo "Building $version (MSI $base.$build)"
+
+      - name: Build and test snl
+        run: make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
+        env:
+          SNL: ${{ steps.snl.outputs.snl }}
+
+      - name: Stage files and check DLL dependencies
+        run: |
+          mkdir -p dist/stage
+          cp build/bootstrap/snova-bootstrap.exe dist/stage/snl.exe
+          cp LICENSE dist/stage/LICENSE.txt
+          cp NOTICE dist/stage/NOTICE.txt
+          # The MSI ships only snl.exe: every imported DLL must come with Windows.
+          objdump -p dist/stage/snl.exe | sed -n 's/^\s*DLL Name: //p' | tr -d '\r' > dist/dlls.txt
+          echo "Imported DLLs:"; cat dist/dlls.txt
+          if grep -viE '^(kernel32|msvcrt|ucrtbase|advapi32|user32|shell32|ws2_32|bcrypt|ntdll|api-ms-win-.*)\.dll$' dist/dlls.txt; then
+            echo "::error::snl.exe imports DLLs that Windows does not provide (listed above)"
+            exit 1
+          fi
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          $version = '${{ steps.version.outputs.version }}'
+          $msi = "dist/snl-$version-x86_64.msi"
+          wix build packaging/windows/SnovalangCompiler.wxs -arch x64 `
+            -d Version=${{ steps.version.outputs.msi_version }} -d SourceDir=dist/stage -o $msi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = New-Object -ComObject WindowsInstaller.Installer
+          $database = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @((Resolve-Path $msi).Path, 0))
+          $view = $database.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $database, @("SELECT Value FROM Property WHERE Property='ProductCode'"))
+          $view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
+          $record = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
+          $productCode = $record.GetType().InvokeMember('StringData', 'GetProperty', $null, $record, 1)
+          $view.GetType().InvokeMember('Close', 'InvokeMethod', $null, $view, $null)
+          [System.Runtime.InteropServices.Marshal]::ReleaseComObject($database) | Out-Null
+          Set-Content -Path dist/product-code.txt -Value $productCode -NoNewline
+          Write-Host "MSI: $msi ProductCode: $productCode"
+
+      - name: Test install, run and uninstall
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $msi = (Resolve-Path "dist/snl-$version-x86_64.msi").Path
+          $install = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /l*v dist\install.log" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { Get-Content dist\install.log -Tail 40; throw "install failed: $($install.ExitCode)" }
+          $bin = Join-Path $env:ProgramFiles 'Snovalang\Compiler\bin'
+          $snl = Join-Path $bin 'snl.exe'
+          if (-not (Test-Path $snl)) { throw "snl.exe not installed at $snl" }
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          if (-not ($machinePath -split ';' | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') })) { throw "PATH does not contain $bin" }
+          & $snl bootstrap\fixtures\Hello.snl "$env:RUNNER_TEMP\hello.snbc"
+          if ($LASTEXITCODE -ne 0) { throw "installed snl failed to compile Hello.snl" }
+          $output = (& $snl "$env:RUNNER_TEMP\hello.snbc" run | Out-String).Trim()
+          if ($output -ne 'snova bootstrap ok') { throw "unexpected output: '$output'" }
+          Write-Host "installed snl ok: $output"
+          $remove = Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /qn /l*v dist\uninstall.log" -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { Get-Content dist\uninstall.log -Tail 40; throw "uninstall failed: $($remove.ExitCode)" }
+          if (Test-Path $snl) { throw "snl.exe still present after uninstall" }
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          if ($machinePath -split ';' | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') }) { throw "PATH still contains $bin after uninstall" }
+          Write-Host "uninstall ok"
+
+      - name: Render winget manifests
+        run: |
+          version='${{ steps.version.outputs.version }}'
+          msi="snl-$version-x86_64.msi"
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/v$version/$msi"
+          sha=$(sha256sum "dist/$msi" | cut -d' ' -f1 | tr 'a-f' 'A-F')
+          code=$(cat dist/product-code.txt)
+          out="dist/winget/manifests/s/Snovalang/Compiler/$version"
+          mkdir -p "$out"
+          for file in packaging/winget/*.yaml; do
+            sed -e "s|{{VERSION}}|$version|g" -e "s|{{INSTALLER_URL}}|$url|g" \
+                -e "s|{{INSTALLER_SHA256}}|$sha|g" -e "s|{{PRODUCT_CODE}}|$code|g" \
+                "$file" > "$out/$(basename "$file")"
+          done
+          if grep -rn '{{' "$out"; then echo "::error::unrendered placeholder"; exit 1; fi
+          echo "$sha  $msi" > "dist/$msi.sha256"
+          cat "$out"/*.installer.yaml
+
+      - name: Validate winget manifests
+        shell: pwsh
+        run: |
+          $dir = "dist/winget/manifests/s/Snovalang/Compiler/${{ steps.version.outputs.version }}"
+          if (Get-Command winget -ErrorAction SilentlyContinue) {
+            winget validate --manifest $dir
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } else {
+            Write-Host "::warning::winget is not installed on this runner; manifest validation skipped"
+          }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: snl-windows-x86_64
+          path: |
+            dist/*.msi
+            dist/*.sha256
+            dist/winget
+          if-no-files-found: error
+
+  release:
+    name: Attach MSI to GitHub release
+    if: github.ref_type == 'tag'
+    needs: msi
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: snl-windows-x86_64
+          path: dist
+      - name: Upload MSI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.msi.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            prerelease=""
+            case "$VERSION" in *-*) prerelease="--prerelease";; esac
+            gh release create "$tag" -R "$GITHUB_REPOSITORY" $prerelease --verify-tag \
+              --title "Snovalang Compiler $VERSION" --notes "Windows x64 installer: snl-$VERSION-x86_64.msi"
+          fi
+          gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber dist/*.msi dist/*.sha256
+
+  winget:
+    name: Submit Snovalang.Compiler to winget
+    if: github.ref_type == 'tag'
+    needs: [msi, release]
+    runs-on: windows-2025
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: snl-windows-x86_64
+          path: dist
+      - name: Submit manifests with wingetcreate
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ needs.msi.outputs.version }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:WINGET_TOKEN)) {
+            Write-Host "::notice::WINGET_TOKEN is not set; skipping winget submission (manifests are in the artifact)"
+            exit 0
+          }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN `
+            --prtitle "New version: Snovalang.Compiler version $env:VERSION" `
+            "dist/winget/manifests/s/Snovalang/Compiler/$env:VERSION"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
