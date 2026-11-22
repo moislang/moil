@@ -4,3 +4,6 @@
 bootstrap/seed/*.snbc binary
 # Expected fixture output is byte-exact data (for example, trailing spaces).
 bootstrap/fixtures/expected/* -text -whitespace
+# Snovalang sources (same rules as scripts/git/snovalang.gitattributes).
+*.snl text eol=lf diff=snovalang
+*.snbc binary linguist-generated

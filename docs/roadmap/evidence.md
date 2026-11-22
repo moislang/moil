@@ -381,3 +381,9 @@ This file started with no technical results. Entries must record observed facts,
 - Line endings: `.gitattributes` checks out text as LF on every platform (see the Windows entry).
 - Not verified: the local Docker targets (`bootstrap-cli-linux-*`) still build `snovac` from source; CI does not use them.
 - Follow-up: macOS x86_64 and Windows ARM64 run in `.github/workflows/extended-platforms.yml`, weekly and on demand (`gh workflow run extended-platforms.yml`), with the seed built from `snovac` at `590a490d` (the v0.3.0 tag) and cached per platform. Pull requests do not run them.
+
+## 2026-11-22 — Snovalang files in Git
+
+- Environment: macOS ARM64, Git from Xcode Command Line Tools.
+- Probe: with `HOME`, `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` pointing to a temporary directory, `make git-setup` twice writes one `# >>> snovalang` block to the global attributes file and sets `diff.snovalang.xfuncname`; in a fresh repository, a change inside a method gives the hunk header `@@ -6,6 +6,6 @@ public method bump(step: int): int {`, and `git check-attr` reports `diff: snovalang`, `eol: lf` for `.snl` and `diff`/`text` unset for `.snbc`.
+- Not verified: Git on Linux and Windows (the rules and the POSIX regex are portable).

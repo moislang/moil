@@ -35,7 +35,7 @@ LIBRARY_ROOT_SOURCES := BinarySearch LinearSearch Sorting
 LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting
 ROOT_PROJECT := $(BUILD_DIR)/root-project
 
-.PHONY: bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
+.PHONY: git-setup bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
 
 bootstrap-root-project:
 	rm -rf $(ROOT_PROJECT)
@@ -528,3 +528,22 @@ bootstrap-library-root: bootstrap-build
 		cmp bootstrap/fixtures/expected/$$fixture.stdout $(BUILD_DIR)/$$fixture.root.txt || { echo "$$fixture: stdout differs from expected"; exit 1; }; \
 		echo "library root ok: $$fixture (exit $$rootExit, matches expected)"; \
 	done
+
+# Snovalang files in Git (ADR-0011). `make git-setup` acts on the user's
+# machine, not on a repository, so it covers every repository of the
+# organization without changing any of them.
+SNOVALANG_XFUNCNAME := ^[ \t]*(((public|private|static|async|pulsar)[ \t]+)*(func|method|class|struct|enum|interface|trait|impl)[ \t].*)$$
+
+# Install the Snovalang Git rules in the user's global attributes file and
+# the diff driver in the global Git config. Re-running replaces the block.
+git-setup:
+	@attributes=$$(git config --global --get core.attributesFile || true); \
+	if [ -z "$$attributes" ]; then attributes="$${XDG_CONFIG_HOME:-$$HOME/.config}/git/attributes"; fi; \
+	case "$$attributes" in "~/"*) attributes="$$HOME/$${attributes#\~/}";; esac; \
+	mkdir -p "$$(dirname "$$attributes")"; touch "$$attributes"; \
+	begin='# >>> snovalang (make git-setup)'; end='# <<< snovalang'; \
+	awk -v b="$$begin" -v e="$$end" '$$0==b{skip=1;next} $$0==e{skip=0;next} !skip' "$$attributes" > "$$attributes.tmp"; \
+	{ cat "$$attributes.tmp"; echo "$$begin"; grep -v '^#' scripts/git/snovalang.gitattributes; echo "$$end"; } > "$$attributes"; \
+	rm -f "$$attributes.tmp"; \
+	git config --global diff.snovalang.xfuncname '$(SNOVALANG_XFUNCNAME)'; \
+	echo "Snovalang Git rules installed in $$attributes; diff.snovalang.xfuncname set globally"

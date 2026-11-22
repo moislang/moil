@@ -12,3 +12,4 @@ ADRs record decisions, context, consequences and the conditions for reopening a 
 - [ADR-0008: multi-target native backend rollout](ADR-0008-multi-target-backend.md)
 - [ADR-0009: committed SnBC seed for the first bootstrap stage (proposed)](ADR-0009-committed-snbc-seed.md)
 - [ADR-0010: Windows distribution through an MSI and winget (proposed)](ADR-0010-windows-msi-and-winget.md)
+- [ADR-0011: Snovalang files in Git (proposed)](ADR-0011-snovalang-files-in-git.md)
