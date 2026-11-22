@@ -128,6 +128,16 @@ func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
         reportNonBoolCondition(cx)
         return
     }
+    if cx.error_phase == 14 {
+        Console.print("error[SNV5001]: type does not satisfy declared contract at line ")
+        Console.print(cx.error_line)
+        Console.print(", span ")
+        Console.print(cx.error_start)
+        Console.print("..")
+        Console.print(cx.error_end)
+        Console.printline("")
+        return
+    }
     if cx.error_phase == 8 {
         Console.print("error[SNV4005]: cannot assign to immutable binding at line ")
         Console.print(cx.error_line)
@@ -147,7 +157,7 @@ func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
 
 // Warnings do not stop compilation. SNW0001 used to warn about `==`/`!=`
 // between known, different types; those cases are now SNV4008 errors.
-func reportWarnings(bg: compilerState): unit {
+func reportWarnings(bg: CompilerState): unit {
     var index = 0
     while index < bg.warningCodes.len() {
         Console.print("warning[SNW000")
@@ -160,7 +170,7 @@ func reportWarnings(bg: compilerState): unit {
 }
 
 func compileSource(src: int[], image: int[], userEnd: int): int {
-    var bg = compilerState {
+    var bg = CompilerState {
         tk: [], ts: [], tn: [], tv: [], tl: [],
         nk: [], na: [], nb: [], nc: [], nd: [],
         loc_slot: [], loc_ns: [], loc_nl: [], loc_ty: [], loc_mut: [], nline: [], parse_line: 0,
@@ -182,7 +192,7 @@ func compileSource(src: int[], image: int[], userEnd: int): int {
         pos: 0, failed: 0, locals: 0, water: 0, expr_ty: 0,
         no_struct: 0, loc_base: 0, main_idx: 0,
         owner: -1, seq: 1, decl_async: 0, decl_pulsar: 0, decl_static: 0, decl_owner: -1,
-        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_line: 1, error_expected: 0, error_found: 0, line: 1, user_end: userEnd
+        phase: 0, error_phase: 0, error_token: -1, error_start: -1, error_end: -1, error_line: 1, error_expected: 0, error_found: 0, line: 1, user_end: userEnd
     }
     lexAll(src, bg, cx)
     if cx.failed != 0 {
@@ -247,7 +257,7 @@ func main(): int {
             return runImage(src, 2)
         }
         userEnd = src.len()
-        if argc == 3 { appendNativeRuntime(src) }
+        if argc >= 3 { appendNativeRuntime(src) }
     }
     var image: int[] = []
     if compileSource(src, image, userEnd) != 0 {

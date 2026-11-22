@@ -9,7 +9,7 @@ import snova.compiler.runtime
 // Variant patterns are compared by member name, as in snovac. A bare name
 // that is not a known variant binds, so it covers every case (the emitter
 // lowers it the same way). The seed has no arm guards.
-func matchArmsCatchAll(src: int[], bg: compilerState, arms: int): int {
+func matchArmsCatchAll(src: int[], bg: CompilerState, arms: int): int {
     var cursor = arms
     while cursor >= 0 {
         let pat = bg.na[bg.nb[cursor]]
@@ -19,7 +19,7 @@ func matchArmsCatchAll(src: int[], bg: compilerState, arms: int): int {
     return 0
 }
 
-func matchArmsCover(src: int[], bg: compilerState, arms: int, variant: int): int {
+func matchArmsCover(src: int[], bg: CompilerState, arms: int, variant: int): int {
     var cursor = arms
     while cursor >= 0 {
         let pat = bg.na[bg.nb[cursor]]
@@ -29,7 +29,7 @@ func matchArmsCover(src: int[], bg: compilerState, arms: int, variant: int): int
     return 0
 }
 
-func matchCheckExhaustive(src: int[], bg: compilerState, cx: compilerContext, subjectType: int, arms: int, matchToken: int): unit {
+func matchCheckExhaustive(src: int[], bg: CompilerState, cx: CompilerContext, subjectType: int, arms: int, matchToken: int): unit {
     if cx.failed != 0 || subjectType <= 0 || arms < 0 { return }
     let st = subjectType - 1
     if st >= bg.st_kind.len() || bg.st_kind[st] != 3 { return }
@@ -47,7 +47,7 @@ func matchCheckExhaustive(src: int[], bg: compilerState, cx: compilerContext, su
     }
 }
 
-func reportNonExhaustive(src: int[], bg: compilerState, cx: compilerContext): unit {
+func reportNonExhaustive(src: int[], bg: CompilerState, cx: CompilerContext): unit {
     let variant = cx.error_start
     let st = bg.va_en[variant]
     Console.print("error[SNV4004]: non-exhaustive match on `")
@@ -67,7 +67,7 @@ func reportNonExhaustive(src: int[], bg: compilerState, cx: compilerContext): un
 // (snl check SNOVA0131). `passed` counts the receiver of an instance method,
 // as fn_ar does; `receiver` is 1 then, so messages show source counts.
 // `nameStart` is the byte offset of the called name.
-func arityMismatch(src: int[], bg: compilerState, cx: compilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
+func arityMismatch(src: int[], bg: CompilerState, cx: CompilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
     if cx.failed != 0 || bg.fn_ar[fn] == passed { return 0 }
     arityFail(src, cx, bg.fn_ar[fn] - receiver, passed - receiver, nameStart)
     return 1
@@ -90,7 +90,7 @@ func sourceLine(src: int[], start: int, userEnd: int): int {
     return line
 }
 
-func arityFail(src: int[], cx: compilerContext, expected: int, found: int, nameStart: int): unit {
+func arityFail(src: int[], cx: CompilerContext, expected: int, found: int, nameStart: int): unit {
     cx.failed = 1
     cx.error_phase = 9
     cx.error_expected = expected
@@ -99,7 +99,7 @@ func arityFail(src: int[], cx: compilerContext, expected: int, found: int, nameS
     cx.error_line = sourceLine(src, nameStart, cx.user_end)
 }
 
-func reportArity(cx: compilerContext): unit {
+func reportArity(cx: CompilerContext): unit {
     Console.print("error[SNV4006]: expected ")
     Console.print(cx.error_expected)
     Console.print(" argument(s), found ")
@@ -116,7 +116,7 @@ func reportArity(cx: compilerContext): unit {
 // SNV4007: an argument's known type does not match the parameter (or
 // constructor field, or `push` element type). Corresponds to SNOVA0132.
 // The span is the opening `(` of the call, the column `snl check` reports.
-func typeFail(src: int[], cx: compilerContext, phase: int, start: int): unit {
+func typeFail(src: int[], cx: CompilerContext, phase: int, start: int): unit {
     if cx.failed != 0 { return }
     cx.failed = 1
     cx.error_phase = phase
@@ -124,7 +124,7 @@ func typeFail(src: int[], cx: compilerContext, phase: int, start: int): unit {
     cx.error_line = sourceLine(src, start, cx.user_end)
 }
 
-func tokenStart(bg: compilerState, token: int): int {
+func tokenStart(bg: CompilerState, token: int): int {
     if token >= 0 && token < bg.ts.len() { return bg.ts[token] }
     return 0
 }
@@ -136,7 +136,7 @@ func typesClash(want: int, got: int): bool {
     return true
 }
 
-func paramTypeAt(bg: compilerState, fn: int, index: int): int {
+func paramTypeAt(bg: CompilerState, fn: int, index: int): int {
     var i = 0
     var seen = 0
     while i < bg.par_fn.len() {
@@ -149,7 +149,7 @@ func paramTypeAt(bg: compilerState, fn: int, index: int): int {
     return 0
 }
 
-func fieldTypeByIndex(bg: compilerState, st: int, index: int): int {
+func fieldTypeByIndex(bg: CompilerState, st: int, index: int): int {
     var i = 0
     var seen = 0
     while i < bg.fd_st.len() {
@@ -166,7 +166,7 @@ func fieldTypeByIndex(bg: compilerState, st: int, index: int): int {
 // native runtime are exempt: the language requires a type on every
 // parameter and has no untyped or union payload, so Primitive.tagged
 // must keep `payload: int` even when Runtime.address passes a string.
-func checkArgType(src: int[], bg: compilerState, cx: compilerContext, want: int, got: int, start: int): int {
+func checkArgType(src: int[], bg: CompilerState, cx: CompilerContext, want: int, got: int, start: int): int {
     if cx.failed != 0 { return 1 }
     if cx.user_end > 0 && start >= cx.user_end { return 0 }
     if typesClash(want, got) {
@@ -176,7 +176,7 @@ func checkArgType(src: int[], bg: compilerState, cx: compilerContext, want: int,
     return 0
 }
 
-func reportArgType(cx: compilerContext): unit {
+func reportArgType(cx: CompilerContext): unit {
     Console.print("error[SNV4007]: argument type does not match parameter at line ")
     Console.print(cx.error_line)
     Console.print(", span ")
@@ -186,7 +186,7 @@ func reportArgType(cx: compilerContext): unit {
     Console.printline("")
 }
 
-func emitArgsChecked(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], args: int, fn: int, start: int): unit {
+func emitArgsChecked(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], args: int, fn: int, start: int): unit {
     let argc = consCount(bg, args)
     var i = 0
     while i < argc {
@@ -239,7 +239,7 @@ func isAddOp(op: int): bool {
     return false
 }
 
-func checkBinaryTypes(src: int[], cx: compilerContext, op: int, left: int, right: int, start: int): int {
+func checkBinaryTypes(src: int[], cx: CompilerContext, op: int, left: int, right: int, start: int): int {
     if cx.failed != 0 { return 1 }
     if op == 43 || op == 44 {
         if left != 0 && isBoolType(left) == false {
@@ -300,7 +300,7 @@ func binaryExprType(op: int, left: int, right: int): int {
     return -1
 }
 
-func reportBinOpType(cx: compilerContext): unit {
+func reportBinOpType(cx: CompilerContext): unit {
     Console.print("error[SNV4008]: operator cannot be applied to these operand types at line ")
     Console.print(cx.error_line)
     Console.print(", span ")
@@ -310,7 +310,7 @@ func reportBinOpType(cx: compilerContext): unit {
     Console.printline("")
 }
 
-func reportUnaryOrIndexType(cx: compilerContext): unit {
+func reportUnaryOrIndexType(cx: CompilerContext): unit {
     if cx.error_found == 1 {
         Console.print("error[SNV4009]: index must be an integer type at line ")
     } else {
@@ -324,7 +324,7 @@ func reportUnaryOrIndexType(cx: compilerContext): unit {
     Console.printline("")
 }
 
-func exprStart(bg: compilerState, nd: int): int {
+func exprStart(bg: CompilerState, nd: int): int {
     if nd < 0 { return 0 }
     let k = bg.nk[nd]
     if k == 1 || k == 2 { return bg.nb[nd] }
@@ -339,7 +339,7 @@ func exprStart(bg: compilerState, nd: int): int {
     return 0
 }
 
-func checkBoolCondition(src: int[], bg: compilerState, cx: compilerContext, cond: int, ty: int): int {
+func checkBoolCondition(src: int[], bg: CompilerState, cx: CompilerContext, cond: int, ty: int): int {
     if cx.failed != 0 { return 1 }
     if ty != 0 && isBoolType(ty) == false {
         typeFail(src, cx, 13, exprStart(bg, cond))
@@ -348,7 +348,7 @@ func checkBoolCondition(src: int[], bg: compilerState, cx: compilerContext, cond
     return 0
 }
 
-func reportNonBoolCondition(cx: compilerContext): unit {
+func reportNonBoolCondition(cx: CompilerContext): unit {
     Console.print("error[SNV4010]: condition must be bool at line ")
     Console.print(cx.error_line)
     Console.print(", span ")

@@ -26,7 +26,7 @@ func runtimeCallArity(callId: int): int {
     return 1
 }
 
-func emitCall(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int, paren: int): unit {
+func emitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], callee: int, args: int, paren: int): unit {
     if callee < 0 {
         fail(cx)
         return

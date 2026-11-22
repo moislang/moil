@@ -140,7 +140,7 @@ func scopeArgAt(bg: CompilerState, c: int, k: int): int {
     return bg.nb[cur]
 }
 
-func scopeEmitCtor(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], st: int, args: int, nameStart: int, parenStart: int): unit {
+func scopeEmitCtor(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], st: int, args: int, nameStart: int, parenStart: int): unit {
     var i = 0
     var argi = 0
     var nfields = 0
@@ -235,6 +235,14 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
                         emitExpr(src, bg, cx, code, fat, fb, recv)
                         emitArgsChecked(src, bg, cx, code, fat, fb, args, m, parenStart)
                         if cx.failed != 0 { return 1 }
+                        // Interface (2) and trait (4) receivers dispatch dynamically by method name.
+                        if bg.st_kind[st] == 2 || bg.st_kind[st] == 4 {
+                            code.push(59)
+                            pushU32(code, internSpan(src, ns, nl, bg))
+                            pushU32(code, consCount(bg, args) + 1)
+                            cx.expr_ty = 0
+                            return 1
+                        }
                         scopeCallOp(code, m, consCount(bg, args) + 1, bg.fn_async[m])
                         cx.expr_ty = 0
                         return 1

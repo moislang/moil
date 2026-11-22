@@ -112,7 +112,7 @@ func scopeEmitArms(src: int[], bg: CompilerState, cx: CompilerContext, code: int
     patchAt(code, fat, fb, nxt)
 }
 
-func scopeEmitMatch(src: int[], bg: compilerState, cx: compilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int, matchToken: int): unit {
+func scopeEmitMatch(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], sub: int, arms: int, as_value: int, matchToken: int): unit {
     let saved = cx.locals
     emitExpr(src, bg, cx, code, fat, fb, sub)
     matchCheckExhaustive(src, bg, cx, cx.expr_ty, arms, matchToken)

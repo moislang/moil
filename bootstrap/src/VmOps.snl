@@ -135,7 +135,7 @@ func vmUnary(vm: VmState, op: int): unit {
 // VARIANT (42): a unit variant is the tag 7 value whose payload is the
 // string handle of its name; constant pool handles are shared by content, so
 // equal names give equal payloads. Payload variants stay unsupported.
-func vmVariant(vm: vmState, nameIndex: int, payloadCount: int): unit {
+func vmVariant(vm: VmState, nameIndex: int, payloadCount: int): unit {
     if payloadCount != 0 {
         vmFail(vm, 4, 42)
         return
@@ -145,14 +145,14 @@ func vmVariant(vm: vmState, nameIndex: int, payloadCount: int): unit {
 
 // IS_VARIANT (43): pops the subject and pushes whether it is the variant with
 // that name.
-func vmIsVariant(vm: vmState, nameIndex: int): unit {
+func vmIsVariant(vm: VmState, nameIndex: int): unit {
     let tag = vmTopTag(vm)
     let value = vmPop(vm)
     if vm.failed != 0 { return }
     if tag == 7 && value == vm.poolHandles[nameIndex] { vmPush(vm, 2, 1) } else { vmPush(vm, 2, 0) }
 }
 
-func vmPrintValue(vm: vmState, tag: int, value: int, newline: int): unit {
+func vmPrintValue(vm: VmState, tag: int, value: int, newline: int): unit {
     if tag == 1 {
         Console.print(value)
     } else if tag == 2 {
