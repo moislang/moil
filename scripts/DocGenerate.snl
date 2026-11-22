@@ -1,169 +1,204 @@
-package snova.tools.documentation
+package builtin.tools.documentation
 
 import builtin.io.console
 import builtin.runtime
+import builtin.core
 
-func literalBytes(value: string): int[] {
-    if value == "[\n" { return [91, 10] }
-    if value == "annotation,name,kind,signature,description\n" { return [97, 110, 110, 111, 116, 97, 116, 105, 111, 110, 44, 110, 97, 109, 101, 44, 107, 105, 110, 100, 44, 115, 105, 103, 110, 97, 116, 117, 114, 101, 44, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 10] }
-    if value == ",\n" { return [44, 10] }
-    if value == "  {\"annotation\":" { return [32, 32, 123, 34, 97, 110, 110, 111, 116, 97, 116, 105, 111, 110, 34, 58] }
-    if value == ",\"name\":" { return [44, 34, 110, 97, 109, 101, 34, 58] }
-    if value == ",\"kind\":" { return [44, 34, 107, 105, 110, 100, 34, 58] }
-    if value == ",\"signature\":" { return [44, 34, 115, 105, 103, 110, 97, 116, 117, 114, 101, 34, 58] }
-    if value == ",\"description\":" { return [44, 34, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 34, 58] }
-    if value == "\n]\n" { return [10, 93, 10] }
-    if value == "- annotation: " { return [45, 32, 97, 110, 110, 111, 116, 97, 116, 105, 111, 110, 58, 32] }
-    if value == "\n  name: " { return [10, 32, 32, 110, 97, 109, 101, 58, 32] }
-    if value == "\n  kind: " { return [10, 32, 32, 107, 105, 110, 100, 58, 32] }
-    if value == "\n  signature: " { return [10, 32, 32, 115, 105, 103, 110, 97, 116, 117, 114, 101, 58, 32] }
-    if value == "\n  description: " { return [10, 32, 32, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 58, 32] }
-    return [0]
-}
-
-func appendLiteral(output: int[], value: string): unit {
-    let bytes = literalBytes(value)
+func quote(value: string): string {
+    var result = "\""
     var index = 0
-    while index < bytes.len() && bytes[index] != 0 {
-        output.push(bytes[index])
+    while index < value.length() {
+        let character = value.substring(index, index + 1)
+        if character == "\"" { result = result + "\\\"" }
+        else if character == "\\" { result = result + "\\\\" }
+        else if character == "\n" { result = result + "\\n" }
+        else if character == "\r" { result = result + "\\r" }
+        else if character == "\t" { result = result + "\\t" }
+        else { result = result + character }
         index = index + 1
     }
+    return result + "\""
 }
 
-func appendQuoted(output: int[], input: int[], start: int, end: int, format: int): unit {
-    output.push(34)
-    var index = start
-    while index < end {
-        let byte = input[index]
-        if format == 1 && byte == 34 {
-            output.push(34)
-            output.push(34)
-        } else if format != 1 && (byte == 34 || byte == 92) {
-            output.push(92)
-            output.push(byte)
-        } else if format != 1 && byte == 10 {
-            output.push(92)
-            output.push(110)
-        } else if format != 1 && byte == 13 {
-            output.push(92)
-            output.push(114)
-        } else if format != 1 && byte == 9 {
-            output.push(92)
-            output.push(116)
+func csv(value: string): string {
+    var result = "\""
+    var index = 0
+    while index < value.length() {
+        let character = value.substring(index, index + 1)
+        if character == "\"" { result = result + "\"\"" }
+        else { result = result + character }
+        index = index + 1
+    }
+    return result + "\""
+}
+
+func kindOf(declaration: string): string {
+    if declaration.contains("func ") { return "function" }
+    if declaration.contains("method ") { return "method" }
+    if declaration.contains("class ") { return "class" }
+    if declaration.contains("interface ") { return "interface" }
+    if declaration.contains("trait ") { return "trait" }
+    if declaration.contains("struct ") { return "struct" }
+    if declaration.contains("enum ") { return "enum" }
+    return "declaration"
+}
+
+func nameOf(declaration: string, kind: string): string {
+    var keyword = ""
+    if kind == "function" { keyword = "func " }
+    else if kind == "method" { keyword = "method " }
+    else if kind == "class" { keyword = "class " }
+    else if kind == "interface" { keyword = "interface " }
+    else if kind == "trait" { keyword = "trait " }
+    else if kind == "struct" { keyword = "struct " }
+    else if kind == "enum" { keyword = "enum " }
+    let keywordIndex = declaration.indexOf(keyword)
+    if keywordIndex < 0 { return "" }
+    let nameStart = keywordIndex + keyword.length()
+    let rest = declaration.substring(nameStart, declaration.length())
+    var nameEnd = rest.indexOf("(")
+    if nameEnd < 0 {
+        let space = rest.indexOf(" ")
+        let colon = rest.indexOf(":")
+        let brace = rest.indexOf("{")
+        nameEnd = rest.length()
+        if space >= 0 && space < nameEnd { nameEnd = space }
+        if colon >= 0 && colon < nameEnd { nameEnd = colon }
+        if brace >= 0 && brace < nameEnd { nameEnd = brace }
+    }
+    return rest.substring(0, nameEnd).trim()
+}
+
+func packageOf(lines: string[]): string {
+    var index = 0
+    while index < lines.len() {
+        let line = lines[index].trim()
+        if line.startsWith("package ") { return line.substring(8, line.length()).trim() }
+        index = index + 1
+    }
+    return ""
+}
+
+func descriptionBefore(lines: string[], annotationLine: int): string {
+    var start = annotationLine
+    var reading = true
+    while start > 0 && reading {
+        let previous = lines[start - 1].trim()
+        if previous.startsWith("///") { start = start - 1 }
+        else { reading = false }
+    }
+    var description = ""
+    while start < annotationLine {
+        let line = lines[start].trim().substring(3, lines[start].trim().length()).trim()
+        if description != "" { description = description + " " }
+        description = description + line
+        start = start + 1
+    }
+    return description
+}
+
+func declarationAfter(lines: string[], annotationLine: int): int {
+    var index = annotationLine + 1
+    while index < lines.len() {
+        let line = lines[index].trim()
+        if line == "" || line.startsWith("@") || line.startsWith("//") {
+            index = index + 1
         } else {
-            output.push(byte)
+            return index
         }
-        index = index + 1
     }
-    output.push(34)
+    return -1
 }
 
-func appendField(output: int[], input: int[], start: int, end: int, format: int): unit {
-    appendQuoted(output, input, start, end, format)
+func yamlRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string): string {
+    return "- annotation: " + quote(annotation) + "\n" +
+        "  name: " + quote(name) + "\n" +
+        "  kind: " + quote(kind) + "\n" +
+        "  package: " + quote(packageName) + "\n" +
+        "  signature: " + quote(signature) + "\n" +
+        "  description: " + quote(description) + "\n" +
+        "  source: " + quote(source) + "\n"
 }
 
-func hasDocumentedAnnotation(input: int[], start: int, end: int): bool {
-    if end - start != 13 { return false }
-    let expected = [64, 68, 111, 99, 117, 109, 101, 110, 116, 101, 100, 40, 41]
-    var index = 0
-    while index < expected.len() {
-        if input[start + index] != expected[index] { return false }
-        index = index + 1
+func csvRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string): string {
+    return csv(annotation) + "," + csv(name) + "," + csv(kind) + "," + csv(packageName) + "," +
+        csv(signature) + "," + csv(description) + "," + csv(source) + "\n"
+}
+
+func jsonRecord(annotation: string, name: string, kind: string, signature: string, description: string, packageName: string, source: string, first: bool): string {
+    var prefix = ",\n"
+    if first { prefix = "" }
+    return prefix + "  {\"annotation\":" + quote(annotation) +
+        ",\"name\":" + quote(name) +
+        ",\"kind\":" + quote(kind) +
+        ",\"package\":" + quote(packageName) +
+        ",\"signature\":" + quote(signature) +
+        ",\"description\":" + quote(description) +
+        ",\"source\":" + quote(source) + "}"
+}
+
+func generateSource(sourcePath: string, format: string, first: bool): string {
+    let source = Runtime.readText(sourcePath)
+    var lines: string[] = []
+    var remaining = source
+    var reading = true
+    while reading {
+        let newline = remaining.indexOf("\n")
+        if newline < 0 {
+            lines.push(remaining)
+            reading = false
+        } else {
+            lines.push(remaining.substring(0, newline))
+            remaining = remaining.substring(newline + 1, remaining.length())
+        }
     }
-    return true
-}
-
-func appendRecord(output: int[], input: int[], starts: int[], ends: int[], format: int, first: bool): unit {
-    if format == 2 {
-        if !first { appendLiteral(output, ",\n") }
-        appendLiteral(output, "  {\"annotation\":")
-        appendField(output, input, starts[0], ends[0], format)
-        appendLiteral(output, ",\"name\":")
-        appendField(output, input, starts[1], ends[1], format)
-        appendLiteral(output, ",\"kind\":")
-        appendField(output, input, starts[2], ends[2], format)
-        appendLiteral(output, ",\"signature\":")
-        appendField(output, input, starts[3], ends[3], format)
-        appendLiteral(output, ",\"description\":")
-        appendField(output, input, starts[4], ends[4], format)
-        output.push(125)
-    } else if format == 1 {
-        if !first { output.push(10) }
-        appendField(output, input, starts[0], ends[0], format)
-        output.push(44)
-        appendField(output, input, starts[1], ends[1], format)
-        output.push(44)
-        appendField(output, input, starts[2], ends[2], format)
-        output.push(44)
-        appendField(output, input, starts[3], ends[3], format)
-        output.push(44)
-        appendField(output, input, starts[4], ends[4], format)
-    } else {
-        if !first { output.push(10) }
-        appendLiteral(output, "- annotation: ")
-        appendField(output, input, starts[0], ends[0], format)
-        appendLiteral(output, "\n  name: ")
-        appendField(output, input, starts[1], ends[1], format)
-        appendLiteral(output, "\n  kind: ")
-        appendField(output, input, starts[2], ends[2], format)
-        appendLiteral(output, "\n  signature: ")
-        appendField(output, input, starts[3], ends[3], format)
-        appendLiteral(output, "\n  description: ")
-        appendField(output, input, starts[4], ends[4], format)
-    }
-}
-
-func generate(input: int[], format: int): int[] {
-    var output: int[] = []
-    if format == 2 { appendLiteral(output, "[\n") }
-    if format == 1 { appendLiteral(output, "annotation,name,kind,signature,description\n") }
-    var lineStart = 0
-    var first = true
-    while lineStart < input.len() {
-        var lineEnd = lineStart
-        while lineEnd < input.len() && input[lineEnd] != 10 { lineEnd = lineEnd + 1 }
-        var starts = [lineStart, 0, 0, 0, 0]
-        var ends = [0, 0, 0, 0, lineEnd]
-        var field = 0
-        var cursor = lineStart
-        while cursor < lineEnd {
-            if input[cursor] == 9 && field < 4 {
-                ends[field] = cursor
-                field = field + 1
-                starts[field] = cursor + 1
+    let packageName = packageOf(lines)
+    var output = ""
+    var firstRecord = first
+    var lineIndex = 0
+    while lineIndex < lines.len() {
+        if lines[lineIndex].trim() == "@Documented()" {
+            let declarationLine = declarationAfter(lines, lineIndex)
+            if declarationLine >= 0 {
+                let signature = lines[declarationLine].trim()
+                let kind = kindOf(signature)
+                let name = nameOf(signature, kind)
+                let description = descriptionBefore(lines, lineIndex)
+                if format == "json" { output = output + jsonRecord("@Documented()", name, kind, signature, description, packageName, sourcePath, firstRecord) }
+                else if format == "csv" { output = output + csvRecord("@Documented()", name, kind, signature, description, packageName, sourcePath) }
+                else { output = output + yamlRecord("@Documented()", name, kind, signature, description, packageName, sourcePath) }
+                firstRecord = false
             }
-            cursor = cursor + 1
         }
-        if field == 4 && hasDocumentedAnnotation(input, starts[0], ends[0]) {
-            appendRecord(output, input, starts, ends, format, first)
-            first = false
-        }
-        lineStart = lineEnd + 1
+        lineIndex = lineIndex + 1
     }
-    if format == 2 { appendLiteral(output, "\n]\n") }
-    if format != 2 { output.push(10) }
     return output
 }
 
 func main(): int {
-    let inputPath = Runtime.environment("SNOVA_DOC_INPUT")
-    let outputPath = Runtime.environment("SNOVA_DOC_OUTPUT")
-    let requestedFormat = Runtime.environment("SNOVA_DOC_FORMAT")
-    if inputPath == "" || outputPath == "" {
-        Console.printline("set SNOVA_DOC_INPUT, SNOVA_DOC_OUTPUT and SNOVA_DOC_FORMAT")
+    let formatValue = Runtime.environment("SNOVA_DOC_FORMAT")
+    var format = formatValue
+    if format == "yml" { format = "yaml" }
+    if format != "yaml" && format != "csv" && format != "json" {
+        Console.err("snl --doc expects yaml, yml, csv, or json\n")
         return 2
     }
 
-    var format = 0
-    if requestedFormat == "csv" { format = 1 }
-    if requestedFormat == "json" { format = 2 }
-    if requestedFormat != "yaml" && requestedFormat != "csv" && requestedFormat != "json" {
-        Console.printline("supported documentation formats: yaml, csv, json")
-        return 2
+    let count = Runtime.argumentCount()
+    var output = ""
+    var first = true
+    if format == "json" { output = "[\n" }
+    if format == "csv" { output = "annotation,name,kind,package,signature,description,source\n" }
+    var index = 0
+    while index < count {
+        let sourcePath = Runtime.argument(index)
+        if sourcePath != "" {
+            output = output + generateSource(sourcePath, format, first)
+            if format == "json" && output != "[\n" { first = false }
+        }
+        index = index + 1
     }
-
-    let input = read_bytes(inputPath)
-    let output = generate(input, format)
-    write_bytes(outputPath, output)
+    if format == "json" { output = output + "\n]\n" }
+    Console.print(output)
     return 0
 }

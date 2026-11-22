@@ -3,23 +3,118 @@ package snova.tools.version
 import builtin.io.console
 import builtin.runtime
 
-// The caller supplies the current version and newest Git tag as environment
-// values. The runtime currently has no process-spawn API for invoking Git.
-func main(): int {
-    let current = Runtime.environment("SNOVA_CURRENT_VERSION")
-    let newest = Runtime.environment("SNOVA_LATEST_TAG")
+func normalized(version: string): string {
+    if version.startsWith("v") || version.startsWith("V") {
+        return version.substring(1, version.length())
+    }
+    return version
+}
 
-    if current == "" || newest == "" {
-        Console.printline("set SNOVA_CURRENT_VERSION and SNOVA_LATEST_TAG")
+func numberPart(value: string, start: int, end: int): int {
+    if start >= end { return -1 }
+    if end - start > 1 && value.substring(start, start + 1) == "0" { return -1 }
+    var result = 0
+    var index = start
+    while index < end {
+        let digit = "0123456789".indexOf(value.substring(index, index + 1))
+        if digit < 0 { return -1 }
+        result = result * 10 + digit
+        index = index + 1
+    }
+    return result
+}
+
+func parseSemver(version: string): int[] {
+    let value = normalized(version)
+    let firstDot = value.indexOf(".")
+    if firstDot < 1 { return [0, 0, 0, 0] }
+    let tail = value.substring(firstDot + 1, value.length())
+    let secondDotInTail = tail.indexOf(".")
+    if secondDotInTail < 1 { return [0, 0, 0, 0] }
+    let secondDot = firstDot + 1 + secondDotInTail
+    if tail.substring(secondDotInTail + 1, tail.length()).contains(".") { return [0, 0, 0, 0] }
+
+    let major = numberPart(value, 0, firstDot)
+    let minor = numberPart(value, firstDot + 1, secondDot)
+    let patch = numberPart(value, secondDot + 1, value.length())
+    if major < 0 || minor < 0 || patch < 0 { return [0, 0, 0, 0] }
+    return [1, major, minor, patch]
+}
+
+func compareSemver(left: int[], right: int[]): int {
+    if left[1] != right[1] { return left[1] - right[1] }
+    if left[2] != right[2] { return left[2] - right[2] }
+    if left[3] != right[3] { return left[3] - right[3] }
+    return 0
+}
+
+func decimal(value: int): string {
+    if value < 10 { return "0123456789".substring(value, value + 1) }
+    return decimal(value / 10) + "0123456789".substring(value % 10, value % 10 + 1)
+}
+
+func nextVersion(version: int[], bump: string): string {
+    var major = version[1]
+    var minor = version[2]
+    var patch = version[3]
+    if bump == "major" { return decimal(major + 1) + ".0.0" }
+    if bump == "minor" { return decimal(major) + "." + decimal(minor + 1) + ".0" }
+    return decimal(major) + "." + decimal(minor) + "." + decimal(patch + 1)
+}
+
+func main(): int {
+    let currentText = Runtime.environment("SNOVA_CURRENT_VERSION")
+    if currentText == "" {
+        Console.err("set SNOVA_CURRENT_VERSION to the current MAJOR.MINOR.PATCH tag\n")
         return 2
     }
-    if newest == current {
-        Console.printline("already on latest tagged version: " + current)
-        return 0
+    let current = parseSemver(currentText)
+    if current[0] == 0 {
+        Console.err("current version must be strict MAJOR.MINOR.PATCH (for example 0.0.1)\n")
+        return 2
     }
 
-    Console.printline("upgrade available: " + newest)
-    Console.printline("current version: " + current)
-    Console.printline("run: git checkout " + newest)
+    var latestText = currentText
+    var latest = current
+    var index = 0
+    while index < Runtime.argumentCount() {
+        let candidateText = Runtime.argument(index)
+        let candidate = parseSemver(candidateText)
+        if candidate[0] == 1 && compareSemver(candidate, latest) > 0 {
+            latestText = candidateText
+            latest = candidate
+        }
+        index = index + 1
+    }
+
+    let bumpValue = Runtime.environment("SNOVA_RELEASE_BUMP")
+    var bump = bumpValue
+    if bump == "" { bump = "patch" }
+    if bump != "patch" && bump != "minor" && bump != "major" {
+        Console.err("SNOVA_RELEASE_BUMP must be patch, minor, or major\n")
+        return 2
+    }
+
+    if bump == "minor" {
+        if Runtime.environment("SNOVA_MINOR_COMPATIBILITY_REVIEW") != "approved" ||
+            Runtime.environment("SNOVA_MINOR_API_ADDITIONS") == "" ||
+            Runtime.environment("SNOVA_RELEASE_NOTES") == "" {
+            Console.err("MINOR requires approved compatibility review, additive API evidence, and release notes\n")
+            return 3
+        }
+    }
+    if bump == "major" {
+        if Runtime.environment("SNOVA_IS_RELEASE") != "1" ||
+            Runtime.environment("SNOVA_BREAKING_CHANGE_REVIEW") != "approved" ||
+            Runtime.environment("SNOVA_RELEASE_NOTES") == "" {
+            Console.err("MAJOR is allowed only for a release with approved breaking-change review and release notes\n")
+            return 3
+        }
+    }
+
+    Console.printline("latest Git version tag: " + latestText)
+    Console.printline("next version: " + nextVersion(latest, bump))
+    Console.printline("bump: " + bump)
+    if bump == "major" { Console.printline("release-only MAJOR bump approved") }
     return 0
 }
