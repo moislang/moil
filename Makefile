@@ -225,17 +225,7 @@ bootstrap-vm: bootstrap-build
 		if [ "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
 			echo "VmHostText: exit $$status, SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
 			echo "stdout:"; cat $(BUILD_DIR)/vmHostText.vm.txt; echo "stderr:"; cat $(BUILD_DIR)/vmHostText.vm.err; \
-			for probe in default windows-absolute backslash; do \
-				case $$probe in \
-					default) out="";; \
-					windows-absolute) out=$$(cygpath -w "$$PWD/$(BUILD_DIR)/vmHostText.txt" 2>/dev/null || echo "$$PWD/$(BUILD_DIR)/vmHostText.txt");; \
-					backslash) out=$$(echo "$(BUILD_DIR)/vmHostText.txt" | tr '/' '\\');; \
-				esac; \
-				rm -f $(BUILD_DIR)/vmHostText.txt; \
-				SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT="$$out" $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/probe.txt 2>&1; \
-				echo "probe $$probe [$$out]: exit $$? file=$$(test -f $(BUILD_DIR)/vmHostText.txt && echo yes || echo no) output=$$(tr -d '\r' < $(BUILD_DIR)/probe.txt | tr '\n' ' ')"; \
-			done; \
-			exit 1; \
+			ls -la $(BUILD_DIR) | head -5; exit 1; \
 		fi
 	test "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.txt)" = "probe"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmStackOverflow.snl $(BUILD_DIR)/vmStackOverflow.snbc

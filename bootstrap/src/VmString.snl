@@ -26,8 +26,16 @@ func vmNewStringFrom(vm: VmState, text: string, source: int[], start: int, lengt
 // Provisional boundary (ADR-0004): converts a host string into bytes by
 // writing it to a scratch file and reading the bytes back. Native programs do
 // not need it (ADR-0006); it goes away once the executor is built natively.
+// The directory comes from the environment because a native Windows
+// executable has no /tmp: TEMP/TMP on Windows, TMPDIR on macOS, else /tmp.
+// An unset variable compares equal to "" in the seed; a variable set to an
+// empty value does not (identity comparison), which is not handled here.
 func vmScratchPath(): string {
-    return "/tmp/snova-vm-string.bin"
+    var directory = Runtime.environment("TEMP")
+    if directory == "" { directory = Runtime.environment("TMP") }
+    if directory == "" { directory = Runtime.environment("TMPDIR") }
+    if directory == "" { directory = "/tmp" }
+    return directory + "/snova-vm-string.bin"
 }
 
 func vmStringStart(vm: VmState, handle: int): int {

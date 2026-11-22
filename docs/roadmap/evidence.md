@@ -355,3 +355,11 @@ This file started with no technical results. Entries must record observed facts,
 - Probe (reference): `snl check bootstrap/fixtures/<name>.snl` reports nothing for `InterfaceMissingMethod` and `InterfaceWrongSignature`, and `error[SNOVA0102]: expected a declaration, found identifier` at line 10 for `TraitMissingMethod` and `TraitWrongArity`. There is no reference code to match.
 - Commands: `make bootstrap-build` then `make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop` (pass).
 - Not verified: Windows CLI jobs (they still fail on `VmHostText` with `cannot write file`).
+
+## 2026-11-22 — Windows VM scratch file outside /tmp
+
+- Probe (Windows x86_64 CI, run of `355b6b0`): `VmHostText` failed with `cannot write file: No such file or directory` and no stdout for an unset `SNOVA_FIXTURE_OUTPUT`, an absolute Windows path and a backslash path alike. The failing write was not the fixture's: `vmStringStart` in `VmString.snl` converts host strings to bytes through the fixed scratch file `/tmp/snova-vm-string.bin`, and a native Windows executable has no `/tmp`.
+- Change: the scratch directory is `TEMP`, then `TMP`, then `TMPDIR`, then `/tmp`.
+- Probe (macOS, `snl v0.3.0` bundle): with `TEMP`, `TMP` and `TMPDIR` unset the fixture passes through `/tmp`; with `TEMP` set to a directory it passes; with `TEMP=` (set but empty) the path becomes `/snova-vm-string.bin` and the write fails, because the seed compares that host string by identity, not content. An unset variable compares equal to `""`.
+- Commands (macOS): `make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli bootstrap-diagnostics`, `make bootstrap-native`, `make bootstrap-native-target` (pass).
+- Not verified at commit time: Windows CI with the fix, `bootstrap-vm-self`, the Linux container.
