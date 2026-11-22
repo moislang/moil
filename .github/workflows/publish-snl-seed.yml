@@ -56,7 +56,7 @@ jobs:
         with:
           msystem: CLANGARM64
           update: false
-          install: make grep gawk diffutils python unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
+          install: make git grep gawk diffutils python unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
       - name: Check the tag commit
         run: |
           actual=$(git -C snl-src rev-parse HEAD)
