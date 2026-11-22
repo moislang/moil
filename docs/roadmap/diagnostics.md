@@ -28,6 +28,11 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4007` | Argument type does not match the parameter (function, static or instance method, positional constructor field, or `push` element type) | `SNOVA0132` | Opening `(` of the call | `invalidArgType`, `invalidMethodArgType`, `invalidConstructorType`, `invalidPushType` |
 | `SNW0001` | `==`/`!=` between known, different types (warning) | No warning; `SNOVA0133` rejects mismatched operators | Line | `warnMismatch` |
 
+In native mode the Snova runtime is appended to the user source. Line
+numbers and the `invalidArgType` span stay relative to the user file
+(`user_end` / `sourceLine`); the Linux gate compiles `hello.snl` to
+`.s` with `native` and rechecks that fixture in native mode.
+
 Known divergences, all recorded in [evidence.md](evidence.md):
 
 - `SNV4004`: `snl check` v0.3.0 compares qualified pattern names

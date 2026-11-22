@@ -73,18 +73,30 @@ func arityMismatch(src: int[], bg: compilerState, cx: compilerContext, fn: int, 
     return 1
 }
 
+// Line of a byte offset in the compile buffer. When the native runtime
+// has been appended, offsets in the appendix are reported at the end of
+// the user file instead of a line past EOF.
+func sourceLine(src: int[], start: int, userEnd: int): int {
+    var line = 1
+    var byteIndex = 0
+    var limit = start
+    if userEnd > 0 && start >= userEnd {
+        limit = userEnd
+    }
+    while byteIndex < limit {
+        if src[byteIndex] == 10 { line = line + 1 }
+        byteIndex = byteIndex + 1
+    }
+    return line
+}
+
 func arityFail(src: int[], cx: compilerContext, expected: int, found: int, nameStart: int): unit {
     cx.failed = 1
     cx.error_phase = 9
     cx.error_expected = expected
     cx.error_found = found
     cx.error_start = nameStart
-    cx.error_line = 1
-    var byteIndex = 0
-    while byteIndex < nameStart {
-        if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
-        byteIndex = byteIndex + 1
-    }
+    cx.error_line = sourceLine(src, nameStart, cx.user_end)
 }
 
 func reportArity(cx: compilerContext): unit {
@@ -109,12 +121,7 @@ func typeFail(src: int[], cx: compilerContext, phase: int, start: int): unit {
     cx.failed = 1
     cx.error_phase = phase
     cx.error_start = start
-    cx.error_line = 1
-    var byteIndex = 0
-    while byteIndex < start {
-        if src[byteIndex] == 10 { cx.error_line = cx.error_line + 1 }
-        byteIndex = byteIndex + 1
-    }
+    cx.error_line = sourceLine(src, start, cx.user_end)
 }
 
 func tokenStart(bg: compilerState, token: int): int {
@@ -155,8 +162,13 @@ func fieldTypeByIndex(bg: compilerState, st: int, index: int): int {
     return 0
 }
 
+// User-program argument type check (SNV4007). Calls in the appended
+// native runtime are exempt: the language requires a type on every
+// parameter and has no untyped or union payload, so Primitive.tagged
+// must keep `payload: int` even when Runtime.address passes a string.
 func checkArgType(src: int[], bg: compilerState, cx: compilerContext, want: int, got: int, start: int): int {
     if cx.failed != 0 { return 1 }
+    if cx.user_end > 0 && start >= cx.user_end { return 0 }
     if typesClash(want, got) {
         typeFail(src, cx, 10, start)
         return 1

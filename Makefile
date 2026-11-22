@@ -131,6 +131,10 @@ bootstrap-diagnostics: bootstrap-build
 	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236" $(BUILD_DIR)/method-arg-type-error.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidPushType.snl $(BUILD_DIR)/invalidPushType.snbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
 	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81" $(BUILD_DIR)/push-type-error.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/hello.snl $(BUILD_DIR)/hello.s native
+	test -s $(BUILD_DIR)/hello.s
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/invalidArgType.snl $(BUILD_DIR)/invalidArgType.s native > $(BUILD_DIR)/arg-type-native-error.txt; then echo "expected argument type failure in native mode"; exit 1; fi
+	grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119" $(BUILD_DIR)/arg-type-native-error.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/vmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc

@@ -22,20 +22,29 @@ class Runtime {
         Runtime.output(descriptor, scratch, 1)
     }
 
-    // Payload of any value retagged as int, for address arithmetic. String
-    // literals of the runtime source arrive with the string tag; without
-    // this, `text + 8` would take the string path of Value.binary.
-    public static method address(value: int): int {
+    // Retags a language string as an int handle so address arithmetic
+    // (`text + 8`, Primitive.load) does not take the string path of
+    // Value.binary. The parameter is `string` because literals and
+    // string values are not ints; the result is the address of a
+    // `[length:8][bytes]` block.
+    public static method address(value: string): int {
         return Primitive.tagged(1, value)
     }
 
-    public static method outputString(text: int): unit {
+    public static method outputString(text: string): unit {
         Runtime.outputStringTo(1, text)
     }
 
-    public static method outputStringTo(descriptor: int, text: int): unit {
+    public static method outputStringTo(descriptor: int, text: string): unit {
         let address = Runtime.address(text)
         Runtime.output(descriptor, address + 8, Primitive.load(address))
+    }
+
+    // Writes a native string handle (address of `[length:8][bytes]`),
+    // already tagged as int. Used when display() prints a string or
+    // variant payload that is not a language string value.
+    public static method outputHandle(text: int): unit {
+        Runtime.output(1, text + 8, Primitive.load(text))
     }
 
     public static method outputInteger(value: int): unit {

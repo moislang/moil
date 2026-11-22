@@ -108,6 +108,11 @@ struct compilerContext {
     public var error_expected: int
     public var error_found: int
     public var line: int
+    // Byte length of the user program, before appendNativeRuntime joins
+    // the native runtime. Line numbers are counted only in this prefix
+    // so a diagnostic in the appendix is not reported as a line past
+    // the end of the user file.
+    public var user_end: int
 }
 
 struct lexerCursor {

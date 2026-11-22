@@ -33,7 +33,11 @@ class Primitive {
 
     // Returns payload with the given tag (0 unit, 1 int, 2 bool, 3 string,
     // 4 array, 5 object, 6 null). This is how the runtime hands strings,
-    // arrays and objects to the program.
+    // arrays and objects to the program. The payload is declared `int`
+    // because the language requires a parameter type and has no untyped
+    // or union payload; Runtime.address may pass a string, which is
+    // accepted only because calls in the appended native runtime are
+    // exempt from SNV4007 (see checkArgType).
     @Native
     public static method tagged(tag: int, payload: int): int
 }

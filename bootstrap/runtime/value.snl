@@ -11,7 +11,7 @@ class Value {
         } else if tag == 2 {
             if payload != 0 { Runtime.outputString("true") } else { Runtime.outputString("false") }
         } else if tag == 3 || tag == 7 {
-            Runtime.outputString(payload)
+            Runtime.outputHandle(payload)
         } else if tag == 6 {
             Runtime.outputString("null")
         } else if tag != 0 {
