@@ -347,3 +347,11 @@ This file started with no technical results. Entries must record observed facts,
 - Observed result: `stage1.snbc` = `stage2.snbc` = `seed-stage1.snbc` = `seed-stage2.snbc`, SHA-256 `8354ca44e7b1fe96b0137255477eb7438d3d728732b5d330f0b27543f8a31b08`. The committed seed remains `cf64d0d31cb50b124af68b7f2dc78b9788f011a149528d36bef7ee4430397706`.
 - Not verified: macOS native gates.
 - Limitations: only `if` and `while` are checked. After merge of this stack, run `make bootstrap-seed-refresh`; no new file was added to `ownSource()`.
+
+## 2026-11-22 — contract diagnostic renumbered to SNV4012
+
+- Environment: `snl v0.3.0` (`snl --version`), macOS ARM64. Branch `feat/snl-docs-linux-bootstrap`.
+- Reason: `SNV5001` is reserved for use of a moved value (`SNOVA0240`, SPEC-0002), which the borrow checker (#19) emits. The interface/trait contract failure now reports `SNV4012`; its internal error phase is 30.
+- Probe (reference): `snl check bootstrap/fixtures/<name>.snl` reports nothing for `InterfaceMissingMethod` and `InterfaceWrongSignature`, and `error[SNOVA0102]: expected a declaration, found identifier` at line 10 for `TraitMissingMethod` and `TraitWrongArity`. There is no reference code to match.
+- Commands: `make bootstrap-build` then `make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop` (pass).
+- Not verified: Windows CLI jobs (they still fail on `VmHostText` with `cannot write file`).

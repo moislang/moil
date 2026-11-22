@@ -129,7 +129,7 @@ func reportFailure(src: int[], bg: CompilerState, cx: CompilerContext): unit {
         return
     }
     if cx.error_phase == 30 {
-        Console.print("error[SNV5001]: type does not satisfy declared contract at line ")
+        Console.print("error[SNV4012]: type does not satisfy declared contract at line ")
         Console.print(cx.error_line)
         Console.print(", span ")
         Console.print(cx.error_start)

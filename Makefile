@@ -94,13 +94,13 @@ bootstrap-oop: bootstrap-build
 	$(COMPILER_BUNDLE) bootstrap/fixtures/TraitDispatch.snl $(BUILD_DIR)/TraitDispatch.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/TraitDispatch.snbc run; test "$$?" -eq 86
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceMissingMethod.snl $(BUILD_DIR)/InterfaceMissingMethod.snbc > $(BUILD_DIR)/interface-missing.txt; then echo "expected missing interface method"; exit 1; fi
-	grep -Fqx "error[SNV5001]: type does not satisfy declared contract at line 4, span 72..76" $(BUILD_DIR)/interface-missing.txt
+	grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76" $(BUILD_DIR)/interface-missing.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceWrongSignature.snl $(BUILD_DIR)/InterfaceWrongSignature.snbc > $(BUILD_DIR)/interface-signature.txt; then echo "expected interface signature mismatch"; exit 1; fi
-	grep -Fqx "error[SNV5001]: type does not satisfy declared contract at line 4, span 72..76" $(BUILD_DIR)/interface-signature.txt
+	grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76" $(BUILD_DIR)/interface-signature.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitMissingMethod.snl $(BUILD_DIR)/TraitMissingMethod.snbc > $(BUILD_DIR)/trait-missing.txt; then echo "expected missing trait method"; exit 1; fi
-	grep -Fqx "error[SNV5001]: type does not satisfy declared contract at line 4, span 68..72" $(BUILD_DIR)/trait-missing.txt
+	grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72" $(BUILD_DIR)/trait-missing.txt
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitWrongArity.snl $(BUILD_DIR)/TraitWrongArity.snbc > $(BUILD_DIR)/trait-arity.txt; then echo "expected trait arity mismatch"; exit 1; fi
-	grep -Fqx "error[SNV5001]: type does not satisfy declared contract at line 4, span 68..72" $(BUILD_DIR)/trait-arity.txt
+	grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72" $(BUILD_DIR)/trait-arity.txt
 
 # Native interface and trait calls use a type-id indexed dispatch table.
 bootstrap-oop-native: bootstrap-build

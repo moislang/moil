@@ -29,6 +29,7 @@ Every row is backed by a fixture and a probe recorded in
 | `SNV4008` | Binary, comparison or logical operator applied to known incompatible operand types | `SNOVA0133` | Operator token | `invalidBinaryType`, `invalidCompareType`, `invalidStringOrder`, `invalidBoolOrder`, `warnMismatch` |
 | `SNV4009` | Unary operand of a known incompatible type, or a known non-`int` index | `SNOVA0134` | Operator or opening `[` | `invalidUnaryNeg`, `invalidUnaryNot`, `invalidIndexType` |
 | `SNV4010` | `if`/`while` condition of a known non-`bool` type | `SNOVA0135` | Start of the condition expression | `invalidIfCondition`, `invalidWhileCondition` |
+| `SNV4012` | Type does not satisfy its declared interface or trait contract (missing method, wrong arity or signature) | None: `snl check` v0.3.0 accepts the interface fixtures and rejects the trait fixtures earlier with `SNOVA0102` | Contract name in the declaration | `InterfaceMissingMethod`, `InterfaceWrongSignature`, `TraitMissingMethod`, `TraitWrongArity` |
 | `SNW0001` | (unused) Was a warning for `==`/`!=` between known, different types; those cases are now `SNV4008` | `SNOVA0133` rejects them as errors | — | — |
 
 In native mode the Snova runtime is appended to the user source. Line
