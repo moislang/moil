@@ -17,6 +17,14 @@ class NativeTargetResolver {
         return true
     }
 
+    // Command-line words of native mode: 1 for `native`, 2 for `--target`,
+    // 0 for anything else. Same byte comparison as `status`.
+    public method optionKind(value: string, scratchPath: string): int {
+        if equalsAsciiFile(value, scratchPath, [110, 97, 116, 105, 118, 101]) { return 1 }
+        if equalsAsciiFile(value, scratchPath, [45, 45, 116, 97, 114, 103, 101, 116]) { return 2 }
+        return 0
+    }
+
     // Returns 1 for AArch64 Darwin, 2 for pending x86-64 Linux, 3 for
     // AArch64 Linux, and 0 for an unknown triple. Host strings in the seed are
     // identity-equal, so compare their bytes at this boundary (O(n)).

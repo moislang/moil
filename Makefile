@@ -35,7 +35,7 @@ LIBRARY_ROOT_SOURCES := BinarySearch LinearSearch Sorting
 LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting
 ROOT_PROJECT := $(BUILD_DIR)/root-project
 
-.PHONY: bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
+.PHONY: bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
 
 bootstrap-root-project:
 	rm -rf $(ROOT_PROJECT)
@@ -323,26 +323,140 @@ bootstrap-native-self: bootstrap-build
 	$(BUILD_DIR)/compiler-native-stage2 $(NATIVE_COMPILER_SOURCE) $(BUILD_DIR)/compiler-native-stage3.s native
 	cmp $(BUILD_DIR)/compiler-native-stage2.s $(BUILD_DIR)/compiler-native-stage3.s
 
-# Runs seed build, ELF assembly/linking, native-vs-VM fixtures and compiler
-# self-host inside the pinned Linux ARM64 container used by CI.
 LINUX_ARM64_IMAGE ?= snova-linux-aarch64:ci
 LINUX_AMD64_IMAGE ?= snova-linux-x86_64:ci
+# The x86_64 image uses the official snl binary. The ARM64 image has no snl:
+# the host (which has snl) emits the ELF assembly and VM results, and the
+# container only assembles, links and runs them, as in CI.
 bootstrap-cli-linux-x86_64:
 	docker build --platform linux/amd64 -f ci/linux-amd64.Dockerfile -t $(LINUX_AMD64_IMAGE) ci
 	docker run --rm --platform linux/amd64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_AMD64_IMAGE) make bootstrap-cli-linux-ci
 
-bootstrap-cli-linux-aarch64:
+bootstrap-cli-linux-aarch64: bootstrap-native-linux-aarch64-emit
 	docker build --platform linux/arm64 -f ci/linux-aarch64.Dockerfile -t $(LINUX_ARM64_IMAGE) ci
-	docker run --rm --platform linux/arm64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_ARM64_IMAGE) make bootstrap-cli-linux-ci bootstrap-native-linux-aarch64-ci
+	docker run --rm --platform linux/arm64 -v "$(CURDIR):/workspace" -w /workspace $(LINUX_ARM64_IMAGE) make bootstrap-native-linux-aarch64-run
 
 bootstrap-cli-linux-ci: bootstrap-build
-	$(MAKE) -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop
+	$(MAKE) -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
 
 bootstrap-native-linux-aarch64:
 	$(MAKE) bootstrap-cli-linux-aarch64
 
 bootstrap-native-linux-aarch64-ci: bootstrap-build
-	python3 scripts/test-native-linux-aarch64.py --compiler $(COMPILER_BUNDLE) --build-dir $(BUILD_DIR)
+	python3 scripts/test-native-linux-aarch64.py --compiler $(COMPILER_BUNDLE) --build-dir $(BUILD_DIR) --target aarch64-unknown-linux-gnu
+
+# Split Linux AArch64 native gate for CI: the emit half runs where snl is
+# available (any host), the run half on a Linux AArch64 host with binutils
+# only. Output goes to build/bootstrap/native-aarch64-unknown-linux-gnu/.
+LINUX_AARCH64_DIR := $(BUILD_DIR)/native-aarch64-unknown-linux-gnu
+bootstrap-native-linux-aarch64-emit: bootstrap-build
+	python3 scripts/test-native-linux-aarch64.py --phase emit --compiler $(COMPILER_BUNDLE) --build-dir $(LINUX_AARCH64_DIR)/fixtures --target aarch64-unknown-linux-gnu
+	$(MAKE) bootstrap-native-self-emit NATIVE_TARGET=aarch64-unknown-linux-gnu
+
+bootstrap-native-linux-aarch64-run:
+	python3 scripts/test-native-linux-aarch64.py --phase run --build-dir $(LINUX_AARCH64_DIR)/fixtures
+	$(MAKE) bootstrap-native-self-run NATIVE_TARGET=aarch64-unknown-linux-gnu
+
+# Native target selection. The compiler takes the target on its command line
+# (`<in.snl> <out.s> --target <triple>`, or the older `native [<triple>]`);
+# the triple fixes the executable format: Mach-O for aarch64-apple-darwin,
+# ELF for the Linux triples. Choose it here with NATIVE_TARGET, for example
+#   make bootstrap-native-target NATIVE_TARGET=aarch64-unknown-linux-gnu
+NATIVE_TARGET ?= aarch64-apple-darwin
+NATIVE_TARGETS := aarch64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu
+NATIVE_TARGET_DIR := $(BUILD_DIR)/native-$(NATIVE_TARGET)
+ifeq ($(NATIVE_TARGET),aarch64-apple-darwin)
+native_assemble = as -arch arm64 $(1) -o $(2)
+native_link = ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(1) -o $(2)
+else ifeq ($(NATIVE_TARGET),aarch64-unknown-linux-gnu)
+native_assemble = as $(1) -o $(2)
+native_link = ld -static -e _start $(1) -o $(2)
+# Known divergence (docs/roadmap/evidence.md, 2026-11-22): a stage 1 emitted
+# by the SnBC compiler on a Linux host (x86_64 or AArch64) is smaller than
+# the native compiler's stage 2; emitted on macOS it is identical. The native
+# fixed point (stage 2 = stage 3) stays mandatory.
+NATIVE_STAGE1_CHECK ?= report
+endif
+# `required` fails when stage 1 (SnBC compiler) differs from stage 2 (native
+# compiler); `report` prints a warning instead.
+NATIVE_STAGE1_CHECK ?= required
+
+# Host-independent gate for target selection: every accepted command-line
+# form emits the same assembly for a target, each triple emits its own
+# object format, and malformed or unsupported targets fail with a message.
+# Only assembly text is checked, so it runs on every CI host.
+bootstrap-target-cli: bootstrap-build
+	@dir=$(BUILD_DIR)/target-cli; mkdir -p $$dir; \
+	for target in aarch64-apple-darwin aarch64-unknown-linux-gnu; do \
+		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/$$target-flag.s --target $$target > /dev/null || exit 1; \
+		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/$$target-native-flag.s native --target $$target > /dev/null || exit 1; \
+		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/$$target-positional.s native $$target > /dev/null || exit 1; \
+		cmp $$dir/$$target-flag.s $$dir/$$target-native-flag.s || exit 1; \
+		cmp $$dir/$$target-flag.s $$dir/$$target-positional.s || exit 1; \
+	done; \
+	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/default.s native > /dev/null || exit 1; \
+	cmp $$dir/default.s $$dir/aarch64-apple-darwin-flag.s || { echo "default target is not aarch64-apple-darwin"; exit 1; }; \
+	grep -q '__TEXT' $$dir/aarch64-apple-darwin-flag.s || { echo "Mach-O sections missing"; exit 1; }; \
+	grep -q '@PAGE' $$dir/aarch64-apple-darwin-flag.s || { echo "Mach-O relocations missing"; exit 1; }; \
+	grep -q '^ *\.section \.text$$' $$dir/aarch64-unknown-linux-gnu-flag.s || { echo "ELF text section missing"; exit 1; }; \
+	grep -q ':lo12:' $$dir/aarch64-unknown-linux-gnu-flag.s || { echo "ELF relocations missing"; exit 1; }; \
+	if grep -q '@PAGE\|__TEXT' $$dir/aarch64-unknown-linux-gnu-flag.s; then echo "Mach-O syntax in ELF output"; exit 1; fi; \
+	if $(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/x86.s --target x86_64-unknown-linux-gnu > $$dir/x86.txt; then echo "expected pending x86-64 backend"; exit 1; fi; \
+	tr -d '\r' < $$dir/x86.txt | grep -Fqx "native target recognized but Linux x86-64 backend is not implemented" || exit 1; \
+	if $(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/unknown.s --target sparc-sun-solaris > $$dir/unknown.txt; then echo "expected unknown target failure"; exit 1; fi; \
+	tr -d '\r' < $$dir/unknown.txt | grep -Fqx "native target is unknown or unsupported" || exit 1; \
+	for args in "--target" "native --target" "bogus" "--target a b"; do \
+		set -- $$args; \
+		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/usage.s "$$@" > $$dir/usage.txt; status=$$?; \
+		test "$$status" -eq 2 || { echo "[$$args] exit $$status, expected usage error 2"; exit 1; }; \
+		grep -q '^usage: ' $$dir/usage.txt || exit 1; \
+	done; \
+	echo "target cli ok: $(NATIVE_TARGETS)"
+
+# Builds and runs the native fixtures and the native compiler for
+# NATIVE_TARGET on a matching host (assembly and linking need its toolchain).
+bootstrap-native-target: bootstrap-build
+ifeq ($(NATIVE_TARGET),aarch64-apple-darwin)
+	$(MAKE) bootstrap-native
+else ifeq ($(NATIVE_TARGET),aarch64-unknown-linux-gnu)
+	python3 scripts/test-native-linux-aarch64.py --compiler $(COMPILER_BUNDLE) --build-dir $(NATIVE_TARGET_DIR)/fixtures --target $(NATIVE_TARGET)
+else
+	@echo "native build for $(NATIVE_TARGET) is not available (targets with a backend: aarch64-apple-darwin aarch64-unknown-linux-gnu)"; exit 1
+endif
+	$(MAKE) bootstrap-native-self-target NATIVE_TARGET=$(NATIVE_TARGET)
+
+# The snl compiler itself as a native executable for NATIVE_TARGET: stage 1
+# is compiled by the SnBC compiler, stages 2 and 3 by the native compiler
+# just built; their assembly must be identical (same rule as N3).
+# The two halves can run on different hosts: -emit needs snl (any host),
+# -run needs only the target's as/ld (CI runs it on a Linux ARM64 runner).
+bootstrap-native-self-target: bootstrap-native-self-emit
+	$(MAKE) bootstrap-native-self-run NATIVE_TARGET=$(NATIVE_TARGET)
+
+bootstrap-native-self-emit: bootstrap-build
+	mkdir -p $(NATIVE_TARGET_DIR)
+	printf 'package snova.compiler\n\n' > $(NATIVE_TARGET_DIR)/compiler-joined.snl
+	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_TARGET_DIR)/compiler-joined.snl; done
+	$(COMPILER_BUNDLE) $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage1.s --target $(NATIVE_TARGET)
+
+bootstrap-native-self-run:
+	@test -n '$(call native_link,in,out)' || { echo "native compiler build for $(NATIVE_TARGET) is not available"; exit 1; }
+	@test -f $(NATIVE_TARGET_DIR)/stage1.s || { echo "missing $(NATIVE_TARGET_DIR)/stage1.s; run bootstrap-native-self-emit first"; exit 1; }
+	$(call native_assemble,$(NATIVE_TARGET_DIR)/stage1.s,$(NATIVE_TARGET_DIR)/stage1.o)
+	$(call native_link,$(NATIVE_TARGET_DIR)/stage1.o,$(NATIVE_TARGET_DIR)/snl-stage1)
+	$(NATIVE_TARGET_DIR)/snl-stage1 $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage2.s --target $(NATIVE_TARGET)
+	@if cmp -s $(NATIVE_TARGET_DIR)/stage1.s $(NATIVE_TARGET_DIR)/stage2.s; then \
+		echo "stage1.s == stage2.s"; \
+	elif [ "$(NATIVE_STAGE1_CHECK)" = report ]; then \
+		echo "warning: stage1.s (SnBC compiler) differs from stage2.s (native compiler) for $(NATIVE_TARGET); known divergence, see docs/roadmap/evidence.md"; \
+	else \
+		cmp $(NATIVE_TARGET_DIR)/stage1.s $(NATIVE_TARGET_DIR)/stage2.s; \
+	fi
+	$(call native_assemble,$(NATIVE_TARGET_DIR)/stage2.s,$(NATIVE_TARGET_DIR)/stage2.o)
+	$(call native_link,$(NATIVE_TARGET_DIR)/stage2.o,$(NATIVE_TARGET_DIR)/snl)
+	$(NATIVE_TARGET_DIR)/snl $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage3.s --target $(NATIVE_TARGET)
+	cmp $(NATIVE_TARGET_DIR)/stage2.s $(NATIVE_TARGET_DIR)/stage3.s
+	@echo "native snl ok for $(NATIVE_TARGET): $(NATIVE_TARGET_DIR)/snl"
 
 # Runs the VM and native self-host gates twice from separate source snapshots
 # and clean output trees, then records source/toolchain/artifact hashes.
