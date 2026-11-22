@@ -1,0 +1,122 @@
+name: Platform CLI builds
+
+# Fast path: every job uses the official snl v0.3.0 binary
+# (.github/actions/setup-snl), never a source build. Linux ARM64 has no
+# official snl, so the Linux x86_64 job emits its assembly and expected VM
+# results, and the ARM64 job only assembles, links and runs them.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'bootstrap/**'
+      - 'scripts/test-native-linux-aarch64.py'
+      - 'Makefile'
+      - '.gitattributes'
+      - '.github/actions/setup-snl/**'
+      - '.github/workflows/platform-cli.yml'
+  pull_request:
+    paths:
+      - 'bootstrap/**'
+      - 'scripts/test-native-linux-aarch64.py'
+      - 'Makefile'
+      - '.gitattributes'
+      - '.github/actions/setup-snl/**'
+      - '.github/workflows/platform-cli.yml'
+  workflow_dispatch:
+    inputs:
+      native_target:
+        description: 'Native target to build and run (the triple selects Mach-O or ELF); "all" runs every target this workflow supports'
+        type: choice
+        default: all
+        options:
+          - all
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - none
+
+# A newer push to the same PR or branch cancels the run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NATIVE_SELECTED_DARWIN: ${{ inputs.native_target == '' || inputs.native_target == 'all' || inputs.native_target == 'aarch64-apple-darwin' }}
+  NATIVE_SELECTED_LINUX: ${{ inputs.native_target == '' || inputs.native_target == 'all' || inputs.native_target == 'aarch64-unknown-linux-gnu' }}
+
+jobs:
+  cli:
+    name: ${{ matrix.platform }} CLI
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux x86_64
+            runner: ubuntu-24.04
+            shell: bash
+          - platform: macOS ARM64
+            runner: macos-15
+            shell: bash
+          - platform: Windows x86_64
+            runner: windows-2025
+            shell: msys2 {0}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: MINGW64
+          update: false
+          cache: true
+          install: make diffutils mingw-w64-x86_64-gcc
+      - id: snl
+        uses: ./.github/actions/setup-snl
+      - name: Build and test the Snova CLI
+        run: make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
+        env:
+          SNL: ${{ steps.snl.outputs.snl }}
+      - name: Native fixtures and snl for aarch64-apple-darwin
+        if: runner.os == 'macOS' && env.NATIVE_SELECTED_DARWIN == 'true'
+        run: make bootstrap-native-target NATIVE_TARGET=aarch64-apple-darwin
+        env:
+          SNL: ${{ steps.snl.outputs.snl }}
+      - name: Emit aarch64-unknown-linux-gnu assembly and VM results
+        if: runner.os == 'Linux' && env.NATIVE_SELECTED_LINUX == 'true'
+        run: make bootstrap-native-linux-aarch64-emit
+        env:
+          SNL: ${{ steps.snl.outputs.snl }}
+      - if: runner.os == 'Linux' && env.NATIVE_SELECTED_LINUX == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: linux-aarch64-emitted
+          path: |
+            build/bootstrap/native-aarch64-unknown-linux-gnu/compiler-joined.snl
+            build/bootstrap/native-aarch64-unknown-linux-gnu/stage1.s
+            build/bootstrap/native-aarch64-unknown-linux-gnu/fixtures/*.s
+            build/bootstrap/native-aarch64-unknown-linux-gnu/fixtures/expected.json
+          if-no-files-found: error
+          retention-days: 1
+
+  linux-aarch64-native:
+    name: Linux ARM64 native (ELF)
+    needs: cli
+    # Runs even if another platform failed; it needs only the Linux x86_64 artifact.
+    if: ${{ !cancelled() && (inputs.native_target == '' || inputs.native_target == 'all' || inputs.native_target == 'aarch64-unknown-linux-gnu') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: linux-aarch64-emitted
+          path: build/bootstrap/native-aarch64-unknown-linux-gnu
+      - name: Assemble, link and run the fixtures and the native snl
+        run: make bootstrap-native-linux-aarch64-run

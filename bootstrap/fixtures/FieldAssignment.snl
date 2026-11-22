@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+struct Box {
+    public var value: int
+}
+
+func main(): int {
+    let item = Box { value: 1 }
+    item.value = 42
+    return item.value
+}

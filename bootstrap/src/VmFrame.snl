@@ -1,0 +1,187 @@
+package snova.compiler.runtime
+
+// Runs the predecoded image iteratively. The current function's locals take
+// stack[base .. base + locals - 1] and the operand stack starts right above.
+// CALL saves the calling frame in vm.frames; RETURN restores it. Depth is
+// limited by vmFrameLimit(), independent of the host call stack. The most
+// frequent opcodes come first.
+func vmRun(vm: VmState, entryFunction: int): unit {
+    var functionIndex = entryFunction
+    var base = 0
+    var floor = vm.functionLocals[functionIndex]
+    vm.floor = floor
+    var instruction = vm.functionFirst[functionIndex]
+    var end = instruction + vm.functionLength[functionIndex]
+    while instruction < end {
+        let opcode = vm.instructionOpcode[instruction]
+        let operand = vm.instructionOperand[instruction]
+        instruction = instruction + 1
+        if opcode == 8 {
+            if vm.stackTop == vm.stack.len() { vmGrow(vm) }
+            cellCopy(vm.stack[vm.stackTop], vm.stack[base + operand])
+            vm.stackTop = vm.stackTop + 1
+        } else if opcode == 1 {
+            if vm.stackTop == vm.stack.len() { vmGrow(vm) }
+            cellSet(vm.stack[vm.stackTop], 1, operand)
+            vm.stackTop = vm.stackTop + 1
+        } else if opcode == 6 {
+            if vm.stackTop <= floor {
+                vmFail(vm, 1, 0)
+            } else {
+                vm.stackTop = vm.stackTop - 1
+            }
+        } else if opcode == 33 {
+            let calleeBase = vm.stackTop - vm.instructionSecondOperand[instruction - 1]
+            if vm.depth >= vmFrameLimit() {
+                vmFail(vm, 3, operand)
+            } else if calleeBase < floor {
+                vmFail(vm, 1, 0)
+            } else {
+                vmEnterLocals(vm, operand, vm.stackTop - calleeBase)
+                vmSaveFrame(vm, functionIndex, base, floor, instruction)
+                functionIndex = operand
+                base = calleeBase
+                floor = base + vm.functionLocals[functionIndex]
+                vm.floor = floor
+                instruction = vm.functionFirst[functionIndex]
+                end = instruction + vm.functionLength[functionIndex]
+            }
+        } else if opcode == 59 {
+            let argumentCount = vm.instructionSecondOperand[instruction - 1]
+            let calleeBase = vm.stackTop - argumentCount
+            if vm.depth >= vmFrameLimit() {
+                vmFail(vm, 3, operand)
+            } else if argumentCount < 1 || calleeBase < floor {
+                vmFail(vm, 1, 0)
+            } else if cellTag(vm.stack[calleeBase]) != 5 {
+                vmFail(vm, 2, opcode)
+            } else {
+                let target = vmResolveMethod(vm, cellValue(vm.stack[calleeBase]), operand)
+                if target < 0 {
+                    vmFail(vm, 12, operand)
+                } else if vm.functionArity[target] != argumentCount {
+                    vmFail(vm, 2, opcode)
+                } else {
+                    vmEnterLocals(vm, target, argumentCount)
+                    vmSaveFrame(vm, functionIndex, base, floor, instruction)
+                    functionIndex = target
+                    base = calleeBase
+                    floor = base + vm.functionLocals[functionIndex]
+                    vm.floor = floor
+                    instruction = vm.functionFirst[functionIndex]
+                    end = instruction + vm.functionLength[functionIndex]
+                }
+            }
+        } else if opcode == 31 || opcode == 32 {
+            if vm.stackTop <= floor {
+                vmFail(vm, 1, 0)
+            } else {
+                vm.stackTop = vm.stackTop - 1
+                let condition = cellValue(vm.stack[vm.stackTop])
+                if opcode == 31 && condition == 0 || opcode == 32 && condition != 0 { instruction = operand }
+            }
+        } else if opcode == 37 {
+            if vm.stackTop <= floor {
+                vmFail(vm, 1, 0)
+            } else {
+                cellLoadField(vm.stack[vm.stackTop - 1], vm, operand)
+            }
+        } else if opcode == 30 {
+            instruction = operand
+        } else if opcode == 9 {
+            if vm.stackTop <= floor {
+                vmFail(vm, 1, 0)
+            } else {
+                cellCopy(vm.stack[base + operand], vm.stack[vm.stackTop - 1])
+            }
+        } else if opcode == 40 {
+            if vm.stackTop - 2 < floor {
+                vmFail(vm, 1, 0)
+            } else {
+                cellLoadIndex(vm.stack[vm.stackTop - 2], vm.stack[vm.stackTop - 1], vm)
+                vm.stackTop = vm.stackTop - 1
+            }
+        } else if opcode >= 12 && opcode <= 16 || opcode >= 19 && opcode <= 29 {
+            if vm.stackTop - 2 < floor {
+                vmFail(vm, 1, 0)
+            } else if cellArith(vm.stack[vm.stackTop - 2], vm.stack[vm.stackTop - 1], opcode) {
+                vm.stackTop = vm.stackTop - 1
+            } else {
+                vmBinary(vm, opcode)
+            }
+        } else if opcode == 35 {
+            let resultTag = vmTopTag(vm)
+            let resultValue = vmPop(vm)
+            if vm.failed != 0 { return }
+            if vm.depth == 1 {
+                vm.returnTag = resultTag
+                vm.returnValue = resultValue
+                return
+            }
+            vm.depth = vm.depth - 1
+            frameRestore(vm.frames[vm.depth - 1], vm)
+            vm.stackTop = base
+            functionIndex = vm.resumeFunction
+            base = vm.resumeBase
+            floor = vm.resumeFloor
+            vm.floor = floor
+            instruction = vm.resumeInstruction
+            end = vm.functionFirst[functionIndex] + vm.functionLength[functionIndex]
+            vmPush(vm, resultTag, resultValue)
+        } else if opcode == 38 {
+            if vm.stackTop - 2 < floor {
+                vmFail(vm, 1, 0)
+            } else if cellStoreField(vm.stack[vm.stackTop - 1], vm.stack[vm.stackTop - 2], vm, operand) {
+                vm.stackTop = vm.stackTop - 1
+            } else {
+                vmFail(vm, 8, operand)
+            }
+        } else {
+            vmOther(vm, opcode, operand, vm.instructionSecondOperand[instruction - 1], functionIndex)
+        }
+        if vm.failed != 0 || vm.halted != 0 { return }
+    }
+    vmFail(vm, 7, functionIndex)
+}
+
+// Less frequent opcodes, outside the main loop.
+func vmOther(vm: VmState, opcode: int, operand: int, secondOperand: int, functionIndex: int): unit {
+    if opcode == 47 || opcode == 48 || opcode == 49 || opcode == 50 || opcode == 58 {
+        vmArrayOp(vm, opcode)
+    } else if opcode == 17 || opcode == 18 {
+        vmUnary(vm, opcode)
+    } else if opcode == 4 {
+        vmPush(vm, 2, operand)
+    } else if opcode == 5 {
+        vmPush(vm, 0, 0)
+    } else if opcode == 3 {
+        vmPush(vm, 3, vm.poolHandles[operand])
+    } else if opcode == 39 {
+        let arrayHandle = vmNewArray(vm, operand)
+        if vm.failed == 0 { vmPush(vm, 4, arrayHandle) }
+    } else if opcode == 36 {
+        let objectHandle = vmNewObject(vm, operand, secondOperand)
+        if vm.failed == 0 { vmPush(vm, 5, objectHandle) }
+    } else if opcode == 7 {
+        let tag = vmTopTag(vm)
+        if vm.failed == 0 { vmPush(vm, tag, cellValue(vm.stack[vm.stackTop - 1])) }
+    } else if opcode == 45 {
+        let tag = vmTopTag(vm)
+        let value = vmPop(vm)
+        if vm.failed == 0 { vmPrintValue(vm, tag, value, operand) }
+    } else if opcode == 57 {
+        vmRuntimeCall(vm, operand)
+    } else if opcode == 51 {
+        vmPush(vm, 6, 0)
+    } else if opcode == 46 {
+        vm.halted = 1
+    } else if opcode == 52 {
+        vmFail(vm, 5, functionIndex)
+    } else if opcode == 42 {
+        vmVariant(vm, operand, secondOperand)
+    } else if opcode == 43 {
+        vmIsVariant(vm, operand)
+    } else if opcode != 0 {
+        vmFail(vm, 4, opcode)
+    }
+}

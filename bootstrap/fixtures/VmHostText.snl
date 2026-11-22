@@ -1,0 +1,15 @@
+package bootstrap.fixture
+
+import builtin.io.console
+import builtin.runtime
+
+func main(): int {
+    let probe = Runtime.environment("SNOVA_FIXTURE_TEXT")
+    Console.printline(probe == "probe")
+    Console.printline(probe + "!" == "probe!")
+    var outputPath = Runtime.environment("SNOVA_FIXTURE_OUTPUT")
+    if outputPath == "" { outputPath = "build/bootstrap/vmHostText.txt" }
+    let written = Runtime.writeText(outputPath, probe)
+    Console.printline(written)
+    return Runtime.argumentCount()
+}
