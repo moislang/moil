@@ -33,7 +33,7 @@ Every row is backed by a fixture and a probe recorded in
 
 In native mode the Snova runtime is appended to the user source. Line
 numbers and the `invalidArgType` span stay relative to the user file
-(`user_end` / `sourceLine`); the Linux gate compiles `hello.snl` to
+(`user_end` / `sourceLine`); the Linux gate compiles `Hello.snl` to
 `.s` with `native` and rechecks that fixture in native mode.
 
 Known divergences, all recorded in [evidence.md](evidence.md):
