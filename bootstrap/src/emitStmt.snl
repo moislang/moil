@@ -203,6 +203,7 @@ func emitStmtAt(src: int[], bg: compilerState, cx: compilerContext, code: int[],
     }
     if k == 24 {
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
         let jelse = emitJump(code, 31)
         emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
         if bg.nd[nd] >= 0 {
@@ -219,6 +220,7 @@ func emitStmtAt(src: int[], bg: compilerState, cx: compilerContext, code: int[],
         let start = code.len()
         scopeLoopEnter(bg, cx, start, 1)
         emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+        if checkBoolCondition(src, bg, cx, bg.nb[nd], cx.expr_ty) != 0 { return }
         let jexit = emitJump(code, 31)
         emitStmt(src, bg, cx, code, fat, fb, bg.nc[nd])
         code.push(30)
