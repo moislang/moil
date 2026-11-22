@@ -2,7 +2,11 @@ package snova.library
 
 // Growable integer array with random-access writes and removal at the end.
 // The logical size is a field; cells past the size are kept and reused, so
-// removing and appending again does not allocate.
+// removing and appending again does not allocate. Instance API (ADR-0007,
+// SPEC-0001 slice 3): create it with `IntArray(cells, 0)`; cells are reached
+// through `readCell`/`assignCell`, which take the element as a typed
+// parameter, because neither the seed nor `snl build` v0.3.0 can call a
+// method on an array element or bind a class element to a local.
 class IntArray {
     public var cells: IntCell[]
     public var size: int
@@ -18,21 +22,21 @@ class IntArray {
     // Value at index; missing when the index is out of range.
     public method at(index: int, missing: int): int {
         if index < 0 || index >= size { return missing }
-        return IntCell.read(cells[index])
+        return readCell(cells[index])
     }
 
     // Writes value at index; returns false when the index is out of range.
     public method put(index: int, newValue: int): bool {
         if index < 0 || index >= size { return false }
-        IntCell.assign(cells[index], newValue)
+        assignCell(cells[index], newValue)
         return true
     }
 
     public method append(newValue: int): unit {
         if size < cells.len() {
-            IntCell.assign(cells[size], newValue)
+            assignCell(cells[size], newValue)
         } else {
-            cells.push(IntCell { value: newValue })
+            cells.push(IntCell(newValue))
         }
         size = size + 1
     }
@@ -41,13 +45,13 @@ class IntArray {
     public method removeLast(missing: int): int {
         if size == 0 { return missing }
         size = size - 1
-        return IntCell.read(cells[size])
+        return readCell(cells[size])
     }
 
     public method swap(first: int, second: int): unit {
-        let firstValue = IntCell.read(cells[first])
-        IntCell.assign(cells[first], IntCell.read(cells[second]))
-        IntCell.assign(cells[second], firstValue)
+        let firstValue = readCell(cells[first])
+        assignCell(cells[first], readCell(cells[second]))
+        assignCell(cells[second], firstValue)
     }
 
     // Copies the logical contents into a new plain array.
@@ -55,9 +59,17 @@ class IntArray {
         var result: int[] = []
         var index = 0
         while index < size {
-            result.push(IntCell.read(cells[index]))
+            result.push(readCell(cells[index]))
             index = index + 1
         }
         return result
+    }
+
+    private method readCell(cell: IntCell): int {
+        return cell.read()
+    }
+
+    private method assignCell(cell: IntCell, newValue: int): unit {
+        cell.assign(newValue)
     }
 }

@@ -76,8 +76,12 @@ not support `static` or annotations.
   the compiler is built natively (N3). The migration is incremental:
   stateless types become fieldless classes created with `Type()` whose
   methods are instance methods; sibling calls drop the type qualifier.
-  `BinarySearch`, `LinearSearch` and `Sorting` are migrated, and
-  `make bootstrap-library-root` builds their fixtures with `snl build`.
+  `BinarySearch`, `LinearSearch`, `Sorting`, `IntCell` and `IntArray` are
+  migrated, and `make bootstrap-library-root` builds their fixtures with
+  `snl build`. Types that hold class elements in arrays (`IntArray`, and
+  `IntMap` for its bucket heads) reach an element by passing it to a private
+  sibling method with a typed parameter, which then calls the element's
+  instance methods; `IntCell` is created with the positional `IntCell(value)`.
   The first stage builds a staged project (`build/bootstrap/root-project/`)
   that holds `bootstrap/src/` plus the migrated modules. The
   slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/snovalang/snl/pull/5)).
