@@ -1,0 +1,13 @@
+package bootstrap.fixture
+
+trait ProcessorArchitecture {
+    method code(): int
+}
+
+class UnknownArchitecture {
+}
+
+impl ProcessorArchitecture for UnknownArchitecture {
+}
+
+func main(): int { return 0 }

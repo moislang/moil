@@ -1,0 +1,25 @@
+package snova.compiler.backend
+
+interface NativeToolchain {
+    method assembler(): string
+    method linker(): string
+    method canEmitNative(): bool
+}
+
+class AppleNativeToolchain implements NativeToolchain {
+    method assembler(): string { return "as -arch arm64" }
+    method linker(): string { return "ld -arch arm64 -lSystem" }
+    method canEmitNative(): bool { return true }
+}
+
+class GnuNativeToolchain implements NativeToolchain {
+    method assembler(): string { return "as --64" }
+    method linker(): string { return "ld -m elf_x86_64" }
+    method canEmitNative(): bool { return false }
+}
+
+class GnuAarch64NativeToolchain implements NativeToolchain {
+    method assembler(): string { return "as" }
+    method linker(): string { return "ld -static -m aarch64linux" }
+    method canEmitNative(): bool { return true }
+}

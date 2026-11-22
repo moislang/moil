@@ -1,0 +1,81 @@
+package snova.compiler.runtime
+
+func codeU32(data: int[], offset: int): int {
+    return data[offset] + data[offset + 1] * 256 +
+        data[offset + 2] * 65536 + data[offset + 3] * 16777216
+}
+
+func opcodeWidth(op: int): int {
+    if op == 1 || op == 2 || op == 33 || op == 34 || op == 36 || op == 42 ||
+        op == 53 || op == 54 || op == 55 || op == 57 || op == 59 { return 8 }
+    if op == 3 || op == 8 || op == 9 || op == 10 || op == 11 ||
+        op == 30 || op == 31 || op == 32 || op == 37 || op == 38 ||
+        op == 39 || op == 43 || op == 44 { return 4 }
+    if op == 4 || op == 45 { return 1 }
+    if op >= 0 && op <= 59 { return 0 }
+    return -1
+}
+
+func validRuntimeCall(callId: int, argc: int): int {
+    if callId == 1 || callId == 6 {
+        if argc == 0 { return 1 }
+        return 0
+    }
+    if callId == 2 || callId == 3 || callId == 5 || callId == 7 || callId == 8 {
+        if argc == 1 { return 1 }
+        return 0
+    }
+    if callId == 4 && argc == 2 { return 1 }
+    return 0
+}
+
+public func validateCode(data: int[], start: int, length: int, stringCount: int, arities: int[], localCount: int): int {
+    if length == 0 || localCount > 256 { return 0 }
+    var starts: int[] = []
+    var at = 0
+    var lastOp = 0
+    while at < length {
+        let op = data[start + at]
+        let width = opcodeWidth(op)
+        if width < 0 || width > length - at - 1 { return 0 }
+        starts.push(1)
+        var i = 0
+        while i < width {
+            starts.push(0)
+            i = i + 1
+        }
+        lastOp = op
+        at = at + 1 + width
+    }
+    if lastOp != 35 && lastOp != 46 && lastOp != 52 && lastOp != 30 { return 0 }
+    at = 0
+    while at < length {
+        let op = data[start + at]
+        let width = opcodeWidth(op)
+        let next = at + 1 + width
+        var first = 0
+        var second = 0
+        if width >= 4 { first = codeU32(data, start + at + 1) }
+        if width == 8 { second = codeU32(data, start + at + 5) }
+        if (op == 3 || op == 36 || op == 42 || op == 43) && first >= stringCount { return 0 }
+        if (op == 8 || op == 9) && first >= localCount { return 0 }
+        if op == 33 || op == 53 || op == 54 || op == 55 {
+            if first >= arities.len() || second > 256 { return 0 }
+            if second != arities[first] { return 0 }
+            if (op == 53 || op == 55) && second > 8 { return 0 }
+        }
+        if op == 57 && validRuntimeCall(first, second) == 0 { return 0 }
+        if op == 59 && (first >= stringCount || second == 0 || second > 256) { return 0 }
+        if op == 30 || op == 31 || op == 32 {
+            var displacement = first
+            if displacement >= 2147483648 { displacement = displacement - 4294967296 }
+            let target = next + displacement
+            if target < 0 || target >= length { return 0 }
+            if starts[target] == 0 { return 0 }
+        }
+        if (op == 4 || op == 45) && data[start + at + 1] > 1 { return 0 }
+        if op == 10 || op == 11 || op == 34 || op == 41 || op == 44 { return 0 }
+        at = next
+    }
+    return 1
+}

@@ -1,0 +1,29 @@
+package bootstrap.fixture
+
+trait ProcessorArchitecture {
+    method code(): int
+}
+
+class Aarch64ProcessorArchitecture {
+}
+
+class X64ProcessorArchitecture {
+}
+
+impl ProcessorArchitecture for Aarch64ProcessorArchitecture {
+    method code(): int { return 64 }
+}
+
+impl ProcessorArchitecture for X64ProcessorArchitecture {
+    method code(): int { return 86 }
+}
+
+func selectArchitecture(useAarch64: bool): ProcessorArchitecture {
+    if useAarch64 { return Aarch64ProcessorArchitecture() }
+    return X64ProcessorArchitecture()
+}
+
+func main(): int {
+    let architecture: ProcessorArchitecture = selectArchitecture(false)
+    return architecture.code()
+}

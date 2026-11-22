@@ -7,9 +7,8 @@
 
 The compiler is to be built with object-oriented design: types instead of
 name prefixes, with each former prefix (`snova`, `snovaRuntime`,
-`snovaPrimitive`) becoming a type. The reference compiler already models its
-builtin runtime as `class Runtime` with `@Native public static method`
-declarations (`../snovac/builtin/runtime`).
+`snovaPrimitive`) becoming a type. The builtin runtime is represented as
+`class Runtime` with `@Native public static method` declarations.
 
 Compiler source must be accepted by two compilers: the Snova seed (fixed
 point) and `snl build` v0.3.0, the transitional root that produces the
@@ -60,10 +59,11 @@ not support `static` or annotations.
    The native backend follows this model: `NativeImage`, `NativeRoles`,
    `NativeAssembly`, `NativeSlot`, `NativeOwnership`, `NativeValueEmitter`,
    `NativeInstructionEmitter`, `NativeBoundary` and `NativeBackend`.
-4. **Naming.** Types are PascalCase, as in snovac (`Runtime`, `Box`).
-   Functions, methods, variables and source files stay camelCase. Existing
-   lowercase structs of the frontend keep their names until they are
-   migrated.
+4. **Naming.** Types and source files are PascalCase, as in snovac
+   (`Runtime`, `Box`, `Runtime.snl`). Functions, methods and variables stay
+   camelCase. Existing
+   lowercase frontend type names are legacy names and must be migrated to
+   PascalCase as their modules are touched.
 
 ## Consequences
 
