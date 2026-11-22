@@ -63,14 +63,14 @@ jobs:
             runner: windows-2025
             shell: msys2 {0}
             msystem: MINGW64
-            packages: make git python mingw-w64-x86_64-gcc
+            packages: make git python diffutils mingw-w64-x86_64-gcc
             seed_cc: gcc
             seed_cli: seed/build/snl.exe
           - platform: Windows ARM64
             runner: windows-11-arm
             shell: msys2 {0}
             msystem: CLANGARM64
-            packages: make git python mingw-w64-clang-aarch64-clang
+            packages: make git python diffutils mingw-w64-clang-aarch64-clang
             seed_cc: clang
             seed_cli: seed/build/snl.exe
     runs-on: ${{ matrix.runner }}

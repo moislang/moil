@@ -32,8 +32,13 @@ class NativeValueEmitter {
 
     private method poolAddress(output: NativeAssembly, target: string, poolIndex: int): unit {
         let pool = "l_snova_pool_" + output.decimal(poolIndex)
-        output.line("adrp " + target + ", " + pool + "@PAGE")
-        output.line("add " + target + ", " + target + ", " + pool + "@PAGEOFF")
+        if output.targetKind == 1 {
+            output.line("adrp " + target + ", " + pool + "@PAGE")
+            output.line("add " + target + ", " + target + ", " + pool + "@PAGEOFF")
+        } else {
+            output.line("adrp " + target + ", " + pool)
+            output.line("add " + target + ", " + target + ", :lo12:" + pool)
+        }
     }
 
     // IS_VARIANT (43): the pool interns names by content, so the subject
