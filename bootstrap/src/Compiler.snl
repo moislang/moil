@@ -232,6 +232,27 @@ func isImageBytes(data: int[]): bool {
     return data[0] == 83 && data[1] == 78 && data[2] == 66 && data[3] == 67
 }
 
+func printUsage(): unit {
+    Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native [<target-triple>] | snl <input.snl> <output.s> [native] --target <target-triple> | snl <image.snbc> [run [args...]]")
+    Console.printline("targets: aarch64-apple-darwin (Mach-O, default), aarch64-unknown-linux-gnu (ELF), x86_64-unknown-linux-gnu (ELF, backend pending)")
+}
+
+// Native mode arguments after <input> <output>. Returns the argument index
+// of the target triple, 0 when none is given (default target), or -2 for
+// a malformed command line. Accepted forms:
+//   native | native <triple> | native --target <triple> | --target <triple>
+func nativeTargetIndex(resolver: NativeTargetResolver, scratchPath: string, argc: int): int {
+    let mode = resolver.optionKind(Runtime.argument(2), scratchPath)
+    if mode == 1 {
+        if argc == 3 { return 0 }
+        if argc == 4 && resolver.optionKind(Runtime.argument(3), scratchPath) != 2 { return 3 }
+        if argc == 5 && resolver.optionKind(Runtime.argument(3), scratchPath) == 2 { return 4 }
+        return -2
+    }
+    if mode == 2 && argc == 4 { return 3 }
+    return -2
+}
+
 func main(): int {
     let argc = cliArgumentCount()
     if argc == 1 {
@@ -243,7 +264,7 @@ func main(): int {
         return 0
     }
     if argc != 0 && argc < 2 {
-        Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native [target-triple: pending] | snl <image.snbc> [run [args...]]")
+        printUsage()
         return 2
     }
     var src: int[] = []
@@ -267,12 +288,17 @@ func main(): int {
         Console.printline("invalid generated SnBC image")
         return 1
     }
-    if argc == 3 || argc == 4 {
+    if argc >= 3 {
         let resolver = NativeTargetResolver()
+        let scratchPath = imagePath() + ".target.tmp"
+        let targetIndex = nativeTargetIndex(resolver, scratchPath, argc)
+        if targetIndex == -2 {
+            printUsage()
+            return 2
+        }
         var targetKind = 1
-        if argc == 4 {
-            let scratchPath = imagePath() + ".target.tmp"
-            targetKind = resolver.status(Runtime.argument(3), scratchPath)
+        if targetIndex > 0 {
+            targetKind = resolver.status(Runtime.argument(targetIndex), scratchPath)
             if targetKind == 0 {
                 Console.printline(resolver.diagnostic(targetKind))
                 return 1

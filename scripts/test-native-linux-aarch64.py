@@ -39,6 +39,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--compiler", required=True, type=Path)
     parser.add_argument("--build-dir", required=True, type=Path)
+    parser.add_argument("--target", default="aarch64-unknown-linux-gnu")
     args = parser.parse_args()
     fixture_dir = Path("bootstrap/fixtures")
     args.build_dir.mkdir(parents=True, exist_ok=True)
@@ -52,7 +53,7 @@ def main() -> int:
 
         run([str(args.compiler), str(source), str(image)])
         vm_result = run([str(args.compiler), str(image), "run", "alpha", "beta"], expected_status=None)
-        run([str(args.compiler), str(source), str(assembly), "native", "aarch64-unknown-linux-gnu"])
+        run([str(args.compiler), str(source), str(assembly), "--target", args.target])
         run(["as", str(assembly), "-o", str(object_file)])
         run(["ld", "-static", "-e", "_start", str(object_file), "-o", str(executable)])
         native_result = run([str(executable), "alpha", "beta"], expected_status=None)
