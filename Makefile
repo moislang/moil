@@ -219,16 +219,16 @@ bootstrap-vm: bootstrap-build
 		echo "vm differential ok: $$fixture (exit $$vmExit)"; \
 	done
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmEquality.snl $(BUILD_DIR)/vmEquality.snbc
-	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr '\n' ' ')" = "true true true true true "
+	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.snl $(BUILD_DIR)/vmHostText.snbc
-	test "$$( SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra | tr '\n' ' ')" = "true true true "
-	test "$$(cat $(BUILD_DIR)/vmHostText.txt)" = "probe"
+	test "$$( SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra | tr -d '\r' | tr '\n' ' ')" = "true true true "
+	test "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.txt)" = "probe"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmStackOverflow.snl $(BUILD_DIR)/vmStackOverflow.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmStackOverflow.snbc run > $(BUILD_DIR)/vmStackOverflow.vm.txt; test "$$?" -eq 70
 	grep -Fqx "runtime error: Stack overflow" $(BUILD_DIR)/vmStackOverflow.vm.txt
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmVariantValue.snl $(BUILD_DIR)/vmVariantValue.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.snbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
-	test "$$(tr '\n' ' ' < $(BUILD_DIR)/vmVariantValue.vm.txt)" = "true false true Red Amber "
+	test "$$(tr -d '\r' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmMatchNoArm.snl $(BUILD_DIR)/vmMatchNoArm.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
 	grep -Fqx "runtime error: bodyless routine trapped" $(BUILD_DIR)/vmMatchNoArm.vm.txt
@@ -272,8 +272,8 @@ bootstrap-native: bootstrap-build
 	@fixture=VmHostText; printf stale > $(BUILD_DIR)/vmHostText.txt; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
-		test "$$(tr '\n' ' ' < $(BUILD_DIR)/$$fixture.native.txt)" = "true true true " || exit 1; \
-		test "$$(cat $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
+		test "$$(tr -d '\r' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
+		test "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
 		echo "native host text ok: $$fixture (exit 1)"
 	@for fixture in $(NATIVE_OWNERSHIP_FIXTURES); do \
 		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native alpha beta 2>&1 > /dev/null | grep -q "live blocks 0, live bytes 0" || { echo "$$fixture: memory still live at exit"; exit 1; }; \
