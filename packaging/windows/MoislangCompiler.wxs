@@ -22,8 +22,8 @@
     <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Moislang Compiler is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/moislang/snl" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/moislang/snl/issues" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/moislang/moil" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/moislang/moil/issues" />
     <Property Id="ARPNOMODIFY" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">

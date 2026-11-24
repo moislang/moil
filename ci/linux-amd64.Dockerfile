@@ -13,7 +13,7 @@ RUN apt-get update \
         ca-certificates=20260816ubuntu0.24.04.2 \
         make=4.3-4.1build2 \
         python3=3.12.3-0ubuntu2.1 \
-    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/moislang/snl/releases/download/snl-seed-${SNL_VERSION}/${SNL_ARCHIVE}', '/tmp/snl.tar.gz')" \
+    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/moislang/moil/releases/download/snl-seed-${SNL_VERSION}/${SNL_ARCHIVE}', '/tmp/snl.tar.gz')" \
     && echo "${SNL_SHA256}  /tmp/snl.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/snl.tar.gz -C /usr/local bin/snl builtin \
     && mv /usr/local/bin/snl /usr/local/bin/moil \

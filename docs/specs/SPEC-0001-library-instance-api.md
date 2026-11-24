@@ -1,8 +1,8 @@
 # SPEC-0001 — Instance-based library API
 
 - **Status:** Proposed; linking and first-stage visibility decided; slice 1 merged as
-  [snl#3](https://github.com/moislang/snl/pull/3) and slice 2 merged as
-  [snl#10](https://github.com/moislang/snl/pull/10)
+  [snl#3](https://github.com/moislang/moil/pull/3) and slice 2 merged as
+  [snl#10](https://github.com/moislang/moil/pull/10)
 - **Date:** 2026-11-21
 - **Phase:** P4, incremental growth
 - **Related:** [ADR-0007](../decisions/ADR-0007-object-model.md) (object
@@ -49,7 +49,7 @@ executor and natively.
     `MOISL0251` (move out of an array element or field). The seed rejects
     it one statement later, with `SNV3001` on the first use of the moved
     local, whose type is unknown; the gap inventory in
-    [snl#8](https://github.com/moislang/snl/pull/8) explains this and fixes
+    [snl#8](https://github.com/moislang/moil/pull/8) explains this and fixes
     the `SNV3001` line, which used to point at the end of the input.
   - A method call through a local alias of a field is accepted by
     `moil check` and by the seed, but `moil build` fails with `MOISL0400`, the
@@ -71,7 +71,7 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    compiler does not use a package import for the library, because general
    import resolution in the seed has no owner in the backlog.
 2. **How the first stage sees the library** (decided by Inhegas, based on
-   Mike's probe in [snl#6](https://github.com/moislang/snl/pull/6), branch
+   Mike's probe in [snl#6](https://github.com/moislang/moil/pull/6), branch
    `mike/probe-library-root-visibility`). `moil build --project bootstrap/src`
    does not see `bootstrap/library/`, and `moil` v0.3.0 rejects several
    project roots or input files (`MOISL0050 package not found`). It also

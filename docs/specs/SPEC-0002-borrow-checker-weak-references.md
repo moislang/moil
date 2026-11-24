@@ -37,12 +37,12 @@
 - Type checks live inside the emitters (`EmitExpr.snl`, `Emit.snl`;
   `SNV4001`–`SNV4003` printed by `Compiler.snl`). There is no separate
   semantic pass on master. Irineu's open PRs add `SNV4004` (non-exhaustive
-  `match`, [snl#4](https://github.com/moislang/snl/pull/4), in its own
+  `match`, [snl#4](https://github.com/moislang/moil/pull/4), in its own
   `MatchCheck.snl` called from lowering), `SNV4005` (assignment to an
-  immutable binding, [snl#7](https://github.com/moislang/snl/pull/7)) and
-  `SNV4006` (argument count, [snl#9](https://github.com/moislang/snl/pull/9)).
+  immutable binding, [snl#7](https://github.com/moislang/moil/pull/7)) and
+  `SNV4006` (argument count, [snl#9](https://github.com/moislang/moil/pull/9)).
 - The seed's reaction to a move out of an array element is understood
-  ([snl#8](https://github.com/moislang/snl/pull/8), gap inventory): for
+  ([snl#8](https://github.com/moislang/moil/pull/8), gap inventory): for
   `let cell = cells[0]` the reference reports `MOISL0251` at the index
   expression, while the seed fails one statement later with `SNV3001`,
   because the moved local has an unknown type. `SNV5002` closes that gap.
@@ -96,7 +96,7 @@ Two new errors, each with the binding's byte span, in the format of
 
 The single source for the correspondence between seed codes and
 `moil check` codes is `docs/roadmap/diagnostics.md`, created by
-[snl#4](https://github.com/moislang/snl/pull/4) and not yet on master. Its
+[snl#4](https://github.com/moislang/moil/pull/4) and not yet on master. Its
 header already reserves `SNV5xxx` for this checker. B1 and B2 each add their
 row to that table when they land; this specification keeps no table of its
 own. Mirrored excerpt, for reading only (the table in `diagnostics.md`
@@ -179,7 +179,7 @@ No new syntax in B1–B2.
 
 ## Reference borrow codes
 
-[snl#8](https://github.com/moislang/snl/pull/8) read the meanings in
+[snl#8](https://github.com/moislang/moil/pull/8) read the meanings in
 `moisc` v0.3.0 (`src/sema/borrow.h`): `MOISL0240` use after move, `0241`
 use after drop, `0242` exclusive borrow conflict, `0243` mutation while
 shared, `0244` send while borrowed, `0245` null dereference, `0246` static

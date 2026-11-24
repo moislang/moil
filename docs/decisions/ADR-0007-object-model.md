@@ -84,7 +84,7 @@ not support `static` or annotations.
   instance methods; `IntCell` is created with the positional `IntCell(value)`.
   The first stage builds a staged project (`build/bootstrap/root-project/`)
   that holds `bootstrap/src/` plus the migrated modules. The
-  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/moislang/snl/pull/5)).
+  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/moislang/moil/pull/5)).
 - Once the native backend builds the compiler (N3), the root's restrictions
   stop applying, and the rules can be relaxed through a new ADR.
 

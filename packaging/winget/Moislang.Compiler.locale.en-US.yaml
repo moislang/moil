@@ -5,11 +5,11 @@ PackageVersion: {{VERSION}}
 PackageLocale: en-US
 Publisher: Moislang
 PublisherUrl: https://github.com/moislang
-PublisherSupportUrl: https://github.com/moislang/snl/issues
+PublisherSupportUrl: https://github.com/moislang/moil/issues
 PackageName: Moislang Compiler
-PackageUrl: https://github.com/moislang/snl
+PackageUrl: https://github.com/moislang/moil
 License: Apache-2.0
-LicenseUrl: https://github.com/moislang/snl/blob/master/LICENSE
+LicenseUrl: https://github.com/moislang/moil/blob/master/LICENSE
 ShortDescription: Moislang compiler written in Moislang (experimental).
 Description: >-
   moil compiles a restricted subset of Moislang to SnBC images and runs them.
@@ -20,6 +20,6 @@ Tags:
   - compiler
   - programming-language
   - moislang
-ReleaseNotesUrl: https://github.com/moislang/snl/releases/tag/v{{VERSION}}
+ReleaseNotesUrl: https://github.com/moislang/moil/releases/tag/v{{VERSION}}
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0

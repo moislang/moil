@@ -200,8 +200,10 @@ jobs:
           if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             prerelease=""
             case "$VERSION" in *-*) prerelease="--prerelease";; esac
-            gh release create "$tag" -R "$GITHUB_REPOSITORY" $prerelease --verify-tag \
-              --title "Moislang Compiler $VERSION" --notes "Windows x64 installer: moil-$VERSION-x86_64.msi"
+            if ! gh release create "$tag" -R "$GITHUB_REPOSITORY" $prerelease --verify-tag \
+              --title "Moislang Compiler $VERSION" --notes "Windows x64 installer: moil-$VERSION-x86_64.msi"; then
+              gh release view "$tag" -R "$GITHUB_REPOSITORY" > /dev/null
+            fi
           fi
           gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber dist/*.msi dist/*.sha256
 

@@ -386,7 +386,7 @@ This file started with no technical results. Entries must record observed facts,
 
 - Observation: `moislang/moisc` became private (`gh repo view moislang/moisc` reports `PRIVATE`); its release URLs for `v0.3.0` return 404, so `setup-snl` failed in CI with `curl: (22) ... 404`.
 - Change: the release `snl-seed-v0.3.0` of this repository holds all five archives. The official `darwin-aarch64`, `linux-x86_64` and `windows-x86_64` archives were downloaded before the change, checked against the pinned SHA-256 and uploaded unchanged as `snl-v0.3.0-<platform>`; `darwin-x86_64` (`4bea8c61…a3f7d7`) and `windows-aarch64` (`da8fcdf6…a089066`) were built by `publish-snl-seed.yml` from the commit of the official tag (`590a490d`). `setup-snl`, the Linux x86_64 Docker image and `extended-platforms.yml` download only from that release.
-- Probe: all five URLs `https://github.com/moislang/snl/releases/download/snl-seed-v0.3.0/snl-v0.3.0-<platform>` return 200 without authentication; the `setup-snl` script run locally for macOS ARM64 downloads, verifies and runs `moil v0.3.0`.
+- Probe: all five URLs `https://github.com/moislang/moil/releases/download/snl-seed-v0.3.0/snl-v0.3.0-<platform>` return 200 without authentication; the `setup-snl` script run locally for macOS ARM64 downloads, verifies and runs `moil v0.3.0`.
 - Consequence: building a new seed version needs the `SNL_SOURCE_TOKEN` secret (read access to the private source); CI does not.
 
 ## 2026-11-21 — borrow checker B1/B2 (SNV5001, SNV5002)
