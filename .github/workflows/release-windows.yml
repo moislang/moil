@@ -86,7 +86,7 @@ jobs:
       - name: Stage files and check DLL dependencies
         run: |
           mkdir -p dist/stage
-          cp build/bootstrap/moil.exe dist/stage/moil.exe
+          cp build/bootstrap/mois-bootstrap.exe dist/stage/moil.exe
           cp LICENSE dist/stage/LICENSE.txt
           cp NOTICE dist/stage/NOTICE.txt
           # The MSI ships only moil.exe: every imported DLL must come with Windows.
