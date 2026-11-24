@@ -136,6 +136,28 @@ func typesClash(want: int, got: int): bool {
     return true
 }
 
+func implementsContract(src: int[], bg: CompilerState, contractType: int, concreteType: int): bool {
+    if contractType <= 0 || concreteType <= 0 { return false }
+    let contract = contractType - 1
+    let concrete = concreteType - 1
+    if contract >= bg.st_kind.len() || concrete >= bg.st_kind.len() { return false }
+    if bg.st_kind[concrete] != 1 || (bg.st_kind[contract] != 2 && bg.st_kind[contract] != 4) { return false }
+    var implementation = 0
+    while implementation < bg.impl_owner.len() {
+        if bg.impl_owner[implementation] == concrete {
+            let implemented = findStruct(src, bg, bg.impl_ns[implementation], bg.impl_nl[implementation])
+            if implemented == contract { return true }
+        }
+        implementation = implementation + 1
+    }
+    return false
+}
+
+func incompatibleTypes(src: int[], bg: CompilerState, want: int, got: int): bool {
+    if typesClash(want, got) == false { return false }
+    return implementsContract(src, bg, want, got) == false
+}
+
 func paramTypeAt(bg: CompilerState, fn: int, index: int): int {
     var i = 0
     var seen = 0
@@ -169,7 +191,7 @@ func fieldTypeByIndex(bg: CompilerState, st: int, index: int): int {
 func checkArgType(src: int[], bg: CompilerState, cx: CompilerContext, want: int, got: int, start: int): int {
     if cx.failed != 0 { return 1 }
     if cx.user_end > 0 && start >= cx.user_end { return 0 }
-    if typesClash(want, got) {
+    if incompatibleTypes(src, bg, want, got) {
         typeFail(src, cx, 10, start)
         return 1
     }
@@ -370,7 +392,7 @@ func callResultType(bg: CompilerState, fn: int): int {
 func checkReturnType(src: int[], bg: CompilerState, cx: CompilerContext, nd: int, got: int): int {
     if cx.failed != 0 { return 1 }
     if cx.ret_ty == 0 { return 0 }
-    if typesClash(cx.ret_ty, got) {
+    if incompatibleTypes(src, bg, cx.ret_ty, got) {
         var start = tokenStart(bg, bg.nd[nd])
         if start == 0 { start = exprStart(bg, bg.nb[nd]) }
         typeFail(src, cx, 14, start)
