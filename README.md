@@ -36,4 +36,18 @@ This repository develops a Moislang compiler written in Mois. The compiler is th
 
 Tagged releases publish `moil` CLI archives for Linux x86_64, macOS x86_64 and ARM64, and Windows x86_64 and ARM64. Download the matching archive from GitHub Releases; each includes the CLI, license, supported subset and known limitations. These packages use the bootstrap VM and do not imply native-backend support for every target. Windows x86_64 also gets an MSI, prepared for winget as `Moislang.Compiler` ([ADR-0010](docs/decisions/ADR-0010-windows-msi-and-winget.md), proposed). Once a release is published and accepted by winget, install it with `winget install Moislang.Compiler`; the MSI installs `moil.exe` in `%ProgramFiles%\Moislang\Compiler\bin` and adds it to `PATH`. `.github/workflows/release-windows.yml` builds, installs, runs and uninstalls the MSI on every packaging change; a `vX.Y.Z[-pre]` tag attaches it to the release and submits it to winget only when the `WINGET_TOKEN` secret is configured.
 
+For a shell install, the scripts select the newest GitHub release, verify the SHA-256 archive checksum and install `moil` for the current OS and architecture:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/moislang/moil/master/scripts/install.sh | sh
+```
+
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/moislang/moil/master/scripts/install.ps1 | iex
+```
+
+Unix installs to `~/.local/bin` by default; Windows installs to `%LOCALAPPDATA%\Moislang\bin` and adds that directory to the user `PATH`. Set `MOIL_VERSION` to pin a release or `MOIL_INSTALL_DIR` to choose another directory. Linux ARM64 packages are not published yet.
+
 `make bootstrap-fixed-point` builds the multi-file project, compiles its own sources and compares two consecutive SnBC images. `SourceJoin.snl`, inside the compiler, assembles the compiler's own sources. The Mois executor runs the compiler's own image (`make bootstrap-vm-self`). `make bootstrap-native-self` builds the compiler as a native executable and checks two successive assembly fixed points on the qualified host. `make bootstrap-seed-fixed-point` runs the committed SnBC seed (`bootstrap/seed/compiler.snbc`) with `moil run-snbc` only, checks the fixed point of that chain and compares its first stage with the `moil build` path ([ADR-0009](docs/decisions/ADR-0009-committed-snbc-seed.md), proposed). The compiler CLI still comes from `moil build`, and the seed chain still runs on the `moil` C VM; native assembly and linking use the host `as`/`ld`. The native backend is currently qualified only for `aarch64-apple-darwin`, and the compiler is not a drop-in replacement for `moisc`. See [ADR-0005](docs/decisions/ADR-0005-native-backend.md), the [evidence log](docs/roadmap/evidence.md), and the [subset matrix](docs/roadmap/subset.md).
