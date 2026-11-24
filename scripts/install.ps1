@@ -3,15 +3,19 @@ $ErrorActionPreference = 'Stop'
 $Repository = 'moislang/moil'
 $Version = $env:MOIL_VERSION
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=1"
-    if ($Release.Count -gt 0) {
-        $Version = $Release[0].tag_name -replace '^v', ''
+    $Releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=100"
+    $LatestVersion = $Releases | Where-Object { $_.tag_name -match '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?$' } | Select-Object -First 1
+    if ($null -ne $LatestVersion) {
+        $Version = $LatestVersion.tag_name -replace '^v', ''
     }
 }
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    throw 'Could not determine the latest Moil release. Set $env:MOIL_VERSION and try again.'
+    throw 'No Moil CLI release is available. Wait for a release or set $env:MOIL_VERSION to an existing version.'
 }
 $Version = $Version -replace '^v', ''
+if ($Version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?$') {
+    throw "Invalid Moil version: $Version"
+}
 
 $Architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
 $Platform = switch ($Architecture) {

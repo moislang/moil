@@ -2,18 +2,26 @@
 set -eu
 
 repo="moislang/moil"
-api="https://api.github.com/repos/$repo/releases?per_page=1"
+api="https://api.github.com/repos/$repo/releases?per_page=100"
 version="${MOIL_VERSION:-}"
 install_dir="${MOIL_INSTALL_DIR:-$HOME/.local/bin}"
 
 if [ -z "$version" ]; then
-    version=$(curl -fsSL "$api" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"v\([^"]*\)".*/\1/p' | head -n 1)
+    version=$(curl -fsSL "$api" \
+        | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$' \
+        | sed 's/^v//' \
+        | head -n 1)
 fi
 if [ -z "$version" ]; then
-    echo "Could not determine the latest Moil release. Set MOIL_VERSION and try again." >&2
+    echo "No Moil CLI release is available. Wait for a release or set MOIL_VERSION to an existing version." >&2
     exit 1
 fi
 version=${version#v}
+if ! printf '%s' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'; then
+    echo "Invalid Moil version: $version" >&2
+    exit 1
+fi
 
 os=$(uname -s)
 arch=$(uname -m)
