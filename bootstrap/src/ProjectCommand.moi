@@ -1,0 +1,138 @@
+package mois.compiler
+
+import builtin.runtime
+import builtin.io.console
+import mois.compiler.backend
+import mois.compiler.project
+
+// Project commands (SPEC-0003):
+//   moil run <entry> [--root-package <package>] [args...]
+//   moil build <entry> [--root-package <package>] [-o <output.mlbc>]
+//   moil index <entry> [--root-package <package>]
+// The entry is a `.moi` file, a qualified type name resolved through
+// ./moislang.properties, or, for `index`, a project folder. The entry file
+// is the program entry; no `--main` exists. Resolution, closure and joining
+// are Mois code in the `mois.compiler.project` package.
+class ProjectCommand {
+    // Exit status of a project command, or -1 when argument 0 does not name
+    // one.
+    public method dispatch(resolver: NativeTargetResolver, scratchPath: string, argc: int): int {
+        if argc < 1 { return -1 }
+        let command = resolver.optionKind(Runtime.argument(0), scratchPath)
+        if command < 5 || command > 7 { return -1 }
+        if argc < 2 {
+            printCommandUsage()
+            return 2
+        }
+        let text = ProjectText()
+        let entry = text.bytesOf(Runtime.argument(1))
+        var rootFlag: int[] = []
+        var output: int[] = []
+        var index = 2
+        var reading = true
+        while reading && index + 1 < argc {
+            let option = resolver.optionKind(Runtime.argument(index), scratchPath)
+            if option == 8 && rootFlag.len() == 0 {
+                rootFlag = text.bytesOf(Runtime.argument(index + 1))
+                index = index + 2
+            } else if option == 9 && command == 6 && output.len() == 0 {
+                output = text.bytesOf(Runtime.argument(index + 1))
+                index = index + 2
+            } else {
+                reading = false
+            }
+        }
+        if command != 5 && index < argc {
+            printCommandUsage()
+            return 2
+        }
+        return execute(command, entry, rootFlag, output, index, text)
+    }
+
+    private method execute(command: int, entry: int[], rootFlag: int[], output: int[], argumentBase: int, text: ProjectText): int {
+        var reportPath: int[] = []
+        let report = ProjectReport(0, 0, 0, 0, reportPath)
+        var pool: int[] = []
+        var rootPackageStart: int[] = []
+        var rootPackageCount: int[] = []
+        var rootDirStart: int[] = []
+        var rootDirCount: int[] = []
+        var rootLibrary: int[] = []
+        var filePathStart: int[] = []
+        var filePathCount: int[] = []
+        var filePackageStart: int[] = []
+        var filePackageCount: int[] = []
+        var visited: int[] = []
+        var order: int[] = []
+        var unitStart: int[] = []
+        var unitLine: int[] = []
+        let model = ProjectModel(pool, rootPackageStart, rootPackageCount, rootDirStart, rootDirCount, rootLibrary,
+            filePathStart, filePathCount, filePackageStart, filePackageCount, visited, order, unitStart, unitLine)
+        var directory: int[] = []
+        var rootPackage: int[] = []
+        var sourceDir: int[] = []
+        var libraryPaths: int[] = []
+        var projectName: int[] = []
+        var projectVersion: int[] = []
+        var seen: int[] = []
+        let props = ProjectProperties(0, directory, rootPackage, sourceDir, libraryPaths, projectName, projectVersion, seen)
+        let loader = ProjectLoader()
+        let entryFile = loader.load(model, props, entry, rootFlag, command == 7, text, report)
+        if report.failed() {
+            report.describe(text)
+            return 1
+        }
+        if command == 7 {
+            let indexer = ProjectIndexer()
+            indexer.listProject(model, text, report)
+            if report.failed() {
+                report.describe(text)
+                return 1
+            }
+            return 0
+        }
+        let closure = ProjectResolver()
+        closure.visit(model, entryFile, entryFile, text, report)
+        if report.failed() {
+            report.describe(text)
+            return 1
+        }
+        let unit = closure.join(model, text)
+        var image: int[] = []
+        var failure: int[] = []
+        if compileSource(unit, image, unit.len(), failure) != 0 {
+            printLocation(model, failure, text)
+            return 1
+        }
+        if validateImage(image) == 0 {
+            Console.printline("invalid generated SnBC image")
+            return 1
+        }
+        if command == 5 { return runImage(image, argumentBase) }
+        var target = text.slice(output, 0, output.len())
+        if target.len() == 0 {
+            let source = model.filePath(entryFile)
+            target = text.slice(source, 0, source.len() - 4)
+            text.appendBytes(target, [46, 109, 108, 98, 99])
+        }
+        writeImageFile(text.text(target), image)
+        return 0
+    }
+
+    // Maps the line of a compile error in the joined unit back to its file.
+    private method printLocation(model: ProjectModel, failure: int[], text: ProjectText): unit {
+        if failure.len() == 0 || model.orderCount() == 0 { return }
+        let line = failure[0]
+        let position = model.unitPosition(line)
+        Console.print("note: unit line ")
+        Console.print(line)
+        Console.print(" is line ")
+        Console.print(line - model.unitFirstLine(position) + 1)
+        Console.print(" of ")
+        Console.printline(text.text(model.filePath(model.orderFile(position))))
+    }
+
+    private method printCommandUsage(): unit {
+        Console.printline("usage: moil run <entry> [--root-package <package>] [args...] | moil build <entry> [--root-package <package>] [-o <output.mlbc>] | moil index <entry> [--root-package <package>]")
+    }
+}

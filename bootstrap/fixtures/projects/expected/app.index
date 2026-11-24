@@ -1,0 +1,13 @@
+root com.example application bootstrap/fixtures/projects/app
+root org.mathlib library bootstrap/fixtures/projects/app/../mathlib/src
+package com.example
+  App.moi
+package com.example.models.entities
+  User.moi
+package com.example.services
+  Counter.moi
+  Greeter.moi
+package com.example.tools
+  Tool.moi
+package org.mathlib
+  Calc.moi

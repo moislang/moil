@@ -1,0 +1,5 @@
+package other.app
+
+func main(): int {
+    return 0
+}

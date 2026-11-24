@@ -1,0 +1,28 @@
+package mois.library.collections.map
+
+// Entry of an IntMap bucket chain, stored in the map's entry arena. `next`
+// is an arena index (-1 at the end of the chain), so chains hold no object
+// references and stay acyclic. The map aggregate passes entries to instance
+// methods through typed helpers because the root cannot call methods on an
+// array element directly.
+class MapEntry {
+    var key: int
+    var payload: int
+    var next: int
+
+    public method readKey(): int {
+        return key
+    }
+
+    public method readValue(): int {
+        return payload
+    }
+
+    public method readNextIndex(): int {
+        return next
+    }
+
+    public method replaceValue(newPayload: int): unit {
+        payload = newPayload
+    }
+}

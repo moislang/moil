@@ -1,0 +1,165 @@
+package mois.compiler.project
+
+// Project state (SPEC-0003): roots (the application and its libraries),
+// the files that the entry reaches through imports, their emission order and
+// the line map of the joined unit. Every name and path lives in one byte pool
+// as a (start, count) pair.
+class ProjectModel {
+    public var pool: int[]
+    public var rootPackageStart: int[]
+    public var rootPackageCount: int[]
+    public var rootDirStart: int[]
+    public var rootDirCount: int[]
+    // 0 for the application root, 1 for a library
+    public var rootLibrary: int[]
+    public var filePathStart: int[]
+    public var filePathCount: int[]
+    // package that the folder of the file implies
+    public var filePackageStart: int[]
+    public var filePackageCount: int[]
+    public var visited: int[]
+    // file indexes, dependencies first
+    public var order: int[]
+    // per order position: first byte and first line in the joined unit
+    public var unitStart: int[]
+    public var unitLine: int[]
+
+    public method store(bytes: int[]): int {
+        let start = pool.len()
+        var index = 0
+        while index < bytes.len() {
+            pool.push(bytes[index])
+            index = index + 1
+        }
+        return start
+    }
+
+    public method bytesAt(start: int, count: int): int[] {
+        var out: int[] = []
+        var index = 0
+        while index < count {
+            out.push(pool[start + index])
+            index = index + 1
+        }
+        return out
+    }
+
+    public method addRoot(name: int[], directory: int[], library: int): unit {
+        rootPackageStart.push(store(name))
+        rootPackageCount.push(name.len())
+        rootDirStart.push(store(directory))
+        rootDirCount.push(directory.len())
+        rootLibrary.push(library)
+    }
+
+    public method rootCount(): int {
+        return rootPackageStart.len()
+    }
+
+    public method rootPackage(root: int): int[] {
+        return bytesAt(rootPackageStart[root], rootPackageCount[root])
+    }
+
+    public method rootDirectory(root: int): int[] {
+        return bytesAt(rootDirStart[root], rootDirCount[root])
+    }
+
+    public method isLibrary(root: int): bool {
+        return rootLibrary[root] != 0
+    }
+
+    public method findRoot(name: int[], text: ProjectText): int {
+        var root = 0
+        while root < rootPackageStart.len() {
+            if text.compareRange(pool, rootPackageStart[root], rootPackageCount[root], name, 0, name.len()) == 0 { return root }
+            root = root + 1
+        }
+        return -1
+    }
+
+    // Root whose package is the longest prefix of `name` on a segment
+    // boundary, or -1.
+    public method longestRoot(name: int[], text: ProjectText): int {
+        var best = -1
+        var bestCount = -1
+        var root = 0
+        while root < rootPackageStart.len() {
+            let count = rootPackageCount[root]
+            if count > bestCount && text.underPackage(name, rootPackage(root)) {
+                best = root
+                bestCount = count
+            }
+            root = root + 1
+        }
+        return best
+    }
+
+    // Index of the file with this path; adds it when it is new.
+    public method addFile(path: int[], folderPackage: int[], text: ProjectText): int {
+        var file = 0
+        while file < filePathStart.len() {
+            if text.compareRange(pool, filePathStart[file], filePathCount[file], path, 0, path.len()) == 0 { return file }
+            file = file + 1
+        }
+        filePathStart.push(store(path))
+        filePathCount.push(path.len())
+        filePackageStart.push(store(folderPackage))
+        filePackageCount.push(folderPackage.len())
+        return filePathStart.len() - 1
+    }
+
+    public method fileCount(): int {
+        return filePathStart.len()
+    }
+
+    public method filePath(file: int): int[] {
+        return bytesAt(filePathStart[file], filePathCount[file])
+    }
+
+    public method filePackage(file: int): int[] {
+        return bytesAt(filePackageStart[file], filePackageCount[file])
+    }
+
+    // False when the file was already visited.
+    public method markVisited(file: int): bool {
+        var index = 0
+        while index < visited.len() {
+            if visited[index] == file { return false }
+            index = index + 1
+        }
+        visited.push(file)
+        return true
+    }
+
+    public method appendOrder(file: int): unit {
+        order.push(file)
+    }
+
+    public method orderCount(): int {
+        return order.len()
+    }
+
+    public method orderFile(position: int): int {
+        return order[position]
+    }
+
+    public method recordUnit(start: int, line: int): unit {
+        unitStart.push(start)
+        unitLine.push(line)
+    }
+
+    // Order position of the file that holds unit line `line`.
+    public method unitPosition(line: int): int {
+        var found = 0
+        var position = 0
+        while position < unitLine.len() {
+            if unitLine[position] <= line { found = position }
+            position = position + 1
+        }
+        return found
+    }
+
+    public method unitFirstLine(position: int): int {
+        return unitLine[position]
+    }
+}

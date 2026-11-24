@@ -1,0 +1,7 @@
+package demo
+
+import demo.models.Thing
+
+func main(): int {
+    return 0
+}

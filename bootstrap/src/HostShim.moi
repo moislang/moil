@@ -1,0 +1,13 @@
+package mois.compiler.runtime
+
+// Root fallback for the `read_dir` builtin (SPEC-0003, ADR-0011). `moil`
+// v0.3.0 has no directory listing, so the compiler that it builds answers
+// status 2 (listing unsupported on this host). A declared `read_dir` takes
+// precedence over the builtin, so the SnBC compiler image calls this body:
+// `moil run-snbc` v0.3.0 refuses images that contain RUNTIME_CALL 9. The
+// native compiler sources (Makefile NATIVE_COMPILER_SOURCES) leave this file
+// out, so the native compiler lowers `read_dir` to RUNTIME_CALL 9 and lists
+// folders through the host.
+public func read_dir(path: string): int[] {
+    return [2]
+}

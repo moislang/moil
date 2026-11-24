@@ -26,7 +26,7 @@ This repository develops a Moislang compiler written in Mois. The compiler is th
 
 ## Current bootstrap
 
-`bootstrap/src/` holds the compiler and its I/O module in Mois; `bootstrap/runtime/` holds the native runtime in Mois, one type per responsibility; `bootstrap/library/` holds data structures and algorithms in Mois. `make bootstrap-build` stages `bootstrap/src/` and the library modules already migrated to an instance API into `build/bootstrap/root-project/` and produces `build/bootstrap/moil` from it. Run that binary with:
+`bootstrap/src/` holds the compiler and its I/O module in Mois; `bootstrap/runtime/` holds the native runtime in Mois, one type per responsibility; `bootstrap/library/` groups algorithms and collection aggregates into domain packages. See the [library domain model](docs/architecture/library-domains.md). `make bootstrap-build` stages `bootstrap/src/` and the root-compatible library modules into `build/bootstrap/root-project/` while preserving package folders, then produces `build/bootstrap/moil`. Run that binary with:
 
 - `<input.moi> <output.mlbc>` to compile;
 - `<image.mlbc>` to validate an image's structure;

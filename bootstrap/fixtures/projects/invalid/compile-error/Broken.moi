@@ -1,0 +1,7 @@
+package demo
+
+class Broken {
+    method value(): int {
+        return (1
+    }
+}

@@ -1,0 +1,7 @@
+package com.example.models.entities
+
+class User {
+    var years: int
+
+    method age(): int { return years }
+}

@@ -1,0 +1,142 @@
+package mois.compiler.project
+
+// Header of one source file (SPEC-0003): the `package` declaration, the
+// `import` declarations that follow it (the order the parser accepts), and
+// the first top-level `main`. Spans are byte offsets in the file; lines are
+// 1-based. Comments and whitespace between declarations are skipped.
+class SourceHeader {
+    // -1 when the file declares no package
+    public var packageStart: int
+    public var packageCount: int
+    public var packageLine: int
+    // first byte after the last header declaration
+    public var headerEnd: int
+    public var importStarts: int[]
+    public var importCounts: int[]
+    public var importLines: int[]
+    // line and first byte of a top-level `func main` / `public func main`;
+    // line 0 when there is none
+    public var mainLine: int
+    public var mainStart: int
+
+    public method scan(source: int[]): unit {
+        var line = 1
+        var position = 0
+        var reading = true
+        var first = true
+        while reading {
+            // skip spaces and `//` comments, counting lines
+            var skipping = true
+            while skipping {
+                if position < source.len() && (source[position] == 32 || source[position] == 9 || source[position] == 13) {
+                    position = position + 1
+                } else if position < source.len() && source[position] == 10 {
+                    line = line + 1
+                    position = position + 1
+                } else if position + 1 < source.len() && source[position] == 47 && source[position + 1] == 47 {
+                    while position < source.len() && source[position] != 10 { position = position + 1 }
+                } else {
+                    skipping = false
+                }
+            }
+            let keyword = keywordAt(source, position)
+            if keyword == 1 && first {
+                position = position + 7
+                let nameStart = nameAfter(source, position)
+                position = nameEnd(source, nameStart)
+                packageStart = nameStart
+                packageCount = position - nameStart
+                packageLine = line
+                headerEnd = position
+            } else if keyword == 2 {
+                position = position + 6
+                let nameStart = nameAfter(source, position)
+                position = nameEnd(source, nameStart)
+                importStarts.push(nameStart)
+                importCounts.push(position - nameStart)
+                importLines.push(line)
+                headerEnd = position
+            } else {
+                reading = false
+            }
+            first = false
+        }
+        mainLine = topLevelMain(source)
+    }
+
+    // 1 for `package `, 2 for `import `, 0 otherwise.
+    private method keywordAt(source: int[], position: int): int {
+        if position + 8 <= source.len() && source[position] == 112 && source[position + 1] == 97 && source[position + 2] == 99 &&
+            source[position + 3] == 107 && source[position + 4] == 97 && source[position + 5] == 103 && source[position + 6] == 101 &&
+            (source[position + 7] == 32 || source[position + 7] == 9) { return 1 }
+        if position + 7 <= source.len() && source[position] == 105 && source[position + 1] == 109 && source[position + 2] == 112 &&
+            source[position + 3] == 111 && source[position + 4] == 114 && source[position + 5] == 116 &&
+            (source[position + 6] == 32 || source[position + 6] == 9) { return 2 }
+        return 0
+    }
+
+    private method nameAfter(source: int[], position: int): int {
+        var at = position
+        while at < source.len() && (source[at] == 32 || source[at] == 9) { at = at + 1 }
+        return at
+    }
+
+    private method nameEnd(source: int[], position: int): int {
+        var at = position
+        var going = true
+        while going && at < source.len() {
+            let code = source[at]
+            if (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || (code >= 48 && code <= 57) || code == 95 || code == 46 {
+                at = at + 1
+            } else {
+                going = false
+            }
+        }
+        return at
+    }
+
+    // A line that starts in column 0 with `func main(` or
+    // `public func main(`; methods and nested code are indented.
+    private method topLevelMain(source: int[]): int {
+        var line = 1
+        var start = 0
+        while start < source.len() {
+            var at = start
+            if startsWord(source, at, [112, 117, 98, 108, 105, 99, 32]) { at = at + 7 }
+            if startsWord(source, at, [102, 117, 110, 99, 32, 109, 97, 105, 110, 40]) {
+                mainStart = start
+                return line
+            }
+            while start < source.len() && source[start] != 10 { start = start + 1 }
+            start = start + 1
+            line = line + 1
+        }
+        return 0
+    }
+
+    private method startsWord(source: int[], position: int, word: int[]): bool {
+        if position + word.len() > source.len() { return false }
+        var index = 0
+        while index < word.len() {
+            if source[position + index] != word[index] { return false }
+            index = index + 1
+        }
+        return true
+    }
+
+    public method importCount(): int {
+        return importStarts.len()
+    }
+
+    public method importStart(which: int): int {
+        return importStarts[which]
+    }
+
+    public method importLength(which: int): int {
+        return importCounts[which]
+    }
+
+    public method importLine(which: int): int {
+        return importLines[which]
+    }
+}

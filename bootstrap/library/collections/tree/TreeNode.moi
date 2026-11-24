@@ -1,0 +1,41 @@
+package mois.library.collections.tree
+
+// Node of BinaryTree, stored in the tree's node arena. Children are arena
+// indexes (-1 when absent), so the tree holds no object references: it is
+// acyclic by construction and needs no null. The tree aggregate passes nodes
+// to instance methods through typed helpers because the root cannot call a
+// method directly on an array element.
+class TreeNode {
+    var key: int
+    var payload: int
+    var left: int
+    var right: int
+
+    public method readKey(): int {
+        return key
+    }
+
+    public method readValue(): int {
+        return payload
+    }
+
+    public method readLeftIndex(): int {
+        return left
+    }
+
+    public method readRightIndex(): int {
+        return right
+    }
+
+    public method replaceValue(newPayload: int): unit {
+        payload = newPayload
+    }
+
+    public method linkLeft(child: int): unit {
+        left = child
+    }
+
+    public method linkRight(child: int): unit {
+        right = child
+    }
+}

@@ -1,0 +1,13 @@
+package com.example
+
+import builtin.io.console
+import com.example.models.entities.User
+import org.mathlib.Calc
+
+// Entry: type imports only, so it resolves without a host listing.
+func main(): int {
+    let user = User(40)
+    let calc = Calc()
+    Console.printline("project app ok")
+    return calc.add(user.age(), 2)
+}

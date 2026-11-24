@@ -98,21 +98,21 @@ class NativeAssembly {
 
     // Runtime methods that generated code calls (NativeRoles order).
     public method roleExit(): int { return 12 }
-    public method roleBinary(): int { return 13 }
-    public method roleFail(): int { return 14 }
-    public method roleDisplay(): int { return 15 }
-    public method roleArrayFromStack(): int { return 16 }
-    public method roleObjectFromStack(): int { return 17 }
-    public method rolePushValue(): int { return 18 }
-    public method roleReadBytes(): int { return 19 }
-    public method roleWriteBytes(): int { return 20 }
-    public method roleHostCall(): int { return 21 }
-    public method roleWriteText(): int { return 22 }
-    public method roleArgumentCount(): int { return 23 }
-    public method roleDestroy(): int { return 24 }
-    public method roleStoreField(): int { return 25 }
-    public method roleReleaseSlots(): int { return 26 }
-    public method roleFinish(): int { return 27 }
+    public method roleBinary(): int { return 14 }
+    public method roleFail(): int { return 15 }
+    public method roleDisplay(): int { return 16 }
+    public method roleArrayFromStack(): int { return 17 }
+    public method roleObjectFromStack(): int { return 18 }
+    public method rolePushValue(): int { return 19 }
+    public method roleReadBytes(): int { return 20 }
+    public method roleWriteBytes(): int { return 21 }
+    public method roleHostCall(): int { return 22 }
+    public method roleWriteText(): int { return 23 }
+    public method roleArgumentCount(): int { return 24 }
+    public method roleDestroy(): int { return 25 }
+    public method roleStoreField(): int { return 26 }
+    public method roleReleaseSlots(): int { return 27 }
+    public method roleFinish(): int { return 28 }
 
     public method codeLabel(functionIndex: int, offset: int): string {
         return "Lsn" + decimal(functionIndex) + "_" + decimal(offset)

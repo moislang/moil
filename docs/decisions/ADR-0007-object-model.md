@@ -70,21 +70,17 @@ not support `static` or annotations.
 - The frontend (lexer, parser, emitters) is still procedural over
   `compilerState`/`compilerContext`. Migrating it to objects follows the
   rules above, in small steps that keep the fixed point.
-- The data-structure library in `bootstrap/library/` uses static methods.
-  It serves programs compiled by the Mois compiler (SnBC and native), but
-  not the compiler itself, until the library has an instance-based API or
-  the compiler is built natively (N3). The migration is incremental:
-  stateless types become fieldless classes created with `Type()` whose
-  methods are instance methods; sibling calls drop the type qualifier.
-  `BinarySearch`, `LinearSearch`, `Sorting`, `IntCell` and `IntArray` are
-  migrated, and `make bootstrap-library-root` builds their fixtures with
-  `moil build`. Types that hold class elements in arrays (`IntArray`, and
-  `IntMap` for its bucket heads) reach an element by passing it to a private
-  sibling method with a typed parameter, which then calls the element's
-  instance methods; `IntCell` is created with the positional `IntCell(value)`.
-  The first stage builds a staged project (`build/bootstrap/root-project/`)
-  that holds `bootstrap/src/` plus the migrated modules. The
-  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/moislang/moil/pull/5)).
+- The data-structure library in `bootstrap/library/` uses instance APIs and
+  domain-oriented packages. Search and sorting algorithms live under
+  `algorithms/`; array storage, heaps, trees and maps live under
+  `collections/`. `BinaryTree` and `IntMap` are aggregate roots that own their
+  node/entry arenas; `TreeNode` and `MapEntry` expose instance behavior. Since
+  the transitional root cannot call methods on array elements or fields,
+  aggregate helpers pass those objects as typed parameters. Constructors are
+  positional and clients keep aggregates in locals. The first-stage project
+  stages the modules it can compile while preserving their package folders.
+  The implementation and acceptance gates are tracked in
+  [SPEC-0001](../specs/SPEC-0001-library-instance-api.md).
 - Once the native backend builds the compiler (N3), the root's restrictions
   stop applying, and the rules can be relaxed through a new ADR.
 

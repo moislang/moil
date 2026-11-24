@@ -6,7 +6,7 @@ import builtin.io.console
 // ordered traversal, extremes and an empty tree.
 func main(): int {
     var nodes: TreeNode[] = []
-    var tree = BinaryTree { nodes: nodes, rootIndex: -1 }
+    var tree = BinaryTree(nodes, -1)
     Console.printline(tree.find(1, -1))
     Console.printline(tree.minimumKey(-1))
     Console.printline(tree.keys().len())

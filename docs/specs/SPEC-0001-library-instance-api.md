@@ -1,6 +1,6 @@
 # SPEC-0001 — Instance-based library API
 
-- **Status:** Proposed; linking and first-stage visibility decided; slice 1 merged as
+- **Status:** Accepted; source API and domain layout updated; full differential validation pending; linking and first-stage visibility decided; slice 1 merged as
   [snl#3](https://github.com/moislang/moil/pull/3) and slice 2 merged as
   [snl#10](https://github.com/moislang/moil/pull/10)
 - **Date:** 2026-11-21
@@ -30,19 +30,24 @@ executor and natively.
 
 ## Current state
 
-- `bootstrap/library/` holds `BinarySearch`, `LinearSearch`, `Sorting`
-  (stateless, static methods), `IntCell`, `IntArray`, `MapEntry`, `TreeNode`
-  (state plus static accessors), and `BinaryHeap`, `BinaryTree`, `IntMap`
-  (instance methods over those types).
+- `bootstrap/library/` is organized into cohesive packages:
+  `algorithms/search`, `algorithms/sorting`, `collections/array`,
+  `collections/heap`, `collections/tree`, and `collections/map`.
+- Public library types use instance methods. `BinaryTree` and `IntMap` are
+  aggregate roots that own their node and entry arenas; `TreeNode` and
+  `MapEntry` provide entity behavior. Their constructors use positional
+  arguments. The root-compatible source list and fixture join order preserve
+  the package folders in the staged project.
 - `make bootstrap-library` joins each fixture (`librarySearch`,
-  `librarySorting`, `libraryBinaryHeap`, `libraryBinaryTree`,
-  `libraryIntMap`) with the library, compiles it with the seed, and compares
+  `librarySorting`, `libraryIntArray`, `libraryBinaryHeap`,
+  `libraryBinaryTree`, `libraryIntMap`) with the library, compiles it with the seed, and compares
   `moil run-snbc`, the Mois executor and the native executable (zero live
-  blocks). `moil build` never compiles the library.
-- The root rejects the current library. Probes (see `evidence.md`,
-  "probes for the library and borrow-checker specifications"):
-  - every fixture fails `moil build` with `invalid SnBC unit for native
-    compilation` (static methods);
+  blocks). `make bootstrap-library-root` is being expanded to compile all six
+  fixtures with the root compiler as well.
+- The previous root rejected several pre-migration APIs. Probes (see
+  `evidence.md`, "probes for the library and borrow-checker specifications"):
+- the pre-migration fixtures failed `moil build` with `invalid SnBC unit for
+  native compilation` (static methods);
   - `BinaryHeap` fails first with `MOISL0400 cannot lower call to SnBC`,
     because it calls methods on a local alias of its `storage` field;
   - `let cell = cells[index]` inside a method is rejected by `moil check` with
@@ -55,9 +60,9 @@ executor and natively.
     `moil check` and by the seed, but `moil build` fails with `MOISL0400`, the
     reference SnBC emitter's "cannot lower" error (snl#8). Only the root
     build enforces this rule, so the library gates must run `moil build`.
-- The fixtures create objects with literals (`IntMap { ... }`,
-  `BinaryHeap { storage: IntArray { ... } }`), and the root rejects method
-  calls on literal-created objects (ADR-0007).
+- The migrated fixtures create aggregates with positional constructors and
+  keep them in locals. The new root-compatible and differential gates still
+  need to be run and recorded before this migration is considered complete.
 
 ## Decisions
 
@@ -140,16 +145,18 @@ the fixture's expected stdout and exit status.
    with instance `read()`/`assign(newValue)`; `IntArray(cells, 0)` keeps its
    instance methods and reaches cells through the private siblings
    `readCell(cell: IntCell)` and `assignCell(cell: IntCell, newValue)`.
-   `IntMap` still uses static `MapEntry` accessors (slice 5), but its bucket
-   heads move to the same pattern (`readHead`/`assignHead`) because
-   `IntCell` no longer has static methods. `count`, `isEmpty`, `at`, `put`,
+   `IntMap` bucket heads and entries use the same typed-parameter helper
+   pattern (`readHead`/`assignHead`, `entryKey`/`entryValue`/`entryNext` and
+   `replaceEntryValue`) because array elements cannot be method receivers.
+   `count`, `isEmpty`, `at`, `put`,
    `append`, `removeLast`, `swap` and `values` are not intercepted as array
    builtins by `moil build` v0.3.0.
-4. **`BinaryHeap`**: remove the `let store = storage` calls (rule 3);
-   fixture `libraryBinaryHeap` with a positional constructor.
-5. **`TreeNode`/`BinaryTree` and `MapEntry`/`IntMap`**: accessors become
-   instance methods reached through rule 4; constructors are positional;
-   fixtures `libraryBinaryTree` and `libraryIntMap`.
+4. **`BinaryHeap`**: remove the `let store = storage` calls (rule 3), route
+   collaborator operations through typed helpers, and use a positional
+   constructor; fixture `libraryBinaryHeap`.
+5. **`TreeNode`/`BinaryTree` and `MapEntry`/`IntMap`**: entity behavior uses
+   instance methods reached through typed aggregate helpers; constructors are
+   positional; fixtures `libraryBinaryTree` and `libraryIntMap`.
 6. **First compiler use**: the migrated library files are added to
    `ownSource()` in `SourceJoin.moi` (decision 1) and to the staging list
    (decision 2), one compiler module uses a migrated type, and the static API is gone (`LIBRARY_ROOT_*` equals
@@ -168,12 +175,14 @@ For every slice:
   executor agree on stdout and exit status.
 - The migrated fixture's stdout and exit status equal the values before the
   migration (recorded in `evidence.md`).
-- `make bootstrap-library` passes for all five fixtures, including the native
+- `make bootstrap-library` passes for all six fixtures, including the native
   half on `aarch64-apple-darwin` with zero live blocks at exit.
 - `make bootstrap-fixed-point bootstrap-vm` pass; `make bootstrap-native` is
   run on the Mac as a regression check.
 - `subset.md` (Library row), ADR-0007 consequences and `evidence.md` are
   updated in the same change.
+- The directory/package map and aggregate responsibilities are documented in
+  [`library-domains.md`](../architecture/library-domains.md).
 
 From slice 2 on, `make bootstrap-build` builds from the staging directory
 (decision 2), and the stage1 SnBC image does not change while the compiler

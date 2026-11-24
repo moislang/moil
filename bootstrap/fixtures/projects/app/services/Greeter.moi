@@ -1,0 +1,7 @@
+package com.example.services
+
+import builtin.io.console
+
+class Greeter {
+    method greet(): unit { Console.printline("hello from services") }
+}

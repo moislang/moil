@@ -6,7 +6,7 @@ import builtin.io.console
 // an empty heap returns the sentinel.
 func main(): int {
     var cells: IntCell[] = []
-    var heap = BinaryHeap { storage: IntArray { cells: cells, size: 0 } }
+    var heap = BinaryHeap(IntArray(cells, 0))
     Console.printline(heap.removeMinimum(-1))
     Console.printline(heap.isEmpty())
     let input = [42, 7, 19, 3, 25, 7, 100, 1]

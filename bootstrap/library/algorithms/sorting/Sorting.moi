@@ -1,4 +1,4 @@
-package mois.library
+package mois.library.algorithms.sorting
 
 // Stable merge sort of int arrays. Returns a new sorted array and leaves the
 // input unchanged; O(n log n) time and O(n) extra space per level.

@@ -6,8 +6,8 @@ package mois.compiler.backend
 // no ownership instrumentation. Names are stored as bytes because the seed
 // subset cannot turn a host string into bytes.
 //
-// Role ids are mirrored by NativeAssembly.role*. Roles 0..12 are native methods (Primitive, System) implemented as assembly
-// stubs; roles 13..27 are Mois runtime methods called by generated code.
+// Role ids are mirrored by NativeAssembly.role*. Roles 0..13 are native methods (Primitive, System) implemented as assembly
+// stubs; roles 14..28 are Mois runtime methods called by generated code.
 class NativeRoles {
     // role -> function index
     public var roleFunction: int[]
@@ -16,8 +16,8 @@ class NativeRoles {
     // function index -> 1 for methods of runtime types
     public var runtimeFunction: int[]
 
-    public method count(): int { return 28 }
-    public method lastNative(): int { return 12 }
+    public method count(): int { return 29 }
+    public method lastNative(): int { return 13 }
 
     public method addName(names: int[], bytes: int[]): unit {
         var index = 0
@@ -57,35 +57,37 @@ class NativeRoles {
         addName(names, [83, 121, 115, 116, 101, 109, 46, 117, 110, 109, 97, 112])
         // 12: System.exit
         addName(names, [83, 121, 115, 116, 101, 109, 46, 101, 120, 105, 116])
-        // 13: Value.binary
+        // 13: System.entries
+        addName(names, [83, 121, 115, 116, 101, 109, 46, 101, 110, 116, 114, 105, 101, 115])
+        // 14: Value.binary
         addName(names, [86, 97, 108, 117, 101, 46, 98, 105, 110, 97, 114, 121])
-        // 14: Runtime.fail
+        // 15: Runtime.fail
         addName(names, [82, 117, 110, 116, 105, 109, 101, 46, 102, 97, 105, 108])
-        // 15: Value.display
+        // 16: Value.display
         addName(names, [86, 97, 108, 117, 101, 46, 100, 105, 115, 112, 108, 97, 121])
-        // 16: Container.arrayFromStack
+        // 17: Container.arrayFromStack
         addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 97, 114, 114, 97, 121, 70, 114, 111, 109, 83, 116, 97, 99, 107])
-        // 17: Container.objectFromStack
+        // 18: Container.objectFromStack
         addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 111, 98, 106, 101, 99, 116, 70, 114, 111, 109, 83, 116, 97, 99, 107])
-        // 18: Container.pushValue
+        // 19: Container.pushValue
         addName(names, [67, 111, 110, 116, 97, 105, 110, 101, 114, 46, 112, 117, 115, 104, 86, 97, 108, 117, 101])
-        // 19: Host.readBytes
+        // 20: Host.readBytes
         addName(names, [72, 111, 115, 116, 46, 114, 101, 97, 100, 66, 121, 116, 101, 115])
-        // 20: Host.writeBytes
+        // 21: Host.writeBytes
         addName(names, [72, 111, 115, 116, 46, 119, 114, 105, 116, 101, 66, 121, 116, 101, 115])
-        // 21: Host.call
+        // 22: Host.call
         addName(names, [72, 111, 115, 116, 46, 99, 97, 108, 108])
-        // 22: Host.writeText
+        // 23: Host.writeText
         addName(names, [72, 111, 115, 116, 46, 119, 114, 105, 116, 101, 84, 101, 120, 116])
-        // 23: Host.argumentCount
+        // 24: Host.argumentCount
         addName(names, [72, 111, 115, 116, 46, 97, 114, 103, 117, 109, 101, 110, 116, 67, 111, 117, 110, 116])
-        // 24: Ownership.destroy
+        // 25: Ownership.destroy
         addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 100, 101, 115, 116, 114, 111, 121])
-        // 25: Ownership.storeField
+        // 26: Ownership.storeField
         addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 115, 116, 111, 114, 101, 70, 105, 101, 108, 100])
-        // 26: Ownership.releaseSlots
+        // 27: Ownership.releaseSlots
         addName(names, [79, 119, 110, 101, 114, 115, 104, 105, 112, 46, 114, 101, 108, 101, 97, 115, 101, 83, 108, 111, 116, 115])
-        // 27: Runtime.finish
+        // 28: Runtime.finish
         addName(names, [82, 117, 110, 116, 105, 109, 101, 46, 102, 105, 110, 105, 115, 104])
         return names
     }

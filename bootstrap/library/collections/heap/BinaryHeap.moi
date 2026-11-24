@@ -1,0 +1,80 @@
+package mois.library.collections.heap
+
+// Binary min-heap of ints (priority queue). Element i has children 2i + 1
+// and 2i + 2. Insert and removal are O(log n); peek is O(1).
+class BinaryHeap {
+    var storage: IntArray
+
+    public method count(): int {
+        return countOf(storage)
+    }
+
+    public method isEmpty(): bool {
+        return emptyOf(storage)
+    }
+
+    public method insert(newValue: int): unit {
+        appendTo(storage, newValue)
+        siftUp(countOf(storage) - 1)
+    }
+
+    // Smallest value without removing it; missing when empty.
+    public method peekMinimum(missing: int): int {
+        return valueAt(storage, 0, missing)
+    }
+
+    // Removes and returns the smallest value; missing when empty.
+    public method removeMinimum(missing: int): int {
+        if emptyOf(storage) { return missing }
+        let minimum = valueAt(storage, 0, missing)
+        let last = removeFrom(storage, missing)
+        if countOf(storage) > 0 {
+            writeAt(storage, 0, last)
+            siftDown(0)
+        }
+        return minimum
+    }
+
+    private method siftUp(start: int): unit {
+        var index = start
+        var moving = true
+        while moving && index > 0 {
+            let parent = (index - 1) / 2
+            if valueAt(storage, index, 0) < valueAt(storage, parent, 0) {
+                swapAt(storage, index, parent)
+                index = parent
+            } else {
+                moving = false
+            }
+        }
+    }
+
+    private method siftDown(start: int): unit {
+        let size = countOf(storage)
+        var index = start
+        var moving = true
+        while moving {
+            let left = 2 * index + 1
+            let right = left + 1
+            var smallest = index
+            if left < size && valueAt(storage, left, 0) < valueAt(storage, smallest, 0) { smallest = left }
+            if right < size && valueAt(storage, right, 0) < valueAt(storage, smallest, 0) { smallest = right }
+            if smallest == index {
+                moving = false
+            } else {
+                swapAt(storage, index, smallest)
+                index = smallest
+            }
+        }
+    }
+
+    // Aggregate helpers take the owned storage as a typed collaborator.
+    // This keeps calls off fields for the transitional root compiler.
+    private method countOf(store: IntArray): int { return store.count() }
+    private method emptyOf(store: IntArray): bool { return store.isEmpty() }
+    private method appendTo(store: IntArray, value: int): unit { store.append(value) }
+    private method valueAt(store: IntArray, index: int, missing: int): int { return store.at(index, missing) }
+    private method writeAt(store: IntArray, index: int, value: int): unit { store.put(index, value) }
+    private method removeFrom(store: IntArray, missing: int): int { return store.removeLast(missing) }
+    private method swapAt(store: IntArray, first: int, second: int): unit { store.swap(first, second) }
+}

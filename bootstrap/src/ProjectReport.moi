@@ -1,0 +1,74 @@
+package mois.compiler.project
+
+import builtin.io.console
+
+// First project diagnostic (SPEC-0003): a code, the file it is about, and a
+// 1-based line with a byte span in that file. Line 0 means no position.
+class ProjectReport {
+    public var code: int
+    public var line: int
+    public var start: int
+    public var end: int
+    public var path: int[]
+
+    public method fail(failure: int, file: int[], atLine: int, spanStart: int, spanEnd: int): unit {
+        if code != 0 { return }
+        code = failure
+        line = atLine
+        start = spanStart
+        end = spanEnd
+        var index = 0
+        while index < file.len() {
+            path.push(file[index])
+            index = index + 1
+        }
+    }
+
+    public method passing(): bool {
+        return code == 0
+    }
+
+    public method failed(): bool {
+        return code != 0
+    }
+
+    public method message(failure: int): string {
+        if failure == 6001 { return "malformed property line" }
+        if failure == 6002 { return "unknown property key" }
+        if failure == 6003 { return "duplicate property key" }
+        if failure == 6004 { return "entry not found" }
+        if failure == 6005 { return "entry file has no package declaration" }
+        if failure == 6006 { return "entry package is not under the root package" }
+        if failure == 6007 { return "entry folders do not match its package segments" }
+        if failure == 6008 { return "file package does not match its folder" }
+        if failure == 6009 { return "unresolved import" }
+        if failure == 6010 { return "directory listing is not available on this host" }
+        if failure == 6011 { return "project folder has no moislang.properties with root.package" }
+        if failure == 6012 { return "library root package is already the root of another project" }
+        if failure == 6013 { return "main is declared outside the entry file" }
+        if failure == 6014 { return "invalid package name" }
+        if failure == 6015 { return "--root-package does not match root.package in moislang.properties" }
+        if failure == 6016 { return "source folder cannot be listed" }
+        return "project error"
+    }
+
+    public method describe(text: ProjectText): unit {
+        Console.print("error[SNV")
+        Console.print(code)
+        Console.print("]: ")
+        Console.print(message(code))
+        if line > 0 {
+            Console.print(" at line ")
+            Console.print(line)
+            Console.print(", span ")
+            Console.print(start)
+            Console.print("..")
+            Console.print(end)
+        }
+        if path.len() > 0 {
+            Console.print(" in ")
+            Console.print(text.text(path))
+        }
+        Console.printline("")
+    }
+}

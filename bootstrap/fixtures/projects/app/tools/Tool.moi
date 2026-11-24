@@ -1,0 +1,15 @@
+package com.example.tools
+
+import builtin.runtime
+import com.example.services
+import org.mathlib.Calc
+
+// Entry in a nested folder: the source root is one folder up. The package
+// import needs a host listing (SPEC-0003).
+func main(): int {
+    let greeter = Greeter()
+    greeter.greet()
+    let counter = Counter()
+    let calc = Calc()
+    return calc.add(counter.start(), Runtime.argumentCount())
+}

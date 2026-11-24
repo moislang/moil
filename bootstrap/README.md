@@ -53,18 +53,20 @@ live blocks at exit (`MOIS_MEMORY_REPORT=1`), constant peak memory in a loop
 and the rejection of strong cycles. Unsupported opcodes fail with
 `unsupported opcode for native backend: N`.
 
-`library/` holds data structures and algorithms in Mois (searches,
-sorting, `BinaryHeap`, `BinaryTree`, `IntMap`). `make bootstrap-library`
+`library/` groups Mois code by domain: `algorithms/search`,
+`algorithms/sorting`, and the collection aggregates under `collections/`
+(`array`, `heap`, `tree`, `map`). `BinaryTree` owns its node arena and
+`IntMap` owns its entry and bucket storage; their entity types keep their
+behavior behind instance methods. `make bootstrap-library`
 runs each fixture on `moil run-snbc`, on the Mois executor and natively.
-`BinarySearch`, `LinearSearch` and `Sorting` expose an instance API
-(ADR-0007, SPEC-0001), so `make bootstrap-library-root` also builds their
-fixtures with `moil build` and
+The library exposes instance APIs (ADR-0007, SPEC-0001), so
+`make bootstrap-library-root` also builds the root-compatible fixtures with `moil build` and
 compares that executable with `moil run-snbc`, the Mois executor and the
 expected output in `fixtures/expected/` (stdout and exit status captured
 before the migration); it needs no native toolchain. Those modules are also
 copied into the first-stage project: `make bootstrap-build` runs `moil build`
 on `build/bootstrap/root-project/`, staged from `src/*.moi` plus the modules
-in `LIBRARY_ROOT_SOURCES`, because `moil` v0.3.0 builds one project directory
+in `LIBRARY_ROOT_SOURCES`, preserving each package folder, because `moil` v0.3.0 builds one project directory
 and lowers every module it sees.
 
 Run `make bootstrap-smoke` to compile and execute the small program in

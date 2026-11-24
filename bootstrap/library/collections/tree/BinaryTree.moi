@@ -1,13 +1,13 @@
-package mois.library
+package mois.library.collections.tree
 
 // Binary search tree from int keys to int payloads over a node arena.
 // Operations are O(height); the tree is not rebalanced, so sorted
 // insertions degrade to a list. Keys are unique: inserting an existing key
-// replaces its payload. Construct with
-// `BinaryTree { nodes: emptyNodes, rootIndex: -1 }`.
+// replaces its payload. This aggregate owns the node arena; construct it with
+// `BinaryTree(emptyNodes, -1)`.
 class BinaryTree {
-    public var nodes: TreeNode[]
-    public var rootIndex: int
+    var nodes: TreeNode[]
+    var rootIndex: int
 
     public method count(): int {
         return nodes.len()
@@ -18,7 +18,7 @@ class BinaryTree {
     }
 
     private method addNode(key: int, payload: int): int {
-        nodes.push(TreeNode { key: key, payload: payload, left: -1, right: -1 })
+        nodes.push(TreeNode(key, payload, -1, -1))
         return nodes.len() - 1
     }
 
@@ -26,12 +26,12 @@ class BinaryTree {
     public method indexOf(key: int): int {
         var index = rootIndex
         while index >= 0 {
-            let nodeKey = TreeNode.keyOf(nodes[index])
+            let nodeKey = readKey(nodes[index])
             if key == nodeKey { return index }
             if key < nodeKey {
-                index = TreeNode.leftOf(nodes[index])
+                index = readLeft(nodes[index])
             } else {
-                index = TreeNode.rightOf(nodes[index])
+                index = readRight(nodes[index])
             }
         }
         return -1
@@ -45,22 +45,22 @@ class BinaryTree {
         }
         var index = rootIndex
         while true {
-            let nodeKey = TreeNode.keyOf(nodes[index])
+            let nodeKey = readKey(nodes[index])
             if key == nodeKey {
-                TreeNode.replacePayload(nodes[index], payload)
+                replaceValue(nodes[index], payload)
                 return false
             }
             if key < nodeKey {
-                let child = TreeNode.leftOf(nodes[index])
+                let child = readLeft(nodes[index])
                 if child < 0 {
-                    TreeNode.linkLeft(nodes[index], addNode(key, payload))
+                    linkLeft(nodes[index], addNode(key, payload))
                     return true
                 }
                 index = child
             } else {
-                let child = TreeNode.rightOf(nodes[index])
+                let child = readRight(nodes[index])
                 if child < 0 {
-                    TreeNode.linkRight(nodes[index], addNode(key, payload))
+                    linkRight(nodes[index], addNode(key, payload))
                     return true
                 }
                 index = child
@@ -73,7 +73,7 @@ class BinaryTree {
     public method find(key: int, missing: int): int {
         let index = indexOf(key)
         if index < 0 { return missing }
-        return TreeNode.payloadOf(nodes[index])
+        return readValue(nodes[index])
     }
 
     public method contains(key: int): bool {
@@ -83,25 +83,25 @@ class BinaryTree {
     public method minimumKey(missing: int): int {
         if rootIndex < 0 { return missing }
         var index = rootIndex
-        while TreeNode.leftOf(nodes[index]) >= 0 {
-            index = TreeNode.leftOf(nodes[index])
+        while readLeft(nodes[index]) >= 0 {
+            index = readLeft(nodes[index])
         }
-        return TreeNode.keyOf(nodes[index])
+        return readKey(nodes[index])
     }
 
     public method maximumKey(missing: int): int {
         if rootIndex < 0 { return missing }
         var index = rootIndex
-        while TreeNode.rightOf(nodes[index]) >= 0 {
-            index = TreeNode.rightOf(nodes[index])
+        while readRight(nodes[index]) >= 0 {
+            index = readRight(nodes[index])
         }
-        return TreeNode.keyOf(nodes[index])
+        return readKey(nodes[index])
     }
 
     private method heightAt(index: int): int {
         if index < 0 { return 0 }
-        let leftHeight = heightAt(TreeNode.leftOf(nodes[index]))
-        let rightHeight = heightAt(TreeNode.rightOf(nodes[index]))
+        let leftHeight = heightAt(readLeft(nodes[index]))
+        let rightHeight = heightAt(readRight(nodes[index]))
         if leftHeight > rightHeight { return leftHeight + 1 }
         return rightHeight + 1
     }
@@ -112,9 +112,9 @@ class BinaryTree {
 
     private method collectFrom(index: int, result: int[]): unit {
         if index < 0 { return }
-        collectFrom(TreeNode.leftOf(nodes[index]), result)
-        result.push(TreeNode.keyOf(nodes[index]))
-        collectFrom(TreeNode.rightOf(nodes[index]), result)
+        collectFrom(readLeft(nodes[index]), result)
+        result.push(readKey(nodes[index]))
+        collectFrom(readRight(nodes[index]), result)
     }
 
     // Keys in ascending order.
@@ -123,4 +123,15 @@ class BinaryTree {
         collectFrom(rootIndex, result)
         return result
     }
+
+    // The root compiler cannot call a method directly on an array element.
+    // These helpers keep the entity behavior on TreeNode while the aggregate
+    // passes the selected entity as a typed collaborator.
+    private method readKey(node: TreeNode): int { return node.readKey() }
+    private method readValue(node: TreeNode): int { return node.readValue() }
+    private method readLeft(node: TreeNode): int { return node.readLeftIndex() }
+    private method readRight(node: TreeNode): int { return node.readRightIndex() }
+    private method replaceValue(node: TreeNode, value: int): unit { node.replaceValue(value) }
+    private method linkLeft(node: TreeNode, child: int): unit { node.linkLeft(child) }
+    private method linkRight(node: TreeNode, child: int): unit { node.linkRight(child) }
 }

@@ -1,0 +1,5 @@
+package demo.other
+
+class Thing {
+    method size(): int { return 1 }
+}

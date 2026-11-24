@@ -74,6 +74,10 @@ func vmRuntimeCall(vm: VmState, callId: int): unit {
         vmPush(vm, 3, vmNewStringFrom(vm, Runtime.readText(path), bytes, 0, bytes.len()))
         return
     }
+    if callId == 9 && argumentTag == 3 {
+        vmPush(vm, 4, vmBytesArray(vm, read_dir(vm.strings[argumentValue])))
+        return
+    }
     vmFail(vm, 2, 57)
 }
 

@@ -1,4 +1,4 @@
-package mois.library
+package mois.library.collections.array
 
 // Growable integer array with random-access writes and removal at the end.
 // The logical size is a field; cells past the size are kept and reused, so
@@ -8,8 +8,8 @@ package mois.library
 // parameter, because neither the seed nor `moil build` v0.3.0 can call a
 // method on an array element or bind a class element to a local.
 class IntArray {
-    public var cells: IntCell[]
-    public var size: int
+    var cells: IntCell[]
+    var size: int
 
     public method count(): int {
         return size

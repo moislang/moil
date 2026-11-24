@@ -6,7 +6,8 @@ func compilerFiles(): string[] {
     return [
         "bootstrap/src/Unit.moi", "bootstrap/src/Lex.moi", "bootstrap/src/Parse.moi",
         "bootstrap/src/ParseDecl.moi", "bootstrap/src/Emit.moi", "bootstrap/src/EmitExpr.moi",
-        "bootstrap/src/EmitStmt.moi", "bootstrap/src/Runtime.moi", "bootstrap/src/ImageReader.moi",
+        "bootstrap/src/EmitStmt.moi", "bootstrap/src/Runtime.moi", "bootstrap/src/HostShim.moi",
+        "bootstrap/src/ImageReader.moi",
         "bootstrap/src/ImageCode.moi", "bootstrap/src/VmValue.moi", "bootstrap/src/VmText.moi",
         "bootstrap/src/VmString.moi", "bootstrap/src/VmOps.moi", "bootstrap/src/VmExec.moi",
         "bootstrap/src/VmDecode.moi", "bootstrap/src/VmFast.moi", "bootstrap/src/VmFrame.moi",
@@ -19,7 +20,10 @@ func compilerFiles(): string[] {
         "bootstrap/src/NativeBoundary.moi", "bootstrap/src/NativeBackend.moi", "bootstrap/src/SourceJoin.moi",
         "bootstrap/src/Compiler.moi", "bootstrap/src/ScopeParse.moi", "bootstrap/src/ScopeEmit.moi",
         "bootstrap/src/ScopeMatch.moi", "bootstrap/src/MatchCheck.moi",
-        "bootstrap/src/BorrowCheck.moi"
+        "bootstrap/src/BorrowCheck.moi", "bootstrap/src/ProjectText.moi", "bootstrap/src/SourceHeader.moi",
+        "bootstrap/src/ProjectReport.moi", "bootstrap/src/ProjectProperties.moi", "bootstrap/src/ProjectModel.moi",
+        "bootstrap/src/ProjectListing.moi", "bootstrap/src/ProjectLoader.moi", "bootstrap/src/ProjectResolver.moi",
+        "bootstrap/src/ProjectIndexer.moi", "bootstrap/src/ProjectCommand.moi"
     ]
 }
 

@@ -1,0 +1,143 @@
+package mois.compiler.project
+
+// moislang.properties (SPEC-0003): one `key=value` or `key: value` per
+// line, `#` and `!` start comment lines, keys and values are trimmed. No
+// escapes or continuation lines. Keys: project.name, project.version,
+// root.package, source.dir (default `.`) and library.paths (comma-separated
+// folders, relative to the folder of the file). Unknown and repeated keys
+// are errors, so a typo cannot silently change the build.
+class ProjectProperties {
+    // 1 once a file was read. An int, not a bool: `moil` v0.3.0 reads a
+    // `false` bool field through a parameter as neither true nor false
+    // (evidence.md, root bool field probe).
+    public var found: int
+    // folder of the properties file
+    public var directory: int[]
+    public var rootPackage: int[]
+    public var sourceDir: int[]
+    public var libraryPaths: int[]
+    public var projectName: int[]
+    public var projectVersion: int[]
+    public var seen: int[]
+
+    // Reads `<folder>/moislang.properties` when it exists.
+    public method load(folder: int[], text: ProjectText, report: ProjectReport): unit {
+        let path = text.joinPath(folder, text.propertiesName())
+        if text.negate(text.fileExists(path)) { return }
+        text.appendBytes(directory, folder)
+        found = 1
+        parse(text.readFile(path), path, text, report)
+    }
+
+    public method isFound(): bool {
+        return found != 0
+    }
+
+    public method parse(source: int[], path: int[], text: ProjectText, report: ProjectReport): unit {
+        var line = 1
+        var start = 0
+        while start <= source.len() && report.passing() {
+            var end = start
+            while end < source.len() && source[end] != 10 { end = end + 1 }
+            parseLine(source, start, end, line, path, text, report)
+            start = end + 1
+            line = line + 1
+        }
+        if rootPackage.len() > 0 && text.negate(text.isQualifiedName(rootPackage)) {
+            report.fail(6014, path, 0, 0, 0)
+        }
+    }
+
+    private method parseLine(source: int[], lineStart: int, lineEnd: int, line: int, path: int[], text: ProjectText, report: ProjectReport): unit {
+        var start = lineStart
+        var end = lineEnd
+        while start < end && text.isSpace(source[start]) { start = start + 1 }
+        while end > start && text.isSpace(source[end - 1]) { end = end - 1 }
+        if start == end || source[start] == 35 || source[start] == 33 { return }
+        var separator = start
+        while separator < end && source[separator] != 61 && source[separator] != 58 { separator = separator + 1 }
+        var keyEnd = separator
+        while keyEnd > start && text.isSpace(source[keyEnd - 1]) { keyEnd = keyEnd - 1 }
+        if separator == end || keyEnd == start {
+            report.fail(6001, path, line, start, end)
+            return
+        }
+        var valueStart = separator + 1
+        while valueStart < end && text.isSpace(source[valueStart]) { valueStart = valueStart + 1 }
+        let key = keyId(source, start, keyEnd - start, text)
+        if key == 0 {
+            report.fail(6002, path, line, start, keyEnd)
+            return
+        }
+        var index = 0
+        while index < seen.len() {
+            if seen[index] == key {
+                report.fail(6003, path, line, start, keyEnd)
+                return
+            }
+            index = index + 1
+        }
+        seen.push(key)
+        let value = text.slice(source, valueStart, end - valueStart)
+        if key == 1 { text.appendBytes(projectName, value) }
+        if key == 2 { text.appendBytes(projectVersion, value) }
+        if key == 3 { text.appendBytes(rootPackage, value) }
+        if key == 4 { text.appendBytes(sourceDir, value) }
+        if key == 5 { text.appendBytes(libraryPaths, value) }
+    }
+
+    // 1 project.name, 2 project.version, 3 root.package, 4 source.dir,
+    // 5 library.paths, 0 unknown.
+    private method keyId(source: int[], start: int, count: int, text: ProjectText): int {
+        if text.compareRange(source, start, count, [112, 114, 111, 106, 101, 99, 116, 46, 110, 97, 109, 101], 0, 12) == 0 { return 1 }
+        if text.compareRange(source, start, count, [112, 114, 111, 106, 101, 99, 116, 46, 118, 101, 114, 115, 105, 111, 110], 0, 15) == 0 { return 2 }
+        if text.compareRange(source, start, count, [114, 111, 111, 116, 46, 112, 97, 99, 107, 97, 103, 101], 0, 12) == 0 { return 3 }
+        if text.compareRange(source, start, count, [115, 111, 117, 114, 99, 101, 46, 100, 105, 114], 0, 10) == 0 { return 4 }
+        if text.compareRange(source, start, count, [108, 105, 98, 114, 97, 114, 121, 46, 112, 97, 116, 104, 115], 0, 13) == 0 { return 5 }
+        return 0
+    }
+
+    // Source root: the properties folder joined with source.dir.
+    public method sourceRoot(text: ProjectText): int[] {
+        if sourceDir.len() == 0 { return text.normalPath(directory) }
+        return text.normalPath(text.joinPath(directory, text.normalPath(sourceDir)))
+    }
+
+    public method libraryCount(): int {
+        if libraryPaths.len() == 0 { return 0 }
+        var count = 1
+        var index = 0
+        while index < libraryPaths.len() {
+            if libraryPaths[index] == 44 { count = count + 1 }
+            index = index + 1
+        }
+        return count
+    }
+
+    // Folder of library `which`, relative to the current folder.
+    // Absolute folders (`/x`, or a Windows drive `C:/x`) are kept.
+    public method libraryFolder(which: int, text: ProjectText): int[] {
+        var current = 0
+        var start = 0
+        var first = 0
+        var last = 0
+        var index = 0
+        while index <= libraryPaths.len() {
+            if index == libraryPaths.len() || libraryPaths[index] == 44 {
+                if current == which {
+                    first = start
+                    last = index
+                }
+                current = current + 1
+                start = index + 1
+            }
+            index = index + 1
+        }
+        while first < last && text.isSpace(libraryPaths[first]) { first = first + 1 }
+        while last > first && text.isSpace(libraryPaths[last - 1]) { last = last - 1 }
+        var folder = text.normalPath(text.slice(libraryPaths, first, last - first))
+        let absolute = folder[0] == 47 || (folder.len() > 1 && folder[1] == 58)
+        if text.negate(absolute) { folder = text.normalPath(text.joinPath(directory, folder)) }
+        return folder
+    }
+}

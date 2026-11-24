@@ -68,6 +68,18 @@ func emitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
             return
         }
     }
+    // read_dir(path): RUNTIME_CALL 9, the host directory listing (SPEC-0003).
+    // A declared `read_dir` takes precedence: the SnBC compiler image calls
+    // its root fallback (HostShim.moi), because `moil run-snbc` v0.3.0
+    // refuses images that contain call 9 (ADR-0011).
+    if ck == 4 && isWord(src, ns, nl, 8, 114, 101, 97, 100, 95, 100, 105, 114, 0, 0, 0, 0) && consCount(bg, args) == 1 && findFunc(src, bg, ns, nl) < 0 {
+        emitExpr(src, bg, cx, code, fat, fb, consFirst(bg, args))
+        code.push(57)
+        pushU32(code, 9)
+        pushU32(code, 1)
+        cx.expr_ty = 0
+        return
+    }
     if ck == 4 && isWord(src, ns, nl, 10, 114, 101, 97, 100, 95, 98, 121, 116, 101, 115, 0, 0) && consCount(bg, args) == 1 {
         emitExpr(src, bg, cx, code, fat, fb, consFirst(bg, args))
         code.push(47)

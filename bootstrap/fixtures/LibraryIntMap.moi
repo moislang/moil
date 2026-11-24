@@ -7,7 +7,7 @@ import builtin.io.console
 func main(): int {
     var heads: IntCell[] = []
     var entries: MapEntry[] = []
-    var table = IntMap { heads: heads, entries: entries }
+    var table = IntMap(heads, entries)
     table.initialize(4)
     Console.printline(table.lookup(3, -1))
     table.store(3, 30)

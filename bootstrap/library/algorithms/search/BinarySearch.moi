@@ -1,4 +1,4 @@
-package mois.library
+package mois.library.algorithms.search
 
 // Searches over int arrays sorted in ascending order. Stateless instance
 // API (ADR-0007): create it with `BinarySearch()`, so code built by

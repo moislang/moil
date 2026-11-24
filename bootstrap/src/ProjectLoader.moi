@@ -1,0 +1,181 @@
+package mois.compiler.project
+
+// Roots of a project (SPEC-0003). The entry is a `.moi` path, a qualified
+// type name resolved through ./moislang.properties, or (for `index`) a
+// project folder. The root package comes from --root-package, else from
+// root.package in moislang.properties, else from the entry's `package`
+// declaration. Each folder below the source root appends one segment, so
+// the entry's last folders must spell the package segments beyond the root.
+// Libraries are the folders listed in library.paths, transitively.
+class ProjectLoader {
+    // Entry file index, -2 for a project folder without an entry, or -1
+    // after a diagnostic.
+    public method load(model: ProjectModel, props: ProjectProperties, entry: int[], rootFlag: int[], indexOnly: bool, text: ProjectText, report: ProjectReport): int {
+        var none: int[] = []
+        if rootFlag.len() > 0 && text.negate(text.isQualifiedName(rootFlag)) {
+            report.fail(6014, none, 0, 0, 0)
+            return -1
+        }
+        let path = text.normalPath(entry)
+        if text.endsWith(path, text.moiSuffix()) {
+            return loadEntryFile(model, props, path, rootFlag, text, report)
+        }
+        if text.fileExists(text.joinPath(path, text.propertiesName())) {
+            if text.negate(indexOnly) {
+                report.fail(6004, path, 0, 0, 0)
+                return -1
+            }
+            props.load(path, text, report)
+            if report.failed() { return -1 }
+            let root = chooseRoot(props, rootFlag, none, text, report)
+            if report.failed() { return -1 }
+            if root.len() == 0 {
+                report.fail(6011, path, 0, 0, 0)
+                return -1
+            }
+            model.addRoot(root, props.sourceRoot(text), 0)
+            loadLibraries(model, props, text, report, 0)
+            if report.failed() { return -1 }
+            return -2
+        }
+        return loadQualified(model, props, path, rootFlag, text, report)
+    }
+
+    private method loadQualified(model: ProjectModel, props: ProjectProperties, name: int[], rootFlag: int[], text: ProjectText, report: ProjectReport): int {
+        var none: int[] = []
+        if text.negate(text.isQualifiedName(name)) {
+            report.fail(6004, name, 0, 0, 0)
+            return -1
+        }
+        props.load([46], text, report)
+        if report.failed() { return -1 }
+        if text.negate(props.isFound()) {
+            report.fail(6004, name, 0, 0, 0)
+            return -1
+        }
+        let root = chooseRoot(props, rootFlag, none, text, report)
+        if report.failed() { return -1 }
+        if root.len() == 0 {
+            report.fail(6011, text.propertiesName(), 0, 0, 0)
+            return -1
+        }
+        if text.negate(text.underPackage(name, root)) || name.len() == root.len() {
+            report.fail(6006, name, 0, 0, 0)
+            return -1
+        }
+        var file = text.joinPath(props.sourceRoot(text), text.folderPath(text.relativeName(name, root)))
+        text.appendBytes(file, text.moiSuffix())
+        return loadEntryFile(model, props, file, rootFlag, text, report)
+    }
+
+    private method loadEntryFile(model: ProjectModel, props: ProjectProperties, path: int[], rootFlag: int[], text: ProjectText, report: ProjectReport): int {
+        if text.negate(text.fileExists(path)) {
+            report.fail(6004, path, 0, 0, 0)
+            return -1
+        }
+        let source = text.readFile(path)
+        var starts: int[] = []
+        var counts: int[] = []
+        var lines: int[] = []
+        let header = SourceHeader(-1, 0, 0, 0, starts, counts, lines, 0, 0)
+        header.scan(source)
+        if header.packageStart < 0 {
+            report.fail(6005, path, 1, 0, 0)
+            return -1
+        }
+        let declared = text.slice(source, header.packageStart, header.packageCount)
+        let spanEnd = header.packageStart + header.packageCount
+        if text.negate(text.isQualifiedName(declared)) {
+            report.fail(6014, path, header.packageLine, header.packageStart, spanEnd)
+            return -1
+        }
+        if text.negate(props.isFound()) { findProperties(props, text.directoryOf(path), text, report) }
+        if report.failed() { return -1 }
+        let root = chooseRoot(props, rootFlag, declared, text, report)
+        if report.failed() { return -1 }
+        if text.negate(text.underPackage(declared, root)) {
+            report.fail(6006, path, header.packageLine, header.packageStart, spanEnd)
+            return -1
+        }
+        let total = text.segmentCount(declared)
+        let extra = total - text.segmentCount(root)
+        var folder = text.directoryOf(path)
+        var step = 0
+        while step < extra {
+            if text.opaqueDirectory(folder) || text.negate(text.same(text.lastName(folder), text.segment(declared, total - 1 - step))) {
+                report.fail(6007, path, header.packageLine, header.packageStart, spanEnd)
+                return -1
+            }
+            folder = text.directoryOf(folder)
+            step = step + 1
+        }
+        model.addRoot(root, folder, 0)
+        loadLibraries(model, props, text, report, 0)
+        if report.failed() { return -1 }
+        return model.addFile(path, declared, text)
+    }
+
+    // Nearest moislang.properties from the entry folder upward, at most 32
+    // folders; absent properties are allowed for a single-root application.
+    private method findProperties(props: ProjectProperties, start: int[], text: ProjectText, report: ProjectReport): unit {
+        var folder = text.slice(start, 0, start.len())
+        var level = 0
+        while level < 32 {
+            props.load(folder, text, report)
+            if props.isFound() || report.failed() { return }
+            if folder.len() == 1 && folder[0] == 47 { return }
+            if text.opaqueDirectory(folder) {
+                folder = text.joinPath(folder, [46, 46])
+            } else {
+                folder = text.directoryOf(folder)
+            }
+            level = level + 1
+        }
+    }
+
+    // --root-package, else root.package, else the declared package.
+    private method chooseRoot(props: ProjectProperties, rootFlag: int[], declared: int[], text: ProjectText, report: ProjectReport): int[] {
+        let configured = props.rootPackage.len() > 0
+        if rootFlag.len() > 0 {
+            if configured && text.negate(text.same(rootFlag, props.rootPackage)) {
+                report.fail(6015, text.joinPath(props.directory, text.propertiesName()), 0, 0, 0)
+            }
+            return text.slice(rootFlag, 0, rootFlag.len())
+        }
+        if configured { return text.slice(props.rootPackage, 0, props.rootPackage.len()) }
+        return text.slice(declared, 0, declared.len())
+    }
+
+    // Library roots from library.paths, depth-first, at most 16 levels. A
+    // root package seen before is the same library reached again.
+    private method loadLibraries(model: ProjectModel, props: ProjectProperties, text: ProjectText, report: ProjectReport, depth: int): unit {
+        var which = 0
+        while which < props.libraryCount() && report.passing() {
+            let folder = props.libraryFolder(which, text)
+            var directory: int[] = []
+            var rootPackage: int[] = []
+            var sourceDir: int[] = []
+            var libraryPaths: int[] = []
+            var projectName: int[] = []
+            var projectVersion: int[] = []
+            var seen: int[] = []
+            let library = ProjectProperties(0, directory, rootPackage, sourceDir, libraryPaths, projectName, projectVersion, seen)
+            library.load(folder, text, report)
+            if report.failed() { return }
+            if text.negate(library.isFound()) || library.rootPackage.len() == 0 {
+                report.fail(6011, folder, 0, 0, 0)
+                return
+            }
+            let known = model.findRoot(library.rootPackage, text)
+            if known == 0 {
+                report.fail(6012, folder, 0, 0, 0)
+                return
+            }
+            if known < 0 {
+                model.addRoot(library.rootPackage, library.sourceRoot(text), 1)
+                if depth < 16 { loadLibraries(model, library, text, report, depth + 1) }
+            }
+            which = which + 1
+        }
+    }
+}

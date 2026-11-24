@@ -183,6 +183,7 @@ func scopeBuiltinName(src: int[], s: int, n: int): int {
     if isWord(src, s, n, 3, 103, 101, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 1 }
     if isWord(src, s, n, 3, 112, 111, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0) { return 1 }
     if isWord(src, s, n, 10, 114, 101, 97, 100, 95, 98, 121, 116, 101, 115, 0, 0) { return 1 }
+    if isWord(src, s, n, 8, 114, 101, 97, 100, 95, 100, 105, 114, 0, 0, 0, 0) { return 1 }
     if isWord(src, s, n, 11, 119, 114, 105, 116, 101, 95, 98, 121, 116, 101, 115, 0) { return 1 }
     return 0
 }

@@ -1,0 +1,7 @@
+package demo
+
+import demo.Helper
+
+func main(): int {
+    return 0
+}

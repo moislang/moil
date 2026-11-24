@@ -32,17 +32,17 @@ SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo
 # (the order `ownSource()` in SourceJoin.moi will use once the compiler calls
 # them). `moil` v0.3.0 lowers every visible module, so only migrated modules
 # may be listed.
-LIBRARY_ROOT_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting
-LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting LibraryIntArray
+LIBRARY_ROOT_SOURCES := collections/array/IntCell collections/array/IntArray algorithms/search/BinarySearch algorithms/search/LinearSearch algorithms/sorting/Sorting collections/heap/BinaryHeap collections/tree/TreeNode collections/tree/BinaryTree collections/map/MapEntry collections/map/IntMap
+LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting LibraryIntArray LibraryBinaryHeap LibraryBinaryTree LibraryIntMap
 ROOT_PROJECT := $(BUILD_DIR)/root-project
 
-.PHONY: bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root
+.PHONY: bootstrap-target-cli bootstrap-native-target bootstrap-native-self-target bootstrap-native-self-emit bootstrap-native-self-run bootstrap-native-linux-aarch64-emit bootstrap-native-linux-aarch64-run bootstrap-root-project bootstrap-check bootstrap-build bootstrap-self-host bootstrap-fixed-point bootstrap-seed-stage bootstrap-seed-fixed-point bootstrap-seed-refresh bootstrap-smoke bootstrap-diagnostics bootstrap-image-check bootstrap-vm bootstrap-vm-self bootstrap-native bootstrap-native-self bootstrap-library bootstrap-library-root bootstrap-project bootstrap-project-listing
 
 bootstrap-root-project:
 	rm -rf $(ROOT_PROJECT)
 	mkdir -p $(ROOT_PROJECT)/library
 	@for source in bootstrap/src/*.moi; do name=$${source##*/}; name=$${name%.moi}; cp $$source $(ROOT_PROJECT)/$$name.$(MOIL_SOURCE_EXT) || exit 1; done
-	@for name in $(LIBRARY_ROOT_SOURCES); do cp bootstrap/library/$$name.moi $(ROOT_PROJECT)/library/$$name.$(MOIL_SOURCE_EXT) || exit 1; done
+	@for name in $(LIBRARY_ROOT_SOURCES); do mkdir -p $(ROOT_PROJECT)/library/$$(dirname $$name); cp bootstrap/library/$$name.moi $(ROOT_PROJECT)/library/$$name.$(MOIL_SOURCE_EXT) || exit 1; done
 
 bootstrap-check: bootstrap-root-project
 	$(MOIL) check --project $(ROOT_PROJECT)
@@ -86,6 +86,16 @@ bootstrap-seed-refresh: bootstrap-fixed-point
 bootstrap-smoke: bootstrap-build
 	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $(BUILD_DIR)/hello.mlbc
 	test "$$( $(MOIL) run-snbc $(BUILD_DIR)/hello.mlbc)" = "mois bootstrap ok"
+
+# Project resolution (SPEC-0003). The SnBC compiler bundle has no directory
+# listing (HostShim.moi), so this gate is the same on every host; the listing
+# half runs with the native Linux compiler in bootstrap-native-linux-aarch64-run.
+bootstrap-project: bootstrap-build
+	sh scripts/test-projects.sh portable $(COMPILER_BUNDLE) $(BUILD_DIR)
+
+PROJECT_COMPILER ?= $(LINUX_AARCH64_DIR)/snl
+bootstrap-project-listing:
+	sh scripts/test-projects.sh listing $(PROJECT_COMPILER) $(BUILD_DIR)
 
 # OOP contracts: interface implementations are checked statically and calls
 # through interface values dispatch to the concrete method in the Mois VM.
@@ -329,7 +339,7 @@ bootstrap-native: bootstrap-build
 # native assembly, then use the generated executable for two further builds.
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
-NATIVE_COMPILER_SOURCES := Unit Lex Parse ParseDecl Emit EmitExpr EmitStmt Runtime ImageReader ImageCode VmValue VmText VmString VmOps VmExec VmDecode VmFast VmFrame VmLoad NativeImage NativeRoles NativeAssembly NativeSlot NativeOwnership ProcessorArchitecture OperatingSystemRuntime CallingConvention ExecutableFormat NativeToolchain NativeValueEmitter NativeInstructionEmitter NativeTargetResolver NativeBoundary NativeBackend SourceJoin Compiler ScopeParse ScopeEmit ScopeMatch MatchCheck BorrowCheck
+NATIVE_COMPILER_SOURCES := Unit Lex Parse ParseDecl Emit EmitExpr EmitStmt Runtime ImageReader ImageCode VmValue VmText VmString VmOps VmExec VmDecode VmFast VmFrame VmLoad NativeImage NativeRoles NativeAssembly NativeSlot NativeOwnership ProcessorArchitecture OperatingSystemRuntime CallingConvention ExecutableFormat NativeToolchain NativeValueEmitter NativeInstructionEmitter NativeTargetResolver NativeBoundary NativeBackend SourceJoin Compiler ScopeParse ScopeEmit ScopeMatch MatchCheck BorrowCheck ProjectText SourceHeader ProjectReport ProjectProperties ProjectModel ProjectListing ProjectLoader ProjectResolver ProjectIndexer ProjectCommand
 NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.moi
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native
@@ -381,6 +391,7 @@ bootstrap-native-linux-aarch64-emit: bootstrap-build
 bootstrap-native-linux-aarch64-run:
 	python3 scripts/test-native-linux-aarch64.py --phase run --build-dir $(LINUX_AARCH64_DIR)/fixtures
 	$(MAKE) bootstrap-native-self-run NATIVE_TARGET=aarch64-unknown-linux-gnu
+	$(MAKE) bootstrap-project-listing PROJECT_COMPILER=$(LINUX_AARCH64_DIR)/snl
 
 # Native target selection. The compiler takes the target on its command line
 # (`<in.moi> <out.s> --target <triple>`, or the older `native [<triple>]`);
@@ -503,13 +514,11 @@ bootstrap-prerelease:
 
 # Mois data-structure library (bootstrap/library): each fixture is joined
 # with the library in dependency order (the seed resolves a field type only
-# when its class was declared earlier) and must match `moil run-snbc`. Most of
-# the library still uses static methods, so it serves programs compiled by the
-# Mois compiler, not the compiler built by `moil build` v0.3.0; the modules
-# migrated to an instance API are gated by `bootstrap-library-root`. Each
+# when its class was declared earlier) and must match `moil run-snbc`. Every
+# library module uses an instance API and is staged for the root build. Each
 # fixture also runs natively and must free every block before exit.
-LIBRARY_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting BinaryHeap TreeNode BinaryTree MapEntry IntMap
-LIBRARY_FIXTURES := LibrarySearch LibraryBinaryHeap LibraryBinaryTree LibrarySorting LibraryIntMap LibraryIntArray
+LIBRARY_SOURCES := collections/array/IntCell collections/array/IntArray algorithms/search/BinarySearch algorithms/search/LinearSearch algorithms/sorting/Sorting collections/heap/BinaryHeap collections/tree/TreeNode collections/tree/BinaryTree collections/map/MapEntry collections/map/IntMap
+LIBRARY_FIXTURES := LibrarySearch LibrarySorting LibraryIntArray LibraryBinaryHeap LibraryBinaryTree LibraryIntMap
 
 bootstrap-library: bootstrap-build
 	@for fixture in $(LIBRARY_FIXTURES); do \

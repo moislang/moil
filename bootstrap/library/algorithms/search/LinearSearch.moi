@@ -1,4 +1,4 @@
-package mois.library
+package mois.library.algorithms.search
 
 // Searches over unsorted int arrays. Stateless instance API (ADR-0007):
 // create it with `LinearSearch()`, so code built by `moil build` v0.3.0 can

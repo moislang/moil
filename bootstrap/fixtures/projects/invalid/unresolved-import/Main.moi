@@ -1,0 +1,7 @@
+package demo
+
+import org.nowhere.Thing
+
+func main(): int {
+    return 0
+}

@@ -1,4 +1,4 @@
-package mois.library
+package mois.library.collections.array
 
 // Mutable integer cell. The seed subset has no index assignment, so mutable
 // indexed storage is an array of cells whose field changes. Instance API
@@ -7,7 +7,7 @@ package mois.library
 // owners pass the element to a sibling method that takes the cell as a typed
 // parameter and calls `read`/`assign` on it.
 class IntCell {
-    public var value: int
+    var value: int
 
     public method assign(newValue: int): unit {
         value = newValue

@@ -1,0 +1,85 @@
+package mois.compiler.project
+
+import builtin.io.console
+
+// `moil index` (SPEC-0003): walks every root with the host listing and
+// prints its packages and files in byte order. Each `.moi` file must declare
+// the package that its folder implies. Folders that start with `.` and
+// folders with their own moislang.properties (nested projects) are skipped.
+class ProjectIndexer {
+    public method listProject(model: ProjectModel, text: ProjectText, report: ProjectReport): unit {
+        var root = 0
+        while root < model.rootCount() {
+            Console.print("root ")
+            Console.print(text.text(model.rootPackage(root)))
+            if model.isLibrary(root) { Console.print(" library ") } else { Console.print(" application ") }
+            Console.printline(text.text(model.rootDirectory(root)))
+            root = root + 1
+        }
+        root = 0
+        while root < model.rootCount() && report.passing() {
+            walk(model.rootPackage(root), model.rootDirectory(root), true, text, report)
+            root = root + 1
+        }
+    }
+
+    private method walk(name: int[], folder: int[], valid: bool, text: ProjectText, report: ProjectReport): unit {
+        let entries = text.listing(folder)
+        if entries[0] == 2 {
+            report.fail(6010, folder, 0, 0, 0)
+            return
+        }
+        if entries[0] != 0 {
+            report.fail(6016, folder, 0, 0, 0)
+            return
+        }
+        let listing = ProjectListing()
+        let files = listing.names(entries, folder, false, text)
+        let fileCount = listing.nameCount(files)
+        if fileCount > 0 {
+            if text.negate(valid) {
+                report.fail(6014, folder, 0, 0, 0)
+                return
+            }
+            Console.print("package ")
+            Console.printline(text.text(name))
+        }
+        var which = 0
+        while which < fileCount && report.passing() {
+            let fileName = listing.nameAt(files, which)
+            checkFile(name, text.joinPath(folder, fileName), text, report)
+            if report.passing() {
+                Console.print("  ")
+                Console.printline(text.text(fileName))
+            }
+            which = which + 1
+        }
+        let folders = listing.names(entries, folder, true, text)
+        which = 0
+        while which < listing.nameCount(folders) && report.passing() {
+            let child = listing.nameAt(folders, which)
+            let childFolder = text.joinPath(folder, child)
+            if child[0] != 46 && text.negate(text.fileExists(text.joinPath(childFolder, text.propertiesName()))) {
+                let childValid = valid && text.isIdentifier(child, 0, child.len())
+                walk(text.dottedJoin(name, child), childFolder, childValid, text, report)
+            }
+            which = which + 1
+        }
+    }
+
+    private method checkFile(name: int[], path: int[], text: ProjectText, report: ProjectReport): unit {
+        let source = text.readFile(path)
+        var starts: int[] = []
+        var counts: int[] = []
+        var lines: int[] = []
+        let header = SourceHeader(-1, 0, 0, 0, starts, counts, lines, 0, 0)
+        header.scan(source)
+        if header.packageStart < 0 {
+            report.fail(6008, path, 1, 0, 0)
+            return
+        }
+        if text.compareRange(source, header.packageStart, header.packageCount, name, 0, name.len()) != 0 {
+            report.fail(6008, path, header.packageLine, header.packageStart, header.packageStart + header.packageCount)
+        }
+    }
+}

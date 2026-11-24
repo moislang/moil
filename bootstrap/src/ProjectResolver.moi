@@ -1,0 +1,166 @@
+package mois.compiler.project
+
+// Import closure and joined unit (SPEC-0003). Starting at the entry, every
+// import is resolved against the root with the longest package prefix:
+// `root.a.B` is the type file `<source root>/a/B.moi` when it exists (no
+// listing needed), otherwise `root.a.B` is a package and brings every `.moi`
+// file of `<source root>/a/B` (listing needed). `builtin.*` belongs to the
+// toolchain. Files are emitted depth-first, imports in byte order, so the
+// dependencies of a file come before it.
+class ProjectResolver {
+    public method visit(model: ProjectModel, file: int, entryFile: int, text: ProjectText, report: ProjectReport): unit {
+        if report.failed() { return }
+        if text.negate(model.markVisited(file)) { return }
+        let path = model.filePath(file)
+        let source = text.readFile(path)
+        var starts: int[] = []
+        var counts: int[] = []
+        var lines: int[] = []
+        let header = SourceHeader(-1, 0, 0, 0, starts, counts, lines, 0, 0)
+        header.scan(source)
+        var declared: int[] = []
+        if header.packageStart >= 0 { declared = text.slice(source, header.packageStart, header.packageCount) }
+        if text.negate(text.same(declared, model.filePackage(file))) {
+            if header.packageStart < 0 {
+                report.fail(6008, path, 1, 0, 0)
+            } else {
+                report.fail(6008, path, header.packageLine, header.packageStart, header.packageStart + header.packageCount)
+            }
+            return
+        }
+        if file != entryFile && header.mainLine > 0 {
+            report.fail(6013, path, header.mainLine, header.mainStart, header.mainStart + 4)
+            return
+        }
+        var importStarts: int[] = []
+        var importCounts: int[] = []
+        var which = 0
+        while which < header.importCount() {
+            importStarts.push(header.importStart(which))
+            importCounts.push(header.importLength(which))
+            which = which + 1
+        }
+        let listing = ProjectListing()
+        let order = listing.sortedOrder(source, importStarts, importCounts, text)
+        var position = 0
+        while position < order.len() && report.passing() {
+            let item = order[position]
+            let start = header.importStart(item)
+            let name = text.slice(source, start, header.importLength(item))
+            if text.negate(text.startsWith(name, text.builtinPrefix())) {
+                let files = resolveImport(model, name, path, header.importLine(item), start, text, report)
+                var index = 0
+                while index < files.len() {
+                    visit(model, files[index], entryFile, text, report)
+                    index = index + 1
+                }
+            }
+            position = position + 1
+        }
+        if report.failed() { return }
+        model.appendOrder(file)
+    }
+
+    // Files that one import brings, added to the model.
+    // One exit only: the root (`moil` v0.3.0) treats a conditional
+    // `return files` as a move for the code after it.
+    private method resolveImport(model: ProjectModel, name: int[], importer: int[], line: int, start: int, text: ProjectText, report: ProjectReport): int[] {
+        var files: int[] = []
+        let spanEnd = start + name.len()
+        let root = model.longestRoot(name, text)
+        if root < 0 {
+            report.fail(6009, importer, line, start, spanEnd)
+        } else {
+            let typeFile = typeImport(model, root, name, text)
+            if typeFile >= 0 {
+                files.push(typeFile)
+            } else {
+                let status = packageImport(model, root, name, files, text)
+                if status == 2 {
+                    report.fail(6010, importer, line, start, spanEnd)
+                } else if status != 0 || files.len() == 0 {
+                    report.fail(6009, importer, line, start, spanEnd)
+                }
+            }
+        }
+        if report.failed() {
+            var none: int[] = []
+            files = none
+        }
+        return files
+    }
+
+    // `root.a.B` as the file `<root folder>/a/B.moi`: its file index, or -1
+    // when that file does not exist.
+    private method typeImport(model: ProjectModel, root: int, name: int[], text: ProjectText): int {
+        let rootPackage = model.rootPackage(root)
+        let rootFolder = model.rootDirectory(root)
+        let relative = text.relativeName(name, rootPackage)
+        if relative.len() == 0 { return -1 }
+        let segments = text.segmentCount(relative)
+        let last = text.segment(relative, segments - 1)
+        var parent: int[] = []
+        if segments > 1 { parent = text.slice(relative, 0, relative.len() - last.len() - 1) }
+        var folder = text.slice(rootFolder, 0, rootFolder.len())
+        if parent.len() > 0 { folder = text.joinPath(rootFolder, text.folderPath(parent)) }
+        var typeFile = text.joinPath(folder, last)
+        text.appendBytes(typeFile, text.moiSuffix())
+        if text.negate(text.fileExists(typeFile)) { return -1 }
+        return model.addFile(typeFile, text.dottedJoin(rootPackage, parent), text)
+    }
+
+    // `root.a.b` as the folder `<root folder>/a/b`: appends the index of
+    // each of its `.moi` files to `files`. Returns the listing status: 0,
+    // 1 when the folder cannot be read, 2 when the host cannot list folders.
+    private method packageImport(model: ProjectModel, root: int, name: int[], files: int[], text: ProjectText): int {
+        let rootFolder = model.rootDirectory(root)
+        let relative = text.relativeName(name, model.rootPackage(root))
+        var packageFolder = text.slice(rootFolder, 0, rootFolder.len())
+        if relative.len() > 0 { packageFolder = text.joinPath(rootFolder, text.folderPath(relative)) }
+        let entries = text.listing(packageFolder)
+        if entries[0] == 0 {
+            let listing = ProjectListing()
+            let names = listing.names(entries, packageFolder, false, text)
+            let count = listing.nameCount(names)
+            var which = 0
+            while which < count {
+                let file = text.joinPath(packageFolder, listing.nameAt(names, which))
+                files.push(model.addFile(file, name, text))
+                which = which + 1
+            }
+        }
+        return entries[0]
+    }
+
+    // One compilation unit: the files in order, each header (package and
+    // import declarations) replaced by spaces so that every byte keeps its
+    // offset and line inside its file. The parser accepts a unit without a
+    // package declaration.
+    public method join(model: ProjectModel, text: ProjectText): int[] {
+        var unit: int[] = []
+        var line = 1
+        var position = 0
+        while position < model.orderCount() {
+            model.recordUnit(unit.len(), line)
+            let source = text.readFile(model.filePath(model.orderFile(position)))
+            var starts: int[] = []
+            var counts: int[] = []
+            var lines: int[] = []
+            let header = SourceHeader(-1, 0, 0, 0, starts, counts, lines, 0, 0)
+            header.scan(source)
+            var index = 0
+            while index < source.len() {
+                let code = source[index]
+                if index < header.headerEnd && code != 10 { unit.push(32) } else { unit.push(code) }
+                if code == 10 { line = line + 1 }
+                index = index + 1
+            }
+            if source.len() == 0 || source[source.len() - 1] != 10 {
+                unit.push(10)
+                line = line + 1
+            }
+            position = position + 1
+        }
+        return unit
+    }
+}

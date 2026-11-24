@@ -127,9 +127,68 @@ class Host {
         return true
     }
 
+    // read_dir (RUNTIME_CALL 9, SPEC-0003): [status, (kind, name bytes, 0)*].
+    // Status 0 listed, 1 the path cannot be opened or is not a directory,
+    // 2 the host has no listing. Kind 1 file, 2 directory, 0 other or
+    // unknown. "." and ".." are skipped; the order is the kernel's.
+    // linux_dirent64: d_reclen u16 at 16, d_type at 18, d_name at 19.
+    public static method readDirectory(path: int): int {
+        let array = Container.newArray(64)
+        let descriptor = Host.openPath(path, 0, 0)
+        if descriptor < 0 {
+            Container.append(array, 1, 1)
+            return array
+        }
+        Container.append(array, 1, 0)
+        let capacity = 8192
+        let buffer = Heap.allocate(capacity)
+        var reading = true
+        while reading {
+            let count = System.entries(descriptor, buffer, capacity)
+            if count <= 0 {
+                if count < 0 {
+                    Primitive.store(array, 1)
+                    if count == -38 { Primitive.store(Container.slot(array, 0), 2) } else { Primitive.store(Container.slot(array, 0), 1) }
+                }
+                reading = false
+            } else {
+                var offset = 0
+                while offset < count {
+                    let entry = buffer + offset
+                    Host.appendEntry(array, entry)
+                    offset = offset + Primitive.loadByte(entry + 16) + 256 * Primitive.loadByte(entry + 17)
+                }
+            }
+        }
+        Heap.free(buffer)
+        System.close(descriptor)
+        return array
+    }
+
+    private static method appendEntry(array: int, entry: int): unit {
+        let name = entry + 19
+        let first = Primitive.loadByte(name)
+        let second = Primitive.loadByte(name + 1)
+        if first == 46 && second == 0 { return }
+        if first == 46 && second == 46 && Primitive.loadByte(name + 2) == 0 { return }
+        let entryType = Primitive.loadByte(entry + 18)
+        var kind = 0
+        if entryType == 8 { kind = 1 }
+        if entryType == 4 { kind = 2 }
+        Container.append(array, 1, kind)
+        var index = 0
+        while Primitive.loadByte(name + index) != 0 {
+            Container.append(array, 1, Primitive.loadByte(name + index))
+            index = index + 1
+        }
+        Container.append(array, 1, 0)
+    }
+
     // One-argument RUNTIME_CALL (57): 2 fileExists, 3 readText,
-    // 5 environment, 7 argument. Wrong types fail as in the SnBC executor.
+    // 5 environment, 7 argument, 9 read_dir. Wrong types fail as in the SnBC
+    // executor.
     public static method call(callId: int, tag: int, payload: int): int {
+        if callId == 9 && tag == 3 { return Primitive.tagged(4, Host.readDirectory(payload)) }
         if callId == 5 && tag == 3 { return Primitive.tagged(3, Host.environment(payload)) }
         if callId == 7 && tag == 1 { return Primitive.tagged(3, Host.argument(payload)) }
         if callId == 2 && tag == 3 {

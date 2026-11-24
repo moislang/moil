@@ -34,4 +34,10 @@ class System {
     // _exit(status); does not return
     @Native
     public static method exit(status: int): unit
+
+    // Linux getdents64(descriptor, address, length) -> bytes of
+    // linux_dirent64 records, 0 at end or -errno. Darwin answers -38 (ENOSYS)
+    // until its listing is implemented (ADR-0011).
+    @Native
+    public static method entries(descriptor: int, address: int, length: int): int
 }

@@ -1,5 +1,8 @@
 # Architecture overview
 
+The library package boundaries and aggregate model are described in
+[`library-domains.md`](library-domains.md).
+
 ## Goal
 
 Build a compiler that compiles its own source code, keeping Moislang as the implementation language. Reference compiler comparisons are recorded as migration evidence; this repository is the implementation source.

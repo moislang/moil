@@ -5,7 +5,7 @@ package mois.compiler.backend
 // routine, string constants and the state block. This is the only generated
 // code that calls libSystem.
 class NativeBoundary {
-    // Stub for native role 0..12. On entry argument i of n is at
+    // Stub for native role 0..13. On entry argument i of n is at
     // [sp + 16 * (n - 1 - i)]; system stubs build a frame first, so the same
     // argument is at [x29 + 16 + 16 * (n - 1 - i)].
     public method nativeStub(output: NativeAssembly, functionIndex: int, role: int, symbolPrefix: string, targetKind: int): unit {
@@ -88,6 +88,14 @@ class NativeBoundary {
             output.line("mov x8, #94")
             output.line("svc #0")
         }
+        if role == 13 {
+            // getdents64(descriptor, buffer, length) for read_dir (ADR-0011).
+            output.line("ldr x0, [x29, #48]")
+            output.line("ldr x1, [x29, #32]")
+            output.line("ldr x2, [x29, #16]")
+            output.line("mov x8, #61")
+            output.line("svc #0")
+        }
         output.line("mov x1, #1")
         output.line("ldp x29, x30, [sp], #16")
         output.line("ret")
@@ -135,6 +143,11 @@ class NativeBoundary {
         if role == 12 {
             output.line("ldr x0, [x29, #16]")
             output.line("bl " + symbolPrefix + "exit")
+        }
+        if role == 13 {
+            // Darwin listing is not implemented yet (ADR-0011): -ENOSYS makes
+            // read_dir answer status 2.
+            output.line("mov x0, #-38")
         }
         output.line("mov x1, #1")
         output.line("ldp x29, x30, [sp], #16")

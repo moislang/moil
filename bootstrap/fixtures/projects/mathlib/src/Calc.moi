@@ -1,0 +1,5 @@
+package org.mathlib
+
+class Calc {
+    method add(left: int, right: int): int { return left + right }
+}
