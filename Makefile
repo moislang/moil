@@ -257,7 +257,7 @@ bootstrap-vm: bootstrap-build
 	tr '\r' '\n' < $(BUILD_DIR)/vmStackOverflow.vm.txt | grep -Fqx "runtime error: Stack overflow"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmVariantValue.snl $(BUILD_DIR)/vmVariantValue.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.snbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
-	test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
+	test "$$(tr -d '\r' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmMatchNoArm.snl $(BUILD_DIR)/vmMatchNoArm.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
 	tr '\r' '\n' < $(BUILD_DIR)/vmMatchNoArm.vm.txt | grep -Fqx "runtime error: bodyless routine trapped"
@@ -301,7 +301,7 @@ bootstrap-native: bootstrap-build
 	@fixture=VmHostText; printf stale > $(BUILD_DIR)/vmHostText.txt; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
-		test "$$(tr '\r' '\n' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
+		test "$$(tr -d '\r' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
 		test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
 		echo "native host text ok: $$fixture (exit 1)"
 	@for fixture in $(NATIVE_OWNERSHIP_FIXTURES); do \
