@@ -246,7 +246,7 @@ bootstrap-vm: bootstrap-build
 	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.snl $(BUILD_DIR)/vmHostText.snbc
 	@MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
-		if [ "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
+		if [ "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
 			echo "VmHostText: exit $$status, MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
 			echo "stdout:"; cat $(BUILD_DIR)/vmHostText.vm.txt; echo "stderr:"; cat $(BUILD_DIR)/vmHostText.vm.err; \
 			ls -la $(BUILD_DIR) | head -5; exit 1; \
