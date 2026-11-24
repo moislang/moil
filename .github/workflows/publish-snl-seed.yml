@@ -1,17 +1,10 @@
 name: Publish moil seed binaries
 
-# One release in this repository, `snl-seed-<version>`, holds every moil
-# binary CI needs, so nothing downloads from the `moisc` source repository:
-# - macOS x86_64 and Windows ARM64 have no official binary: this workflow
-#   builds them ONCE from the commit of the official tag, with the official
-#   flags and archive layout (bin/snl + builtin/);
-# - the three official archives (macOS ARM64, Linux x86_64, Windows x86_64)
-#   are copied unchanged, after checking their pinned SHA-256.
-# .github/actions/setup-snl downloads from that release. This is the only
-# workflow that touches the `moisc` source repository, which is private: it
-# needs the SNL_SOURCE_TOKEN secret (read access to moislang/moisc).
+# Publish one pinned compiler build for each CI platform. The source is private,
+# so this is the only workflow that needs SNL_SOURCE_TOKEN; normal CI downloads
+# the resulting checksummed archives from this repository.
 #
-# Run: push the tag `snl-seed-v0.3.0`, or `gh workflow run publish-snl-seed.yml`
+# Run: push the tag `snl-seed-v0.3.1-mois-ext.1`, or dispatch this workflow.
 # (workflow_dispatch builds and uploads artifacts without a release).
 
 on:
@@ -23,9 +16,10 @@ permissions:
   contents: read
 
 env:
-  SNL_VERSION: v0.3.0
-  # Commit of the official `moisc` v0.3.0 source tag; the build fails if it moved.
-  SNL_COMMIT: 590a490d45719a742fb0e487753ab70cc6f91656
+  SNL_VERSION: v0.3.1-mois-ext.1
+  SNOVAC_VERSION: 0.3.1-mois-ext.1
+  # First compiler revision that accepts .moi/.mos; fail if the pin moves.
+  SNL_COMMIT: 27e685a33ec6bad3dfc972bbcd3d1659992a0bf2
 
 jobs:
   build:
@@ -34,12 +28,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - asset_platform: darwin-aarch64
+            runner: macos-15
+            shell: bash
           - asset_platform: darwin-x86_64
             runner: macos-15-intel
             shell: bash
+          - asset_platform: linux-x86_64
+            runner: ubuntu-24.04
+            shell: bash
+          - asset_platform: windows-x86_64
+            runner: windows-2025
+            shell: msys2 {0}
+            msystem: MINGW64
+            packages: make diffutils mingw-w64-x86_64-gcc zip
           - asset_platform: windows-aarch64
             runner: windows-11-arm
             shell: msys2 {0}
+            msystem: CLANGARM64
+            packages: make diffutils mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools zip
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:
@@ -55,41 +62,39 @@ jobs:
           SNL_SOURCE_TOKEN: ${{ secrets.SNL_SOURCE_TOKEN }}
         run: |
           if [ -z "$SNL_SOURCE_TOKEN" ]; then
-            echo "::error::set the SNL_SOURCE_TOKEN secret (read access to the private moislang/moisc)"; exit 1
+            echo "::error::set the SNL_SOURCE_TOKEN secret (read access to the private moislang/snovac)"; exit 1
           fi
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repository: moislang/moisc
-          ref: ${{ env.SNL_VERSION }}
-          path: snl-src
+          repository: moislang/snovac
+          ref: ${{ env.SNL_COMMIT }}
+          path: snovac-src
           token: ${{ secrets.SNL_SOURCE_TOKEN }}
       - if: runner.os == 'Windows'
         uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
         with:
-          msystem: CLANGARM64
+          msystem: ${{ matrix.msystem }}
           update: false
-          install: make git grep gawk diffutils python zip unzip mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools
+          install: ${{ matrix.packages }}
       - name: Check the tag commit
         run: |
-          actual=$(git -C snl-src rev-parse HEAD)
+          actual=$(git -C snovac-src rev-parse HEAD)
           if [ "$actual" != "$SNL_COMMIT" ]; then
             echo "::error::$SNL_VERSION is $actual, expected $SNL_COMMIT"; exit 1
           fi
-      - name: Build the bootstrap seed (macOS)
-        if: runner.os == 'macOS'
-        run: make -C snl-src clean && make -C snl-src -j4
-      - name: Build snl (Windows, static like the official release)
+      - name: Build the compiler
+        if: runner.os != 'Windows'
+        run: make -C snovac-src clean && make -C snovac-src -j4 SNOVAC_VERSION="$SNOVAC_VERSION"
+      - name: Build the compiler (Windows)
         if: runner.os == 'Windows'
         run: |
-          if ! command -v python > /dev/null 2>&1; then
-            mkdir -p /usr/local/bin
-            printf '%s\n' '#!/bin/sh' 'exec python3 "$@"' > /usr/local/bin/python
-            chmod +x /usr/local/bin/python
-          fi
-          make -C snl-src clean OS=Windows_NT
-          make -C snl-src -j4 OS=Windows_NT CC=clang EXTRA_LIBS="-lws2_32 -static"
+          compiler=gcc
+          if [ "$RUNNER_ARCH" = ARM64 ]; then compiler=clang; fi
+          make -C snovac-src clean OS=Windows_NT
+          make -C snovac-src -j4 OS=Windows_NT CC="$compiler" EXTRA_LIBS="-lws2_32 -static" SNOVAC_VERSION="$SNOVAC_VERSION"
           # A static build imports only DLLs that ship with Windows.
-          llvm-objdump -p snl-src/build/snl.exe | sed -n 's/^\s*DLL Name: //p' | tr -d '\r' | tee dlls.txt
+          if [ "$RUNNER_ARCH" = ARM64 ]; then objdump=llvm-objdump; else objdump=objdump; fi
+          $objdump -p snovac-src/build/snl.exe | sed -n 's/^\s*DLL Name: //p' | tr -d '\r' | tee dlls.txt
           if grep -viE '^(kernel32|msvcrt|ucrtbase|advapi32|user32|shell32|ws2_32|bcrypt|ntdll|api-ms-win-.*)\.dll$' dlls.txt; then
             echo "::error::snl.exe imports DLLs that Windows does not provide"; exit 1
           fi
@@ -98,10 +103,10 @@ jobs:
           exe=snl; [ "$RUNNER_OS" = Windows ] && exe=snl.exe
           name="snl-$SNL_VERSION-${{ matrix.asset_platform }}"
           mkdir -p dist/stage/bin
-          cp "snl-src/build/$exe" "dist/stage/bin/$exe"
-          cp -R snl-src/builtin dist/stage/builtin
+          cp "snovac-src/build/$exe" "dist/stage/bin/$exe"
+          cp -R snovac-src/builtin dist/stage/builtin
           test -f dist/stage/builtin/io/console/Console.moi
-          "dist/stage/bin/$exe" --version
+          test "$("dist/stage/bin/$exe" --version)" = "snl $SNOVAC_VERSION"
           if [ "$RUNNER_OS" = Windows ]; then
             # zip writes '/' separators; Windows PowerShell's Compress-Archive writes '\\'.
             (cd dist/stage && zip -qr "../$name.zip" bin builtin)
@@ -128,6 +133,17 @@ jobs:
             moil="$PWD/check/bin/moil"
           fi
           make -C repo bootstrap-smoke MOIL="$moil"
+          cat > check/Extension.mos <<'EOF'
+          func main(): int { return 37 }
+          EOF
+          if "$moil" run check/Extension.mos; then
+            echo "::error::.mos probe unexpectedly returned zero"; exit 1
+          else
+            result=$?
+            if [ "$result" -ne 37 ]; then
+              echo "::error::.mos probe returned $result, expected 37"; exit 1
+            fi
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: snl-${{ matrix.asset_platform }}
@@ -150,20 +166,6 @@ jobs:
           pattern: snl-*
           path: dist
           merge-multiple: true
-      - name: Copy the official archives (pinned SHA-256)
-        env:
-          GH_TOKEN: ${{ secrets.SNL_SOURCE_TOKEN }}
-        run: |
-          copy() {
-            gh release download "$SNL_VERSION" -R moislang/moisc -p "$1" -O "dist/$3"
-            echo "$2  dist/$3" | sha256sum -c -
-            (cd dist && sha256sum "$3" > "${3%.*}.sha256")
-          }
-          copy moisc-darwin-aarch64.tar.gz 6ddee0ca86e1876398c5e68017de132aa7c05e856fdc40f540f87af08c0acf8b "snl-$SNL_VERSION-darwin-aarch64.tar.gz"
-          copy moisc-linux-x86_64.tar.gz f7d39f967407cdedc522b6bb1d21c199b188789dc27b00ba9e7100bc419ed8f8 "snl-$SNL_VERSION-linux-x86_64.tar.gz"
-          copy moisc-windows-x86_64.zip 6400c05fd6371f8eb5d522f09cedcdc40149fb67c945c1b09fce0f9abbb4b988 "snl-$SNL_VERSION-windows-x86_64.zip"
-          # ${name%.*} leaves .tar for tarballs; drop it so every checksum is <archive base>.sha256.
-          for f in dist/*.tar.sha256; do [ -e "$f" ] && mv "$f" "${f%.tar.sha256}.sha256"; done
       - name: Create or update the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -173,6 +175,6 @@ jobs:
           if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create "$tag" -R "$GITHUB_REPOSITORY" --prerelease --verify-tag \
               --title "Moil bootstrap seed $SNL_VERSION" \
-              --notes "Bootstrap seed for Mois CI: official archives are copied unchanged (macOS ARM64, Linux x86_64, Windows x86_64), with builds from source commit $SNL_COMMIT for macOS x86_64 and Windows ARM64. The setup action exposes the seed as moil. Not a Moislang Compiler release."
+              --notes "Checksummed CI toolchain binaries built from moislang/snovac commit $SNL_COMMIT. Supports .moi and .mos sources; Mois CI images use .mlbc. The setup action exposes the compiler as moil. This is a toolchain seed, not a Moislang compiler-language release."
           fi
           gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber dist/*
