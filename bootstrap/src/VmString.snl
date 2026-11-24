@@ -30,7 +30,7 @@ func vmNewStringFrom(vm: VmState, text: string, source: int[], start: int, lengt
 // executable has no /tmp: TEMP/TMP on Windows, TMPDIR on macOS, else /tmp.
 // An unset variable compares equal to "" in the seed; a variable set to an
 // empty value does not (identity comparison), which is not handled here.
-func vmScratchPath(): string {
+public func vmScratchPath(): string {
     var directory = Runtime.environment("TEMP")
     if directory == "" { directory = Runtime.environment("TMP") }
     if directory == "" { directory = Runtime.environment("TMPDIR") }

@@ -51,10 +51,10 @@ bootstrap-build: bootstrap-check
 	$(MOIL) build --project $(ROOT_PROJECT) -o $(COMPILER_BUNDLE)
 
 bootstrap-self-host: bootstrap-build
-	SNL_OUTPUT=$(STAGE1_IMAGE) $(COMPILER_BUNDLE)
+	SNL_OUTPUT=$(STAGE1_IMAGE) $(COMPILER_BUNDLE) --self-build
 
 bootstrap-fixed-point: bootstrap-self-host
-	SNL_OUTPUT=$(STAGE2_IMAGE) $(MOIL) run-snbc $(STAGE1_IMAGE)
+	MOIL_SELF_BUILD=1 SNL_OUTPUT=$(STAGE2_IMAGE) $(MOIL) run-snbc $(STAGE1_IMAGE)
 	cmp $(STAGE1_IMAGE) $(STAGE2_IMAGE)
 
 # ADR-0009 slice 1: the committed seed image, run by `moil run-snbc` only,
@@ -64,7 +64,7 @@ bootstrap-seed-stage:
 	mkdir -p $(BUILD_DIR)
 	$(SHA256) -c $(SEED_HASH_FILE)
 	SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(MOIL) run-snbc $(SEED_IMAGE)
-	SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(MOIL) run-snbc $(SEED_STAGE1_IMAGE)
+	MOIL_SELF_BUILD=1 SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(MOIL) run-snbc $(SEED_STAGE1_IMAGE)
 
 # Fixed point of the seed chain, plus a differential against the transitional
 # `moil build` path: both roots must produce the same stage-1 image.
@@ -266,7 +266,7 @@ bootstrap-vm: bootstrap-build
 # a imagem resultante deve ser igual à stage1. Leva alguns minutos porque a
 # VM Mois roda sobre a VM C embutida pelo `moil build`.
 bootstrap-vm-self: bootstrap-self-host
-	SNL_OUTPUT=$(VM_STAGE_IMAGE) $(COMPILER_BUNDLE) $(STAGE1_IMAGE) run
+	MOIL_SELF_BUILD=1 SNL_OUTPUT=$(VM_STAGE_IMAGE) $(COMPILER_BUNDLE) $(STAGE1_IMAGE) run
 	cmp $(STAGE1_IMAGE) $(VM_STAGE_IMAGE)
 
 # Native backend (ADR-0005, ADR-0006): the Mois compiler emits aarch64
@@ -411,6 +411,11 @@ NATIVE_STAGE1_CHECK ?= required
 # Only assembly text is checked, so it runs on every CI host.
 bootstrap-target-cli: bootstrap-build
 	@dir=$(BUILD_DIR)/target-cli; mkdir -p $$dir; \
+	$(COMPILER_BUNDLE) --help > $$dir/help.txt; \
+	tr -d '\r' < $$dir/help.txt | grep -Fq 'usage: moil --help' || exit 1; \
+	$(COMPILER_BUNDLE) > $$dir/no-args.txt; status=$$?; \
+	test "$$status" -eq 2 || { echo "no-argument exit $$status, expected 2"; exit 1; }; \
+	tr -d '\r' < $$dir/no-args.txt | grep -Fq 'usage: moil --help' || exit 1; \
 	for target in aarch64-apple-darwin aarch64-unknown-linux-gnu; do \
 		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/$$target-flag.s --target $$target > /dev/null || exit 1; \
 		$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $$dir/$$target-native-flag.s native --target $$target > /dev/null || exit 1; \

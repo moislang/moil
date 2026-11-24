@@ -249,7 +249,7 @@ func isImageBytes(data: int[]): bool {
 }
 
 func printUsage(): unit {
-    Console.printline("usage: moil <input.snl> <output.snbc> | moil <input.snl> <output.s> native [<target-triple>] | moil <input.snl> <output.s> [native] --target <target-triple> | moil <image.snbc> [run [args...]]")
+    Console.printline("usage: moil --help | moil <input.snl> <output.snbc> | moil <input.snl> <output.s> native [<target-triple>] | moil <input.snl> <output.s> [native] --target <target-triple> | moil <image.snbc> [run [args...]]")
     Console.printline("targets: aarch64-apple-darwin (Mach-O, default), aarch64-unknown-linux-gnu (ELF), x86_64-unknown-linux-gnu (ELF, backend pending)")
 }
 
@@ -271,21 +271,30 @@ func nativeTargetIndex(resolver: NativeTargetResolver, scratchPath: string, argc
 
 func main(): int {
     let argc = cliArgumentCount()
-    if argc == 1 {
-        if validateImage(readSource(sourcePath())) == 0 {
-            Console.printline("invalid SnBC image")
-            return 1
-        }
-        Console.printline("valid SnBC image")
-        return 0
-    }
-    if argc != 0 && argc < 2 {
+    let resolver = NativeTargetResolver()
+    let scratchPath = vmScratchPath()
+    if argc == 0 && Runtime.environment("MOIL_SELF_BUILD") == "" {
         printUsage()
         return 2
     }
+    if argc == 1 {
+        let command = resolver.optionKind(Runtime.argument(0), scratchPath)
+        if command == 4 {
+            printUsage()
+            return 0
+        }
+        if command != 3 {
+            if validateImage(readSource(sourcePath())) == 0 {
+                Console.printline("invalid SnBC image")
+                return 1
+            }
+            Console.printline("valid SnBC image")
+            return 0
+        }
+    }
     var src: int[] = []
     var userEnd = 0
-    if argc == 0 {
+    if argc == 0 || (argc == 1 && resolver.optionKind(Runtime.argument(0), scratchPath) == 3) {
         src = ownSource()
         userEnd = src.len()
     } else {
@@ -305,8 +314,6 @@ func main(): int {
         return 1
     }
     if argc >= 3 {
-        let resolver = NativeTargetResolver()
-        let scratchPath = imagePath() + ".target.tmp"
         let targetIndex = nativeTargetIndex(resolver, scratchPath, argc)
         if targetIndex == -2 {
             printUsage()

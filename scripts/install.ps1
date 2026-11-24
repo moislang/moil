@@ -59,7 +59,7 @@ try {
         $env:Path = "$InstallDirectory;$env:Path"
     }
     Write-Host "Installed Moil $Version at $(Join-Path $InstallDirectory 'moil.exe')"
-    Write-Host 'Run: moil --version'
+    Write-Host 'Run: moil --help'
 } finally {
     Remove-Item -Recurse -Force $TemporaryDirectory -ErrorAction SilentlyContinue
 }

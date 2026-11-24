@@ -60,4 +60,4 @@ case ":$PATH:" in
     *":$install_dir:"*) ;;
     *) echo "Add $install_dir to PATH if it is not already configured." ;;
 esac
-echo "Run: $install_dir/moil --version"
+echo "Run: $install_dir/moil --help"
