@@ -1,23 +1,23 @@
-# ADR-0004 — Iterative SnBC executor in Snova and value equality
+# ADR-0004 — Iterative SnBC executor in Mois and value equality
 
 - **Status:** Accepted for the executor. The string→bytes boundary is resolved
   on the native path (ADR-0006); the executor keeps the provisional boundary
-  while it runs on the `snl` C VM (see "Provisional boundary").
+  while it runs on the `moil` C VM (see "Provisional boundary").
 - **Date:** 2026-11-21
 
 ## Context
 
-The seed compiler generates SnBC images that only `snl run-snbc` could
-execute. The Snova executor must run the compiler's own image and stay
+The seed compiler generates SnBC images that only `moil run-snbc` could
+execute. The Mois executor must run the compiler's own image and stay
 compilable by the seed. The probes recorded in `evidence.md` showed that:
 
-- `snl run-snbc` v0.3.0 rejects the SET_INDEX opcode (41), and the seed
+- `moil run-snbc` v0.3.0 rejects the SET_INDEX opcode (41), and the seed
   subset has no `a[i] = v`; the available mutation is SET_FIELD on structs;
-- `snl build` also generates SnBC and embeds the C VM; its lowering rejects
+- `moil build` also generates SnBC and embeds the C VM; its lowering rejects
   `a[i].field`, and every host function call costs a frame of that VM;
 - the host C VM limits call depth (`error: call depth exceeded`);
-- `==` on strings in `snl` v0.3.0 compares identity, while
-  `snovac/runtime/value/value_equal.c` defines structural equality.
+- `==` on strings in `moil` v0.3.0 compares identity, while
+  `moisc/runtime/value/value_equal.c` defines structural equality.
 
 ## Decision
 
@@ -33,7 +33,7 @@ compilable by the seed. The probes recorded in `evidence.md` showed that:
    field, with visited pairs to end cycles. Address comparison (`&T == &E`)
    has no SnBC representation yet and is outside this ADR.
 5. The execution mode is recognized by the `SNBC` magic of the first
-   argument: `snova-bootstrap <image.snbc> run [args...]`. The arguments after
+   argument: `moil <image.snbc> run [args...]`. The arguments after
    `run` belong to the program. The seed does not compare the word `run` yet.
 
 ## Provisional boundary
@@ -41,20 +41,20 @@ compilable by the seed. The probes recorded in `evidence.md` showed that:
 Host strings (`Runtime.environment`, `Runtime.argument`) carry no bytes, and
 the seed subset cannot convert a string into bytes. When one of them takes
 part in equality or concatenation, `VmString.snl` writes the text with
-`Runtime.writeText` to `/tmp/snova-vm-string.bin` and reads the bytes back
+`Runtime.writeText` to `/tmp/mois-vm-string.bin` and reads the bytes back
 with `read_bytes`. Risks: concurrent runs share the file, and the VM depends
 on a writable `/tmp`. Running the compiler image never takes this path.
 
 Resolution: the native runtime (ADR-0006) treats every string as bytes,
 copying arguments and environment from `argv`/`envp`. Programs compiled by
 the native backend never touch `/tmp`, including the `vmHostText` fixture. The
-executor keeps the file only while it is built by `snl build`, whose host has
+executor keeps the file only while it is built by `moil build`, whose host has
 no string→bytes primitive. The path stays isolated in `vmStringStart` until
 the executor itself is compiled natively (N3).
 
 ## Consequences
 
-- Intentional divergences from `snl run-snbc` v0.3.0: string equality by
+- Intentional divergences from `moil run-snbc` v0.3.0: string equality by
   content; arguments passed to the program; error messages on stdout with the
   `runtime error:` prefix, since the seed subset does not write to stderr.
 - Opcodes the compiler does not use (double, globals, variants, defer/spawn)

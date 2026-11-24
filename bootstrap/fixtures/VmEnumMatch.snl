@@ -3,7 +3,7 @@ package bootstrap.fixture
 import builtin.io.console
 
 // Unit enum variants (VARIANT 42) and match (IS_VARIANT 43, literal and
-// binding patterns, wildcard). Prints integers only, so `snl run-snbc`
+// binding patterns, wildcard). Prints integers only, so `moil run-snbc`
 // v0.3.0 is a valid oracle for stdout and exit status.
 enum Color {
     Red,

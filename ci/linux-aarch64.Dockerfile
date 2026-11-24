@@ -2,7 +2,7 @@ FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# No snl here: there is no official Linux ARM64 binary. The host emits the
+# No moil here: there is no official Linux ARM64 binary. The host emits the
 # ELF assembly and VM results (make bootstrap-native-linux-aarch64-emit);
 # this image only assembles, links and runs them.
 RUN apt-get update \

@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func scopeEmitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): int {
     let k = bg.nk[nd]

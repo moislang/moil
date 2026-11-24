@@ -1,4 +1,4 @@
-package snova.library
+package mois.library
 
 // Entry of an IntMap bucket chain, stored in the map's entry arena. `next`
 // is an arena index (-1 at the end of the chain), so chains hold no object

@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Native runtime roles (ADR-0006). The backend finds the runtime methods it
 // calls by their full name `Type.method` in the image, and treats every
@@ -7,7 +7,7 @@ package snova.compiler.backend
 // subset cannot turn a host string into bytes.
 //
 // Role ids are mirrored by NativeAssembly.role*. Roles 0..12 are native methods (Primitive, System) implemented as assembly
-// stubs; roles 13..27 are Snova runtime methods called by generated code.
+// stubs; roles 13..27 are Mois runtime methods called by generated code.
 class NativeRoles {
     // role -> function index
     public var roleFunction: int[]

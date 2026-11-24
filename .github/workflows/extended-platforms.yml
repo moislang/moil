@@ -3,8 +3,8 @@ name: Extended platforms
 # macOS x86_64 and Windows ARM64, kept out of pull requests so they stay
 # fast. Runs weekly and on demand:
 #   gh workflow run extended-platforms.yml
-# The official snl release has no binary for them, so setup-snl downloads
-# the snl seed binaries published once by publish-snl-seed.yml (no build).
+# The official moil release has no binary for them, so setup-snl downloads
+# the moil seed binaries published once by publish-snl-seed.yml (no build).
 
 on:
   schedule:
@@ -45,9 +45,9 @@ jobs:
           update: false
           cache: true
           install: make diffutils mingw-w64-clang-aarch64-clang
-      - id: snl
+      - id: moil
         uses: ./.github/actions/setup-snl
-      - name: Build and test the Snova CLI
+      - name: Build and test the Mois CLI
         run: make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
         env:
-          SNL: ${{ steps.snl.outputs.snl }}
+          MOIL: ${{ steps.moil.outputs.moil }}

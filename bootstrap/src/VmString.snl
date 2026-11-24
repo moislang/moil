@@ -1,11 +1,11 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 import builtin.runtime
 
 // Guest strings keep the host string (for printing and paths) and its bytes
 // in vm.stringBytes. stringSpans[handle] uses tag = start and value = length;
 // tag -1 means the bytes are not known yet (a host string). Host string `==`
-// compares identity in snl v0.3.0, so guest equality compares bytes.
+// compares identity in moil v0.3.0, so guest equality compares bytes.
 func vmNewString(vm: VmState, text: string): int {
     vm.strings.push(text)
     vm.stringSpans.push(VmCell { tag: -1, value: 0 })
@@ -35,7 +35,7 @@ func vmScratchPath(): string {
     if directory == "" { directory = Runtime.environment("TMP") }
     if directory == "" { directory = Runtime.environment("TMPDIR") }
     if directory == "" { directory = "/tmp" }
-    return directory + "/snova-vm-string.bin"
+    return directory + "/mois-vm-string.bin"
 }
 
 func vmStringStart(vm: VmState, handle: int): int {

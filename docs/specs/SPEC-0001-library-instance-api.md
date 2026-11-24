@@ -1,8 +1,8 @@
 # SPEC-0001 — Instance-based library API
 
 - **Status:** Proposed; linking and first-stage visibility decided; slice 1 merged as
-  [snl#3](https://github.com/snovalang/snl/pull/3) and slice 2 merged as
-  [snl#10](https://github.com/snovalang/snl/pull/10)
+  [snl#3](https://github.com/moislang/snl/pull/3) and slice 2 merged as
+  [snl#10](https://github.com/moislang/snl/pull/10)
 - **Date:** 2026-11-21
 - **Phase:** P4, incremental growth
 - **Related:** [ADR-0007](../decisions/ADR-0007-object-model.md) (object
@@ -11,10 +11,10 @@
 
 ## Goal
 
-Let code built by `snl build` v0.3.0, the current root, use the data
+Let code built by `moil build` v0.3.0, the current root, use the data
 structures in `bootstrap/library/`, so that a compiler module can depend on
 them before the native compiler (N3) replaces the root. Every library fixture
-must keep its current stdout and exit status on `snl run-snbc`, on the Snova
+must keep its current stdout and exit status on `moil run-snbc`, on the Mois
 executor and natively.
 
 ## Non-goals
@@ -37,24 +37,24 @@ executor and natively.
 - `make bootstrap-library` joins each fixture (`librarySearch`,
   `librarySorting`, `libraryBinaryHeap`, `libraryBinaryTree`,
   `libraryIntMap`) with the library, compiles it with the seed, and compares
-  `snl run-snbc`, the Snova executor and the native executable (zero live
-  blocks). `snl build` never compiles the library.
+  `moil run-snbc`, the Mois executor and the native executable (zero live
+  blocks). `moil build` never compiles the library.
 - The root rejects the current library. Probes (see `evidence.md`,
   "probes for the library and borrow-checker specifications"):
-  - every fixture fails `snl build` with `invalid SnBC unit for native
+  - every fixture fails `moil build` with `invalid SnBC unit for native
     compilation` (static methods);
-  - `BinaryHeap` fails first with `SNOVA0400 cannot lower call to SnBC`,
+  - `BinaryHeap` fails first with `MOISL0400 cannot lower call to SnBC`,
     because it calls methods on a local alias of its `storage` field;
-  - `let cell = cells[index]` inside a method is rejected by `snl check` with
-    `SNOVA0251` (move out of an array element or field). The seed rejects
+  - `let cell = cells[index]` inside a method is rejected by `moil check` with
+    `MOISL0251` (move out of an array element or field). The seed rejects
     it one statement later, with `SNV3001` on the first use of the moved
     local, whose type is unknown; the gap inventory in
-    [snl#8](https://github.com/snovalang/snl/pull/8) explains this and fixes
+    [snl#8](https://github.com/moislang/snl/pull/8) explains this and fixes
     the `SNV3001` line, which used to point at the end of the input.
   - A method call through a local alias of a field is accepted by
-    `snl check` and by the seed, but `snl build` fails with `SNOVA0400`, the
+    `moil check` and by the seed, but `moil build` fails with `MOISL0400`, the
     reference SnBC emitter's "cannot lower" error (snl#8). Only the root
-    build enforces this rule, so the library gates must run `snl build`.
+    build enforces this rule, so the library gates must run `moil build`.
 - The fixtures create objects with literals (`IntMap { ... }`,
   `BinaryHeap { storage: IntArray { ... } }`), and the root rejects method
   calls on literal-created objects (ADR-0007).
@@ -71,12 +71,12 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    compiler does not use a package import for the library, because general
    import resolution in the seed has no owner in the backlog.
 2. **How the first stage sees the library** (decided by Inhegas, based on
-   Mike's probe in [snl#6](https://github.com/snovalang/snl/pull/6), branch
-   `mike/probe-library-root-visibility`). `snl build --project bootstrap/src`
-   does not see `bootstrap/library/`, and `snl` v0.3.0 rejects several
-   project roots or input files (`SNOVA0050 package not found`). It also
+   Mike's probe in [snl#6](https://github.com/moislang/snl/pull/6), branch
+   `mike/probe-library-root-visibility`). `moil build --project bootstrap/src`
+   does not see `bootstrap/library/`, and `moil` v0.3.0 rejects several
+   project roots or input files (`MOISL0050 package not found`). It also
    lowers every visible module, used or not: with all of master's
-   `bootstrap/library/` visible, every route failed (19 × `SNOVA0400` on
+   `bootstrap/library/` visible, every route failed (19 × `MOISL0400` on
    calls, plus field and assignment lowering errors). For slices 2–6 the
    first stage therefore builds from a staging directory generated under
    `build/`, holding `bootstrap/src/*.snl` plus an explicit list of the
@@ -89,8 +89,8 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    with the two instance searches of snl#3 built, and the self-compilation
    image stayed `8cb80e98…f730ad`, equal to the baseline. Alternatives
    rejected for now: a symbolic link (exposes the whole library, unreliable
-   on Windows checkouts) and a path dependency (`snl get`, which adds
-   `mod.sns`/`mod.lock` and a cache in `$SNOVA_HOME`, and also exposes every
+   on Windows checkouts) and a path dependency (`moil get`, which adds
+   `mod.sns`/`mod.lock` and a cache in `$MOIS_HOME`, and also exposes every
    module). Probe the path dependency again once every module is migrated.
 
 ## Proposed surface
@@ -111,14 +111,14 @@ The API follows ADR-0007, decision 3. For every library type:
    a typed parameter (`readCell(cells[index])`), instead of binding it to a
    local. A probe of this pattern (class `Pool` with `cells: Cell[]` and
    private `readCell(cell: Cell)` / `assignCell(cell: Cell, newValue: int)`)
-   passed `snl build`, and the executable, `snl run-snbc` on the seed's image
-   and the Snova executor all printed `11 20 2` with exit 0.
+   passed `moil build`, and the executable, `moil run-snbc` on the seed's image
+   and the Mois executor all printed `11 20 2` with exit 0.
 5. **No method named like an array builtin** and **no array shared by two
    fields** (ADR-0007). The probe above showed that `append`, `at`, `put` and
    `count` are not intercepted by the root.
 
 No new diagnostics: the seed's codes do not change, and the root's existing
-errors (`invalid SnBC unit for native compilation`, `SNOVA0400`, `SNOVA0251`)
+errors (`invalid SnBC unit for native compilation`, `MOISL0400`, `MOISL0251`)
 are the negative evidence that a module is not yet migrated.
 
 ## Slices
@@ -135,8 +135,8 @@ the fixture's expected stdout and exit status.
    methods; `IntArray` reaches its cells through rule 4. Add a dedicated
    fixture `libraryIntArray` (today `IntArray` is only covered through
    `libraryBinaryHeap`), including out-of-range `at`/`put` and
-   `removeLast` on an empty array. API shape (probed with `snl check`,
-   `snl build`, `snl run-snbc` and the Snova executor): `IntCell(value)`
+   `removeLast` on an empty array. API shape (probed with `moil check`,
+   `moil build`, `moil run-snbc` and the Mois executor): `IntCell(value)`
    with instance `read()`/`assign(newValue)`; `IntArray(cells, 0)` keeps its
    instance methods and reaches cells through the private siblings
    `readCell(cell: IntCell)` and `assignCell(cell: IntCell, newValue)`.
@@ -144,7 +144,7 @@ the fixture's expected stdout and exit status.
    heads move to the same pattern (`readHead`/`assignHead`) because
    `IntCell` no longer has static methods. `count`, `isEmpty`, `at`, `put`,
    `append`, `removeLast`, `swap` and `values` are not intercepted as array
-   builtins by `snl build` v0.3.0.
+   builtins by `moil build` v0.3.0.
 4. **`BinaryHeap`**: remove the `let store = storage` calls (rule 3);
    fixture `libraryBinaryHeap` with a positional constructor.
 5. **`TreeNode`/`BinaryTree` and `MapEntry`/`IntMap`**: accessors become
@@ -157,14 +157,14 @@ the fixture's expected stdout and exit status.
 
 ## Acceptance criteria
 
-Artifacts are compared as SnBC images, never as `snl build` executables
+Artifacts are compared as SnBC images, never as `moil build` executables
 (see "Known issue" below). The executable is only run, and its stdout and
 exit status are compared.
 
 For every slice:
 
 - `make bootstrap-library-root` passes for the migrated fixtures: the
-  `snl build` executable, `snl run-snbc` on the seed's image and the Snova
+  `moil build` executable, `moil run-snbc` on the seed's image and the Mois
   executor agree on stdout and exit status.
 - The migrated fixture's stdout and exit status equal the values before the
   migration (recorded in `evidence.md`).
@@ -182,7 +182,7 @@ does not call the library. Slice 6 additionally requires
 `make bootstrap-native-self` with the library inside the compiler sources,
 and records the new stage hashes.
 
-**Known issue.** Two `snl build` runs on the same inputs produce executables
+**Known issue.** Two `moil build` runs on the same inputs produce executables
 that differ by one byte, baseline included, while the SnBC images are
 identical (snl#6). Until executable reproducibility is solved, together with
 the Mach-O reproducibility and normalization gate in `subset.md`, only SnBC
@@ -191,12 +191,12 @@ compares only SnBC images (stage1 against stage2 with `cmp`).
 
 ## Evidence to record
 
-Per slice: revision, host, `snl` version and binary or archive hash, the
+Per slice: revision, host, `moil` version and binary or archive hash, the
 commands above, stdout/exit per engine, the SHA-256 of each
 `<fixture>.root.snbc` and of stage1 (never of an executable), the staging
 list used, and what was not run (the native half on Linux).
-Linux results are auxiliary until the Mac run: the `snl v0.3.0` Linux C VM
-miscompares some `x == false` expressions (see `evidence.md`), so the Snova
+Linux results are auxiliary until the Mac run: the `moil v0.3.0` Linux C VM
+miscompares some `x == false` expressions (see `evidence.md`), so the Mois
 executor is the independent side of the differential there.
 
 ## Adjustments suggested for snl#3
@@ -204,7 +204,7 @@ executor is the independent side of the differential there.
 - Name this specification in the PR description and in the ADR-0007
   consequence, so slices 2–6 have a single plan.
 - Record, in the evidence entry, that a field alias call is rejected with
-  `SNOVA0400` and that `let x = array[i]` is rejected with `SNOVA0251`; slices
+  `MOISL0400` and that `let x = array[i]` is rejected with `MOISL0251`; slices
   3–5 depend on both facts.
 - Keep the comparison against the pre-migration output inside the gate (for
   example, a committed expected-output file per fixture), so the claim

@@ -1,6 +1,6 @@
 # Documentation and governance CI
 
-The initial workflow checks that the planning structure exists and that local references in Markdown resolve. It does not compile Snovalang and does not prove the architecture. Once code exists, add per-phase gates without turning checks that are not implemented yet into empty successes.
+The initial workflow checks that the planning structure exists and that local references in Markdown resolve. It does not compile Moislang and does not prove the architecture. Once code exists, add per-phase gates without turning checks that are not implemented yet into empty successes.
 
 ## Triggers
 

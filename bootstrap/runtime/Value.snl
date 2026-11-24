@@ -1,7 +1,7 @@
-package snova.runtime
+package mois.runtime
 
 // Operations on tagged values that the backend does not resolve inline. The
-// semantics follow the Snova SnBC executor (VmOps.snl), which is the
+// semantics follow the Mois SnBC executor (VmOps.snl), which is the
 // differential oracle for this runtime. Operands are borrowed.
 class Value {
     // PRINT (45).

@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 class ImageCursor {
     public var offset: int

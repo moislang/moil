@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func emitExpr(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], fat: int[], fb: int[], nd: int): unit {
     if cx.failed != 0 { return }

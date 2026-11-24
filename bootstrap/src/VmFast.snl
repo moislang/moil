@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 // Fast paths of the execution loop. Each helper receives the stack cells as
 // typed parameters, which lets it read and write fields with a single host

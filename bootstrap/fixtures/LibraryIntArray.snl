@@ -5,7 +5,7 @@ import builtin.io.console
 // IntArray: append, random access, out-of-range reads and writes, removal at
 // the end (including on an empty array), swap, reuse of cells after removal
 // and a copy of the contents. IntCell and IntArray are instance APIs, so
-// `snl build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
+// `moil build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
 func main(): int {
     var cells: IntCell[] = []
     let numbers = IntArray(cells, 0)

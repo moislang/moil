@@ -1,8 +1,8 @@
-package snova.library
+package mois.library
 
 // Searches over int arrays sorted in ascending order. Stateless instance
 // API (ADR-0007): create it with `BinarySearch()`, so code built by
-// `snl build` v0.3.0 can use it.
+// `moil build` v0.3.0 can use it.
 class BinarySearch {
     // First index whose value is >= target; values.len() when none is.
     public method lowerBound(values: int[], target: int): int {

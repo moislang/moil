@@ -1,9 +1,9 @@
-package snova.library
+package mois.library
 
 // Stable merge sort of int arrays. Returns a new sorted array and leaves the
 // input unchanged; O(n log n) time and O(n) extra space per level.
 // Stateless instance API (ADR-0007, SPEC-0001 slice 2): create it with
-// `Sorting()`, so code built by `snl build` v0.3.0 can use it.
+// `Sorting()`, so code built by `moil build` v0.3.0 can use it.
 class Sorting {
     public method sorted(values: int[]): int[] {
         return sortRange(values, 0, values.len())

@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 // Predecoding: each SnBC instruction becomes one entry in instructionOpcode,
 // instructionOperand and instructionSecondOperand, and jumps point to the

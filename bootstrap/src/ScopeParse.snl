@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 // Scope lowering for the self-hosted compiler. Concatenated after Compiler.snl.
 // Token kinds: 47 break, 48 continue, 49 null, 50 class, 51 enum, 52 trait,

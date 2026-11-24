@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+# Template: the release workflow replaces {{VERSION}} (docs/decisions/ADR-0010).
+PackageIdentifier: Moislang.Compiler
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: Moislang
+PublisherUrl: https://github.com/moislang
+PublisherSupportUrl: https://github.com/moislang/snl/issues
+PackageName: Moislang Compiler
+PackageUrl: https://github.com/moislang/snl
+License: Apache-2.0
+LicenseUrl: https://github.com/moislang/snl/blob/master/LICENSE
+ShortDescription: Moislang compiler written in Moislang (experimental).
+Description: >-
+  moil compiles a restricted subset of Moislang to SnBC images and runs them.
+  It is an experimental bootstrap compiler, not a drop-in replacement for
+  earlier Moislang tools.
+Moniker: moil
+Tags:
+  - compiler
+  - programming-language
+  - moislang
+ReleaseNotesUrl: https://github.com/moislang/snl/releases/tag/v{{VERSION}}
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -1,4 +1,4 @@
-package snova.runtime
+package mois.runtime
 
 // Memory primitives of the native runtime (ADR-0006). Each method is native:
 // it has no body, and the backend emits an aarch64 stub instead of the TRAP.

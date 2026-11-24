@@ -1,9 +1,9 @@
-package snova.runtime
+package mois.runtime
 
 import builtin.text.text.values
 
 // Files, arguments and environment of the native runtime. System calls go
-// through System; loops, buffers and the environment lookup are Snova.
+// through System; loops, buffers and the environment lookup are Mois.
 // File, text and host-call operands are borrowed; results are new owners.
 class Host {
     private static method openPath(path: int, flags: int, mode: int): int {

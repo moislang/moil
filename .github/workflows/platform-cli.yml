@@ -1,8 +1,8 @@
 name: Platform CLI builds
 
-# Fast path: every job uses the official snl v0.3.0 binary
+# Fast path: every job uses the official moil v0.3.0 binary
 # (.github/actions/setup-snl), never a source build. Linux ARM64 has no
-# official snl, so the Linux x86_64 job emits its assembly and expected VM
+# official moil, so the Linux x86_64 job emits its assembly and expected VM
 # results, and the ARM64 job only assembles, links and runs them.
 
 on:
@@ -77,22 +77,22 @@ jobs:
           update: false
           cache: true
           install: make diffutils mingw-w64-x86_64-gcc
-      - id: snl
+      - id: moil
         uses: ./.github/actions/setup-snl
-      - name: Build and test the Snova CLI
+      - name: Build and test the Mois CLI
         run: make -j1 bootstrap-smoke bootstrap-fixed-point bootstrap-vm bootstrap-oop bootstrap-target-cli
         env:
-          SNL: ${{ steps.snl.outputs.snl }}
-      - name: Native fixtures and snl for aarch64-apple-darwin
+          MOIL: ${{ steps.moil.outputs.moil }}
+      - name: Native fixtures and moil for aarch64-apple-darwin
         if: runner.os == 'macOS' && env.NATIVE_SELECTED_DARWIN == 'true'
         run: make bootstrap-native-target NATIVE_TARGET=aarch64-apple-darwin
         env:
-          SNL: ${{ steps.snl.outputs.snl }}
+          MOIL: ${{ steps.moil.outputs.moil }}
       - name: Emit aarch64-unknown-linux-gnu assembly and VM results
         if: runner.os == 'Linux' && env.NATIVE_SELECTED_LINUX == 'true'
         run: make bootstrap-native-linux-aarch64-emit
         env:
-          SNL: ${{ steps.snl.outputs.snl }}
+          MOIL: ${{ steps.moil.outputs.moil }}
       - if: runner.os == 'Linux' && env.NATIVE_SELECTED_LINUX == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -118,5 +118,5 @@ jobs:
         with:
           name: linux-aarch64-emitted
           path: build/bootstrap/native-aarch64-unknown-linux-gnu
-      - name: Assemble, link and run the fixtures and the native snl
+      - name: Assemble, link and run the fixtures and the native moil
         run: make bootstrap-native-linux-aarch64-run

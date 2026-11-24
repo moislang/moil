@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 func codeU32(data: int[], offset: int): int {
     return data[offset] + data[offset + 1] * 256 +

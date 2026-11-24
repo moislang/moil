@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 // Frontend borrow checker (SPEC-0002, slices B1 and B2). A separate pass
 // after parsing and before emission; the emitters are not changed.
@@ -328,7 +328,7 @@ func borrowAssign(src: int[], bg: CompilerState, cx: CompilerContext, frame: Bor
         if cx.failed != 0 { return }
         let idx = borrowFind(src, frame, bg.na[lhs], bg.nb[lhs])
         if idx < 0 { return }
-        // Reassigning a moved local is rejected, matching snl check v0.3.0.
+        // Reassigning a moved local is rejected, matching moil check v0.3.0.
         if isMovedState(frame.st[idx]) {
             borrowFail(src, cx, 20, bg.na[lhs])
             return

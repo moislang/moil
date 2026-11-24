@@ -1,6 +1,6 @@
-package snova.runtime
+package mois.runtime
 
-// Ownership of heap values (ADR-0006, following snovac
+// Ownership of heap values (ADR-0006, following moisc
 // docs/spec/memory-safety.md): every owning slot (a local, an operand stack
 // temporary, an object field or an array element) holds one owner count in
 // the block header. Borrows proven by the backend do not count. When the

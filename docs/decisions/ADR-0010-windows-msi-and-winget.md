@@ -6,21 +6,21 @@
 
 ## Context
 
-Windows users need a command-line install for `snl`, the compiler built from
-this repository. The earlier `snovac` tool is no longer the product to
-distribute. The Windows build of `snl` is `build/bootstrap/snova-bootstrap.exe`:
-an executable produced by `snl build` that bundles the compiler's SnBC image
+Windows users need a command-line install for `moil`, the compiler built from
+this repository. The earlier `moisc` tool is no longer the product to
+distribute. The Windows build of `moil` is `build/bootstrap/moil.exe`:
+an executable produced by `moil build` that bundles the compiler's SnBC image
 with the seed's C VM (ADR-0005). There is no Windows native backend
 (ADR-0008), so the installer ships that bundle, not native code.
 
 ## Decision
 
 1. Package one MSI per release, built with WiX v5 from
-   `packaging/windows/SnovalangCompiler.wxs`. It installs `snl.exe` under
-   `%ProgramFiles%\Snovalang\Compiler\bin` (per machine), adds that folder to
+   `packaging/windows/MoislangCompiler.wxs`. It installs `moil.exe` under
+   `%ProgramFiles%\Moislang\Compiler\bin` (per machine), adds that folder to
    the machine `PATH`, and removes both on uninstall. The `UpgradeCode` is
    fixed for the life of the product.
-2. Publish to winget as **`Snovalang.Compiler`** (command `snl`), with
+2. Publish to winget as **`Moislang.Compiler`** (command `moil`), with
    `InstallerType: wix`. The manifests in `packaging/winget/` are templates;
    the release workflow fills version, URL, SHA-256 and ProductCode.
 3. `.github/workflows/release-windows.yml` builds and tests the MSI on every
@@ -34,7 +34,7 @@ with the seed's C VM (ADR-0005). There is no Windows native backend
    final release, replaces an install with the same `X.Y.Z`.
 5. Release gate: the MSI is built only after the same tests as the Windows CI
    job pass, then installed, run (`Hello.snl` compiled and executed by the
-   installed `snl`) and uninstalled on the runner. The executable may import
+   installed `moil`) and uninstalled on the runner. The executable may import
    only DLLs that ship with Windows.
 
 ## Consequences
@@ -46,7 +46,7 @@ with the seed's C VM (ADR-0005). There is no Windows native backend
   `WINGET_TOKEN` secret (a GitHub token allowed to fork and open pull
   requests in `microsoft/winget-pkgs`), then push a release tag. Microsoft
   reviews each submission before it reaches users.
-- The installed `snl` still carries the seed's C VM; this ADR does not change
+- The installed `moil` still carries the seed's C VM; this ADR does not change
   the bootstrap root (ADR-0009).
 
 ## Not verified

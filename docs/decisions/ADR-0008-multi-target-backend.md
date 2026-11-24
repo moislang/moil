@@ -5,14 +5,14 @@
 
 ## Context
 
-The Snova native backend is currently a single-target implementation for
+The Mois native backend is currently a single-target implementation for
 `aarch64-apple-darwin`. Its instruction emitters use AArch64 registers and
 instructions directly; its entry point, object format, system calls, and
 assembler/linker commands are Darwin-specific. Selecting another triple
 without changing all of those layers would create an invalid or unsafe claim
 of support.
 
-The previous `snovac` target matrix included qualified, pending-validation,
+The previous `moisc` target matrix included qualified, pending-validation,
 unqualified, and blocked targets. This project will recover that breadth in
 stages while keeping each target's implementation status distinct from its
 qualification status.
@@ -33,7 +33,7 @@ The native backend routes a target-kind value through resolver metadata for
 ISA, symbols, and sections. The current driver still fixes that value to the
 only qualified target, AArch64/Darwin. The transitional seed compares strings
 by identity and rejects virtual interface calls when lowering compiler
-sources to SnBC (`SNOVA0400`), so arbitrary triples and interface objects
+sources to SnBC (`MOISL0400`), so arbitrary triples and interface objects
 cannot yet be used in the compiler execution path.
 
 Keep `trait`/`impl` alongside interfaces. Interfaces define runtime
@@ -92,7 +92,7 @@ format contracts remain separate and tested.
 ## Language and dispatch prerequisite
 
 The installed reference compiler accepts and interprets interface dispatch,
-but its SnBC emitter rejects a call through an interface (`SNOVA0400: cannot
+but its SnBC emitter rejects a call through an interface (`MOISL0400: cannot
 lower call to SnBC`). The bootstrap compiles and runs interface and trait
 dispatch through SnBC opcode 59. It retains concrete object type identity,
 validates `class Type implements Contract` and explicit
@@ -105,7 +105,7 @@ Generic bounds, inheritance and qualification on other native targets remain
 absent.
 
 The `bootstrap/fixtures/InterfaceDispatch.snl` fixture verifies that the
-bootstrap compiler, Snova VM and native executable select
+bootstrap compiler, Mois VM and native executable select
 `X64Architecture.code()` through an `Architecture` interface at runtime.
 `TraitDispatch.snl` exercises equivalent dispatch through `impl`; negative
 fixtures reject missing and mismatched contracts. The reference SnBC build
@@ -122,9 +122,9 @@ Implementation order:
    dispatch and ownership rules in `NativeBackend`. The Darwin/ARM64 slice is
    implemented; keep `bootstrap-oop-native` as a regression gate.
 5. Begin Linux/x86-64 only after the same interface fixture passes in the seed,
-   Snova executor, and native executable.
+   Mois executor, and native executable.
 
-The previous `snovac` matrix is the source for target breadth, not evidence
+The previous `moisc` matrix is the source for target breadth, not evidence
 that this bootstrap already supports those targets. Its Linux/x86-64 and
 Windows/x86-64 entries were pending executable validation; the other listed
 targets were unqualified, and bare-metal was explicitly blocked on selecting
@@ -160,7 +160,7 @@ implemented yet. Add it after interface dispatch has a working typed call path:
 | Current | `aarch64-apple-darwin` | Implemented and locally qualified | Existing native differential, ownership, smoke, and N3 fixed-point gates |
 | T1 | `aarch64-unknown-linux-gnu` | ELF entry, AAPCS64 Linux syscalls, file flags, sections, symbols, relocations and GNU link path implemented; Docker differential covers 13 fixtures. Linux native self-host fixed point is not qualified | Keep ARM64 Docker CLI and native differential gates; resolve the Linux self-host mismatch before release qualification |
 | T2 | `x86_64-unknown-linux-gnu` | Docker CLI/VM build tested; SysV AMD64 emitter, ELF entry/runtime and native link path are not implemented | Linux x86-64 runner; full native fixture differential, memory report, smoke, and self-compilation fixed point |
-| T3 | `x86_64-pc-windows-gnu` | Not implemented in this backend; previously pending validation in `snovac` | Windows x86-64 runner; executable, ABI, I/O, ownership, and fixed-point gates |
+| T3 | `x86_64-pc-windows-gnu` | Not implemented in this backend; previously pending validation in `moisc` | Windows x86-64 runner; executable, ABI, I/O, ownership, and fixed-point gates |
 | T4 | `x86_64-apple-darwin`, FreeBSD x86-64/AArch64 | Not implemented and unqualified | A runner and OS-specific ABI/link contract for each target; full native gates |
 | T5 | `riscv64-unknown-linux-gnu` | Not implemented and unqualified | RISC-V 64 ISA and Linux ABI gates on a native runner or trusted emulator |
 | T6 | ARM32, x86, remaining `*bsd` variants | Not implemented and unqualified | Per-target ABI, object format, runtime contract, and executable qualification |

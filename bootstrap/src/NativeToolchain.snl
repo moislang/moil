@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 interface NativeToolchain {
     method assembler(): string

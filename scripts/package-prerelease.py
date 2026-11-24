@@ -43,10 +43,10 @@ def main() -> int:
 
     bootstrap = json.loads(provenance.read_text(encoding="utf-8"))
     output.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="snova-prerelease-") as temporary:
-        staging = Path(temporary) / f"snova-{version}-aarch64-apple-darwin"
+    with tempfile.TemporaryDirectory(prefix="mois-prerelease-") as temporary:
+        staging = Path(temporary) / f"mois-{version}-aarch64-apple-darwin"
         staging.mkdir()
-        shutil.copy2(compiler, staging / "snova-bootstrap")
+        shutil.copy2(compiler, staging / "moil")
         shutil.copy2(provenance, staging / "provenance.json")
         shutil.copy2(ROOT / "bootstrap" / "README.md", staging / "bootstrap-README.md")
         shutil.copy2(ROOT / "LICENSE", staging / "LICENSE")
@@ -57,15 +57,15 @@ def main() -> int:
         shutil.copy2(ROOT / "docs" / "roadmap" / "maturity.md", staging / "known-limitations.md")
 
         notes = {
-            "name": "Snovalang restricted compiler pre-release",
+            "name": "Moislang restricted compiler pre-release",
             "version": version,
             "target": "aarch64-apple-darwin",
-            "compiler_sha256": digest(staging / "snova-bootstrap"),
+            "compiler_sha256": digest(staging / "moil"),
             "source_revision": bootstrap["repository_revision"],
             "source_worktree_dirty": bootstrap["working_tree_dirty"],
-            "bootstrap_root": bootstrap["toolchain"]["snl"],
+            "bootstrap_root": bootstrap["toolchain"]["moil"],
             "independent_ddc": False,
-            "scope": "experimental compiler subset; not a drop-in replacement for snovac",
+            "scope": "experimental compiler subset; not a drop-in replacement for moisc",
             "native_executables_reproducibly_compared": False,
         }
         (staging / "release.json").write_text(
@@ -76,14 +76,14 @@ def main() -> int:
             checksums.append(f"{digest(path)}  {path.name}")
         (staging / "SHA256SUMS").write_text("\n".join(checksums) + "\n", encoding="utf-8")
 
-        archive = output / f"snova-{version}-aarch64-apple-darwin.tar.gz"
+        archive = output / f"mois-{version}-aarch64-apple-darwin.tar.gz"
         with archive.open("wb") as archive_stream:
             import gzip
 
             with gzip.GzipFile(fileobj=archive_stream, mode="wb", mtime=0) as gzip_stream:
                 with tarfile.open(fileobj=gzip_stream, mode="w") as tar:
                     for path in sorted(staging.iterdir()):
-                        info = tar.gettarinfo(str(path), arcname=f"snova-{version}-aarch64-apple-darwin/{path.name}")
+                        info = tar.gettarinfo(str(path), arcname=f"mois-{version}-aarch64-apple-darwin/{path.name}")
                         info.mtime = 0
                         info.uid = 0
                         info.gid = 0

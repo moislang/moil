@@ -1,7 +1,7 @@
-package snova.compiler
+package mois.compiler
 
-import snova.compiler.runtime
-import snova.compiler.backend
+import mois.compiler.runtime
+import mois.compiler.backend
 
 func writeImage(src: int[], bg: CompilerState, cx: CompilerContext, image: int[]): unit {
     image.push(83)
@@ -249,7 +249,7 @@ func isImageBytes(data: int[]): bool {
 }
 
 func printUsage(): unit {
-    Console.printline("usage: snl <input.snl> <output.snbc> | snl <input.snl> <output.s> native [<target-triple>] | snl <input.snl> <output.s> [native] --target <target-triple> | snl <image.snbc> [run [args...]]")
+    Console.printline("usage: moil <input.snl> <output.snbc> | moil <input.snl> <output.s> native [<target-triple>] | moil <input.snl> <output.s> [native] --target <target-triple> | moil <image.snbc> [run [args...]]")
     Console.printline("targets: aarch64-apple-darwin (Mach-O, default), aarch64-unknown-linux-gnu (ELF), x86_64-unknown-linux-gnu (ELF, backend pending)")
 }
 

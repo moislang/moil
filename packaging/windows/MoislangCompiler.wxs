@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Windows installer for the Snovalang Compiler (command: snl) (WiX v5, docs/decisions/ADR-0010).
-  Build: wix build SnovalangCompiler.wxs -arch x64 -d Version=X.Y.Z[.N] -d SourceDir=<stage> -o snl.msi
-  The stage holds snl.exe, LICENSE.txt and NOTICE.txt.
+  Windows installer for the Moislang Compiler (command: moil) (WiX v5, docs/decisions/ADR-0010).
+  Build: wix build MoislangCompiler.wxs -arch x64 -d Version=X.Y.Z[.N] -d SourceDir=<stage> -o moil.msi
+  The stage holds moil.exe, LICENSE.txt and NOTICE.txt.
 
   UpgradeCode is fixed for the life of the product: every release uses the
   same value so MajorUpgrade replaces the previous version in place.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
-      Name="Snovalang Compiler"
-      Manufacturer="Snovalang"
+      Name="Moislang Compiler"
+      Manufacturer="Moislang"
       Version="$(var.Version)"
       UpgradeCode="{A46D830D-A031-4CC5-953B-74B5657367D0}"
       Scope="perMachine"
@@ -19,24 +19,24 @@
     <!-- MSI compares only MAJOR.MINOR.PATCH for upgrades (the fourth field is
          ignored), so previews of one base version share it. Same-version
          upgrades let a newer preview, or the final release, replace them. -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Snovalang Compiler is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of the Moislang Compiler is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/snovalang/snl" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/snovalang/snl/issues" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/moislang/snl" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/moislang/snl/issues" />
     <Property Id="ARPNOMODIFY" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="VENDORFOLDER" Name="Snovalang">
+      <Directory Id="VENDORFOLDER" Name="Moislang">
         <Directory Id="INSTALLFOLDER" Name="Compiler">
           <Directory Id="BINFOLDER" Name="bin" />
         </Directory>
       </Directory>
     </StandardDirectory>
 
-    <ComponentGroup Id="SnlFiles">
+    <ComponentGroup Id="MoilFiles">
       <Component Directory="BINFOLDER">
-        <File Id="SnlExe" Source="$(var.SourceDir)\snl.exe" KeyPath="yes" />
+        <File Id="MoilExe" Source="$(var.SourceDir)\moil.exe" KeyPath="yes" />
       </Component>
       <Component Directory="INSTALLFOLDER">
         <File Id="License" Source="$(var.SourceDir)\LICENSE.txt" KeyPath="yes" />
@@ -45,14 +45,14 @@
         <File Id="Notice" Source="$(var.SourceDir)\NOTICE.txt" KeyPath="yes" />
       </Component>
       <!-- Adds bin to the machine PATH; removed again on uninstall. -->
-      <Component Id="SnlPath" Directory="INSTALLFOLDER" Guid="{5BB13938-2308-4040-B2F9-123E7AEC5EB7}">
-        <Environment Id="SnlPathEntry" Name="PATH" Value="[BINFOLDER]" Action="set" Part="last" System="yes" Permanent="no" />
-        <RegistryValue Root="HKLM" Key="Software\Snovalang\Compiler" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" KeyPath="yes" />
+      <Component Id="MoilPath" Directory="INSTALLFOLDER" Guid="{5BB13938-2308-4040-B2F9-123E7AEC5EB7}">
+        <Environment Id="MoilPathEntry" Name="PATH" Value="[BINFOLDER]" Action="set" Part="last" System="yes" Permanent="no" />
+        <RegistryValue Root="HKLM" Key="Software\Moislang\Compiler" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
     <Feature Id="Main">
-      <ComponentGroupRef Id="SnlFiles" />
+      <ComponentGroupRef Id="MoilFiles" />
     </Feature>
   </Package>
 </Wix>

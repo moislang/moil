@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func isArgumentCount(src: int[], start: int, count: int): bool {
     if count != 13 { return false }

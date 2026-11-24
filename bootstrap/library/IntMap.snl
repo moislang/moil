@@ -1,4 +1,4 @@
-package snova.library
+package mois.library
 
 // Hash map from int keys to int payloads with separate chaining over an
 // entry arena. Each bucket head is an IntCell holding an arena index (-1 for

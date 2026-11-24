@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func kindOf(bg: CompilerState, cx: CompilerContext): int {
     if cx.pos < 0 { return 0 }

@@ -1,10 +1,10 @@
-package snova.compiler
+package mois.compiler
 
 import builtin.io.console
 import builtin.runtime
 
-// Snova compiler for the slice this file is written in.
-// The Snova joiner combines this package source with Compiler.snl for the seed.
+// Mois compiler for the slice this file is written in.
+// The Mois joiner combines this package source with Compiler.snl for the seed.
 //
 // It reads a source path and writes canonical SnBC. The lowering matches
 // emit-snbc: source order of functions, local high-water, first-use string

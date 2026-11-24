@@ -1,7 +1,7 @@
-package snova.library
+package mois.library
 
 // Searches over unsorted int arrays. Stateless instance API (ADR-0007):
-// create it with `LinearSearch()`, so code built by `snl build` v0.3.0 can
+// create it with `LinearSearch()`, so code built by `moil build` v0.3.0 can
 // use it.
 class LinearSearch {
     // First index of target, or -1 when it is absent.

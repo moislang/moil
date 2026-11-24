@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func classify(src: int[], s: int, n: int): int {
     if isWord(src, s, n, 7, 112, 97, 99, 107, 97, 103, 101, 0, 0, 0, 0, 0) { return 6 }

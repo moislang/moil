@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 import builtin.io.console
 
@@ -140,7 +140,7 @@ public func ownSource(): int[] {
     return output
 }
 
-// Native mode (ADR-0006): the Snova runtime is appended to the program
+// Native mode (ADR-0006): the Mois runtime is appended to the program
 // source and compiled with it, so the backend sees one image. Paths are
 // relative to the repository root, like ownSource. String APIs in the
 // runtime use the language `string` type, not `int`. Argument type

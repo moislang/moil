@@ -4,7 +4,7 @@ import builtin.io.console
 
 // Sorting: merge sort with duplicates and negatives, plus empty and single
 // arrays; the input stays unchanged. `Sorting` is an instance API, so
-// `snl build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
+// `moil build` v0.3.0 also builds this fixture (`make bootstrap-library-root`).
 func main(): int {
     let sorting = Sorting()
     let input = [5, -3, 9, 0, 5, 12, -8, 1]

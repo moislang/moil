@@ -1,4 +1,4 @@
-package snova.runtime
+package mois.runtime
 
 // Native runtime strings: address of a block [length: 8 bytes][bytes].
 // Program constants use the same layout in __TEXT,__const. Strings are

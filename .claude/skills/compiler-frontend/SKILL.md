@@ -1,13 +1,13 @@
 ---
 name: compiler-frontend
-description: Design or implement a lexer, parser, AST and diagnostics compatible with the Snovalang language.
+description: Design or implement a lexer, parser, AST and diagnostics compatible with the Moislang language.
 ---
 
 # Compiler frontend
 
 ## Principles
 
-- The executable specification of the reference compiler is observed through fixtures, without editing `../snovac`.
+- The executable specification of the reference compiler is observed through fixtures, without editing `../moisc`.
 - Lexer, parser and AST have separate contracts and phase tests; errors keep a code, a span and the source position.
 - Keep determinism and UTF-8/byte behavior as measured in the specification.
 - The parser uses a simple technique that fits the stage's subset; do not introduce a framework/generator without justification.

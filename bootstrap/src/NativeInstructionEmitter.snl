@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Translates the instructions of one function body (ADR-0005, ADR-0006):
 // frame, control flow, locals, calls and int/bool arithmetic, delegating
@@ -31,7 +31,7 @@ class NativeInstructionEmitter {    public var functionIndex: int
             output.line("str x10, [x9, #40]")
             output.line("cmp x10, #256")
             output.line("b.le " + depthLabel)
-            output.line("bl Lsnova_stack_overflow")
+            output.line("bl Lmois_stack_overflow")
             output.label(depthLabel)
         }
         var slot = 0

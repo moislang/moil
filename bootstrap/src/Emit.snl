@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func pushU32(code: int[], n: int): unit {
     var x = n

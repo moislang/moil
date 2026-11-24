@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Static ownership model of the operand stack (ADR-0006). For every value
 // on the stack the backend knows at compile time whether it is an owner

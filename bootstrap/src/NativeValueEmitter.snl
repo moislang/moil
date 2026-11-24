@@ -1,9 +1,9 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Composite SnBC operations of the native backend (N2). Field and index
 // access use the object and array layouts of bootstrap/runtime/Container.snl
 // inline; allocation, printing, I/O and the general binary path call the
-// Snova runtime. Semantics follow the SnBC executor (VmFast.snl, VmOps.snl).
+// Mois runtime. Semantics follow the SnBC executor (VmFast.snl, VmOps.snl).
 //
 // Ownership (NativeOwnership): runtime roles borrow their value arguments,
 // except the elements of NEW_ARRAY/NEW_OBJECT and the element of
@@ -31,7 +31,7 @@ class NativeValueEmitter {
     }
 
     private method poolAddress(output: NativeAssembly, target: string, poolIndex: int): unit {
-        let pool = "l_snova_pool_" + output.decimal(poolIndex)
+        let pool = "l_mois_pool_" + output.decimal(poolIndex)
         if output.targetKind == 1 {
             output.line("adrp " + target + ", " + pool + "@PAGE")
             output.line("add " + target + ", " + target + ", " + pool + "@PAGEOFF")

@@ -51,10 +51,10 @@ def artifact_paths(root: Path) -> list[str]:
     )
 
 
-def build_chain(build_dir: Path, snl: str) -> None:
+def build_chain(build_dir: Path, moil: str) -> None:
     command = [
         "make",
-        f"SNL={snl}",
+        f"MOIL={moil}",
         f"BUILD_DIR={build_dir}",
         "bootstrap-smoke",
         "bootstrap-image-check",
@@ -97,11 +97,11 @@ def main() -> int:
     if platform.system() != "Darwin" or platform.machine() not in ("arm64", "aarch64"):
         raise RuntimeError("clean native bootstrap is qualified only on Apple Silicon macOS")
 
-    snl = os.environ.get("SNL", "snl")
-    snl_path = shutil.which(snl)
-    if snl_path is None:
-        raise RuntimeError(f"could not resolve reference compiler executable: {snl}")
-    snl_version = run([snl, "--version"])
+    moil = os.environ.get("MOIL", "moil")
+    moil_path = shutil.which(moil)
+    if moil_path is None:
+        raise RuntimeError(f"could not resolve reference compiler executable: {moil}")
+    moil_version = run([moil, "--version"])
     source_files = source_hashes()
     source_files["Makefile"] = sha256(ROOT / "Makefile")
     source_files["scripts/bootstrap-reproducible.py"] = sha256(Path(__file__).resolve())
@@ -123,15 +123,15 @@ def main() -> int:
     scratch_root = ROOT / "build"
     scratch_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
-        prefix="snova-bootstrap-repro-", dir=scratch_root
+        prefix="moil-repro-", dir=scratch_root
     ) as temporary:
         workspace = Path(temporary)
         first_build = workspace / "build-a"
         second_build = workspace / "build-b"
         with ThreadPoolExecutor(max_workers=2) as executor:
             builds = (
-                executor.submit(build_chain, first_build, snl),
-                executor.submit(build_chain, second_build, snl),
+                executor.submit(build_chain, first_build, moil),
+                executor.submit(build_chain, second_build, moil),
             )
             for build in as_completed(builds):
                 build.result()
@@ -171,9 +171,9 @@ def main() -> int:
             "working_tree_status": working_tree_status,
             "source_sha256": source_files,
             "toolchain": {
-                "snl": snl_version,
-                "snl_executable": str(Path(snl_path).resolve()),
-                "snl_executable_sha256": sha256(Path(snl_path).resolve()),
+                "moil": moil_version,
+                "moil_executable": str(Path(moil_path).resolve()),
+                "moil_executable_sha256": sha256(Path(moil_path).resolve()),
                 "host": platform.platform(),
                 "machine": platform.machine(),
                 "target": "aarch64-apple-darwin",

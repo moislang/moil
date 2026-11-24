@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func parseBinding(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }

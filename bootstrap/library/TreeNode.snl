@@ -1,4 +1,4 @@
-package snova.library
+package mois.library
 
 // Node of BinaryTree, stored in the tree's node arena. Children are arena
 // indexes (-1 when absent), so the tree holds no object references: it is

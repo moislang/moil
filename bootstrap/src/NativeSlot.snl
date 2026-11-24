@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // One operand stack slot in the static ownership model: origin -1 means the
 // slot owns its value; origin >= 0 means it borrows the value of that local.

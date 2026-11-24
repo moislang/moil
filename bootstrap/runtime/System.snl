@@ -1,4 +1,4 @@
-package snova.runtime
+package mois.runtime
 
 // libSystem boundary of the native runtime (ADR-0003, ADR-0006). Each native
 // stub only moves its arguments into x0..x5 and calls the symbol; 32-bit

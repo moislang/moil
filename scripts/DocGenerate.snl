@@ -176,11 +176,11 @@ func generateSource(sourcePath: string, format: string, first: bool): string {
 }
 
 func main(): int {
-    let formatValue = Runtime.environment("SNOVA_DOC_FORMAT")
+    let formatValue = Runtime.environment("MOIS_DOC_FORMAT")
     var format = formatValue
     if format == "yml" { format = "yaml" }
     if format != "yaml" && format != "csv" && format != "json" {
-        Console.err("snl --doc expects yaml, yml, csv, or json\n")
+        Console.err("moil --doc expects yaml, yml, csv, or json\n")
         return 2
     }
 

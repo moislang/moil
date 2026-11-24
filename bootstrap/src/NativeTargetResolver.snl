@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 import builtin.runtime
 
@@ -57,7 +57,7 @@ class NativeTargetResolver {
     }
 
     public method bssSection(targetKind: int): string {
-        if targetKind == 1 { return ".zerofill __DATA,__bss,_snova_state,256,4" }
+        if targetKind == 1 { return ".zerofill __DATA,__bss,_mois_state,256,4" }
         return ".section .bss"
     }
 

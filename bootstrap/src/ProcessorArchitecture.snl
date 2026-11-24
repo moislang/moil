@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 interface ProcessorArchitecture {
     method triple(): string

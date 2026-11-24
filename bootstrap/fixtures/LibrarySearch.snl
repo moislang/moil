@@ -3,7 +3,7 @@ package bootstrap.fixture
 import builtin.io.console
 
 // BinarySearch and LinearSearch, including absent targets and an empty array.
-// Both are instance APIs (ADR-0007), so `snl build` v0.3.0 also builds this
+// Both are instance APIs (ADR-0007), so `moil build` v0.3.0 also builds this
 // fixture (`make bootstrap-library-root`).
 func main(): int {
     let binary = BinarySearch()

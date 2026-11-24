@@ -5,4 +5,4 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 model: inherit
 ---
 
-Follow `.claude/skills/semantic-ir/SKILL.md`. Before changing code, identify the current gate/ADR and confirm that the predecessor compiles the syntax used. Keep semantics and IR with explicit invariants, typed errors and fixtures. Do not add optimizers, generics, closures or exceptions without a milestone requirement. `../snovac` remains read-only.
+Follow `.claude/skills/semantic-ir/SKILL.md`. Before changing code, identify the current gate/ADR and confirm that the predecessor compiles the syntax used. Keep semantics and IR with explicit invariants, typed errors and fixtures. Do not add optimizers, generics, closures or exceptions without a milestone requirement. `../moisc` remains read-only.

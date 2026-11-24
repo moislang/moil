@@ -1,4 +1,4 @@
-package snova.runtime
+package mois.runtime
 
 // Arrays and objects of the native runtime.
 // Array: header [0 length][8 capacity][16 element block]; element i takes
@@ -7,7 +7,7 @@ package snova.runtime
 // [16 + 16 * i field i (payload, tag)].
 // The backend reads these layouts directly in GET_INDEX, ARRAY_LEN,
 // GET_FIELD and SET_FIELD; changing a layout requires changing
-// nativeValue.snl too (ADR-0006).
+// NativeValueEmitter.snl too (ADR-0006).
 class Container {
     public static method newArray(capacity: int): int {
         var reserved = capacity

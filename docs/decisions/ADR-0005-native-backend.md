@@ -1,21 +1,21 @@
-# ADR-0005 — Native aarch64-apple-darwin backend in Snova
+# ADR-0005 — Native aarch64-apple-darwin backend in Mois
 
 - **Status:** Accepted; slices N1, N2 and N3 implemented (see "State")
 - **Date:** 2026-11-21
 
 ## Context
 
-The executable produced by `snl build` is not the program's machine code.
-Observation from 2026-11-21: `snl build` generates SnBC and bundles the `snl`
+The executable produced by `moil build` is not the program's machine code.
+Observation from 2026-11-21: `moil build` generates SnBC and bundles the `moil`
 C VM (`run_function` dominates the profile). The build message itself says
 "bundled binary dependencies", and the SnBC lowering rejects constructs that
-the checker accepts. So the Snova SnBC executor runs on top of another VM:
-there are two interpretation layers, and self-compilation through the Snova
+the checker accepts. So the Mois SnBC executor runs on top of another VM:
+there are two interpretation layers, and self-compilation through the Mois
 VM takes minutes.
 
-The project requires native compilation of Snovalang: the Snova compiler must
+The project requires native compilation of Moislang: the Mois compiler must
 emit host machine code for programs and for itself, with no embedded C VM and
-no `snovac`.
+no `moisc`.
 
 Probe recorded in `evidence.md`: on the `arm64` host, an assembly `main`
 assembled with `as` and linked with `ld -lSystem` runs and returns 48. `ld`
@@ -27,14 +27,14 @@ requires for arm64 executables.
 Single initial target: `aarch64-apple-darwin`, Mach-O, AAPCS64, linked
 against `libSystem`. Vertical slices, each with its own gate:
 
-1. **N1 — numeric.** A Snova backend that translates the current lowering
+1. **N1 — numeric.** A Mois backend that translates the current lowering
    (functions, locals, arithmetic, comparisons, jumps, calls, return) into
    textual assembly. Gate: `numericVm`, `numericFlow` and `nativeCalls`
    (calls, recursion, division/remainder by zero, shifts, negation) return the
-   same exit status as the Snova executor and `run-snbc`. In this slice the
+   same exit status as the Mois executor and `run-snbc`. In this slice the
    system `as`/`ld` are assembly and link tools, not compiler implementation.
-2. **N2 — runtime in Snova.** Allocation, arrays, structs, strings, printing,
-   files, arguments and environment, written in Snova and compiled by the
+2. **N2 — runtime in Mois.** Allocation, arrays, structs, strings, printing,
+   files, arguments and environment, written in Mois and compiled by the
    backend itself. Assembly only for `libSystem` calls (for example `write`,
    `read`, `open`, `mmap`, `exit`), each with an ABI contract, registers and
    test (ADR-0003). This boundary also resolves the string→bytes conversion
@@ -44,7 +44,7 @@ against `libSystem`. Vertical slices, each with its own gate:
    point is checked on the emitted assembly; the Mach-O carries a UUID and a
    signature and needs a normalization policy (ADR-0002).
 4. **N4 — no external toolchain (optional, separate ADR).** A Mach-O writer
-   and ad-hoc signing in Snova, removing `as`/`ld`.
+   and ad-hoc signing in Mois, removing `as`/`ld`.
 
 ## State
 
@@ -53,7 +53,7 @@ N1, N2 and N3 are implemented in `bootstrap/src/Native*.snl` and
 ordered source modules with the transitional seed, links a native compiler,
 and requires two further native compiler generations to emit identical
 assembly. The entry point is
-`snova-bootstrap <input.snl> <output.s> native`: the compiler appends the Snova
+`moil <input.snl> <output.s> native`: the compiler appends the Mois
 runtime to the program, generates the SnBC image in memory, validates it and
 translates it to assembly. The gate is `make bootstrap-native`.
 
@@ -76,11 +76,11 @@ translates it to assembly. The gate is `make bootstrap-native`.
 
 ## Consequences
 
-- `snl build` remains the transitional root for the first native compiler;
+- `moil build` remains the transitional root for the first native compiler;
   its bootstrap executable is still SnBC bundled with the C VM, not native.
   N3 demonstrates native self-compilation and an assembly fixed point, not an
   independent root or DDC.
-- The Snova SnBC executor (ADR-0004) becomes the backend's differential
+- The Mois SnBC executor (ADR-0004) becomes the backend's differential
   oracle, not the distribution path.
 - The seed subset does not run processes. Until it has that primitive,
   assembling and linking in N1–N3 are build steps (Makefile).

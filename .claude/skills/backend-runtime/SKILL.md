@@ -1,6 +1,6 @@
 ---
 name: backend-runtime
-description: Design the backend, ABI and runtime while keeping the logic in Snovalang and limiting assembly to host boundaries.
+description: Design the backend, ABI and runtime while keeping the logic in Moislang and limiting assembly to host boundaries.
 ---
 
 # Backend and runtime

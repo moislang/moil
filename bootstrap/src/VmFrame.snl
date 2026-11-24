@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 // Runs the predecoded image iteratively. The current function's locals take
 // stack[base .. base + locals - 1] and the operand stack starts right above.

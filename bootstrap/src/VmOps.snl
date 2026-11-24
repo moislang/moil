@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 import builtin.io.console
 import builtin.runtime
@@ -39,7 +39,7 @@ func vmSeenPair(seenLeft: int[], seenRight: int[], seenTag: int[], tag: int, lef
     return false
 }
 
-// Value equality, as in snovac/runtime/value/value_equal.c: strings by
+// Value equality, as in moisc/runtime/value/value_equal.c: strings by
 // content and arrays/objects element by element. Already visited pairs are
 // assumed equal, which ends the comparison of cyclic graphs.
 func vmEqualDeep(vm: VmState, leftTag: int, leftValue: int, rightTag: int, rightValue: int, seenLeft: int[], seenRight: int[], seenTag: int[]): bool {

@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Assembly output of the native backend (ADR-0005, ADR-0006) and the calling
 // conventions every emitter shares.
@@ -12,7 +12,7 @@ package snova.compiler.backend
 // in x0 (payload) and x1 (tag).
 //
 // Collaborators are passed as typed parameters: the transitional root
-// (`snl build` v0.3.0) cannot lower a method call whose receiver is a field.
+// (`moil build` v0.3.0) cannot lower a method call whose receiver is a field.
 class NativeAssembly {
     public var lines: string[]
     public var labelSerial: int
@@ -45,7 +45,7 @@ class NativeAssembly {
 
     public method newLabel(): string {
         labelSerial = labelSerial + 1
-        return "Lsnova_" + decimal(labelSerial)
+        return "Lmois_" + decimal(labelSerial)
     }
 
     private method digit(value: int): string {
@@ -119,7 +119,7 @@ class NativeAssembly {
     }
 
     public method symbol(functionIndex: int): string {
-        return symbolPrefix + "snova_fn_" + decimal(functionIndex)
+        return symbolPrefix + "mois_fn_" + decimal(functionIndex)
     }
 
     public method pushPair(): unit {
@@ -193,11 +193,11 @@ class NativeAssembly {
 
     public method stateAddress(register: string): unit {
         if targetKind == 1 {
-            line("adrp " + register + ", " + symbolPrefix + "snova_state@PAGE")
-            line("add " + register + ", " + register + ", " + symbolPrefix + "snova_state@PAGEOFF")
+            line("adrp " + register + ", " + symbolPrefix + "mois_state@PAGE")
+            line("add " + register + ", " + register + ", " + symbolPrefix + "mois_state@PAGEOFF")
         } else {
-            line("adrp " + register + ", snova_state")
-            line("add " + register + ", " + register + ", :lo12:snova_state")
+            line("adrp " + register + ", mois_state")
+            line("add " + register + ", " + register + ", :lo12:mois_state")
         }
     }
 

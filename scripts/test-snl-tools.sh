@@ -2,7 +2,7 @@
 set -eu
 
 repo_root=$(git rev-parse --show-toplevel)
-snl_bin=${SNL:-snl}
+moil_bin=${MOIL:-moil}
 temporary_dir=$(mktemp -d)
 trap 'rm -rf "$temporary_dir"' EXIT HUP INT TERM
 
@@ -21,7 +21,7 @@ public func internalHelper(): int {
 SNL
 
 for format in yaml yml csv json; do
-    SNOVA_DOC_FORMAT=$format "$snl_bin" run "$repo_root/scripts/DocGenerate.snl" -- "$temporary_dir/Documented.snl" > "$temporary_dir/docs.$format"
+    MOIS_DOC_FORMAT=$format "$moil_bin" run "$repo_root/scripts/DocGenerate.snl" -- "$temporary_dir/Documented.snl" > "$temporary_dir/docs.$format"
 done
 cmp "$temporary_dir/docs.yaml" "$temporary_dir/docs.yml"
 grep -F '"@Documented()"' "$temporary_dir/docs.yaml" >/dev/null
@@ -41,30 +41,30 @@ assert len(rows) == 1 and rows[0]["name"] == "convert", rows
 assert rows[0]["annotation"] == "@Documented()"
 PY
 
-SNOVA_CURRENT_VERSION=0.0.1 "$snl_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- v0.0.2 0.0.10 invalid > "$temporary_dir/patch.txt"
+MOIS_CURRENT_VERSION=0.0.1 "$moil_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- v0.0.2 0.0.10 invalid > "$temporary_dir/patch.txt"
 grep -F 'latest Git version tag: 0.0.10' "$temporary_dir/patch.txt" >/dev/null
 grep -F 'next version: 0.0.11' "$temporary_dir/patch.txt" >/dev/null
 
-if SNOVA_CURRENT_VERSION=0.0.1 SNOVA_RELEASE_BUMP=minor "$snl_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/minor-denied.txt" 2>&1; then
+if MOIS_CURRENT_VERSION=0.0.1 MOIS_RELEASE_BUMP=minor "$moil_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/minor-denied.txt" 2>&1; then
     echo "MINOR unexpectedly passed without compatibility evidence" >&2
     exit 1
 fi
-SNOVA_CURRENT_VERSION=0.0.1 SNOVA_RELEASE_BUMP=minor \
-    SNOVA_MINOR_COMPATIBILITY_REVIEW=approved \
-    SNOVA_MINOR_API_ADDITIONS="new compatible API" \
-    SNOVA_RELEASE_NOTES="documented changes" \
-    "$snl_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/minor-approved.txt"
+MOIS_CURRENT_VERSION=0.0.1 MOIS_RELEASE_BUMP=minor \
+    MOIS_MINOR_COMPATIBILITY_REVIEW=approved \
+    MOIS_MINOR_API_ADDITIONS="new compatible API" \
+    MOIS_RELEASE_NOTES="documented changes" \
+    "$moil_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/minor-approved.txt"
 grep -F 'next version: 0.1.0' "$temporary_dir/minor-approved.txt" >/dev/null
 
-if SNOVA_CURRENT_VERSION=0.0.1 SNOVA_RELEASE_BUMP=major \
-    SNOVA_BREAKING_CHANGE_REVIEW=approved SNOVA_RELEASE_NOTES="breaking" \
-    "$snl_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/major-denied.txt" 2>&1; then
+if MOIS_CURRENT_VERSION=0.0.1 MOIS_RELEASE_BUMP=major \
+    MOIS_BREAKING_CHANGE_REVIEW=approved MOIS_RELEASE_NOTES="breaking" \
+    "$moil_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/major-denied.txt" 2>&1; then
     echo "MAJOR unexpectedly passed outside a release" >&2
     exit 1
 fi
-SNOVA_CURRENT_VERSION=0.0.1 SNOVA_RELEASE_BUMP=major SNOVA_IS_RELEASE=1 \
-    SNOVA_BREAKING_CHANGE_REVIEW=approved SNOVA_RELEASE_NOTES="1.0.0 release" \
-    "$snl_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/major-approved.txt"
+MOIS_CURRENT_VERSION=0.0.1 MOIS_RELEASE_BUMP=major MOIS_IS_RELEASE=1 \
+    MOIS_BREAKING_CHANGE_REVIEW=approved MOIS_RELEASE_NOTES="1.0.0 release" \
+    "$moil_bin" run "$repo_root/scripts/VersionFromGitTags.snl" -- 0.0.1 > "$temporary_dir/major-approved.txt"
 grep -F 'next version: 1.0.0' "$temporary_dir/major-approved.txt" >/dev/null
 
-printf 'SNL documentation and SemVer gates passed\n'
+printf 'Mois documentation and SemVer gates passed\n'

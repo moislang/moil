@@ -1,4 +1,4 @@
-package snova.library
+package mois.library
 
 // Binary search tree from int keys to int payloads over a node arena.
 // Operations are O(height); the tree is not rebalanced, so sorted

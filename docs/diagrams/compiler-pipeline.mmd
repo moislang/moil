@@ -5,5 +5,5 @@ flowchart TB
   SEMA --> IR[Validated IR]
   IR --> TARGET[Target backend]
   TARGET --> BIN[Assembly / object / executable]
-  RUNTIME[Runtime in Snovalang] --> TARGET
+  RUNTIME[Runtime in Moislang] --> TARGET
   ABI[ABI/OS boundary assembly] --> RUNTIME

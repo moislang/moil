@@ -1,4 +1,4 @@
-# ADR-0006 — Native runtime in Snova with ownership and a libSystem boundary
+# ADR-0006 — Native runtime in Mois with ownership and a libSystem boundary
 
 - **Status:** Accepted for slice N2 of ADR-0005; implemented (see "State")
 - **Date:** 2026-11-21
@@ -7,9 +7,9 @@
 
 Slice N1 of the native backend (ADR-0005) only translated the numeric subset
 of SnBC. Strings, arrays, structs, printing and files still needed a runtime,
-and the only one available was the C VM bundled by `snl build`. ADR-0003 only
+and the only one available was the C VM bundled by `moil build`. ADR-0003 only
 allows assembly at OS/ABI boundaries. ADR-0004 left one provisional boundary
-open: host strings have no bytes in the seed subset, so the Snova SnBC
+open: host strings have no bytes in the seed subset, so the Mois SnBC
 executor converts them through a scratch file in `/tmp`.
 
 Memory is a hard requirement: a program must never accumulate memory until it
@@ -26,12 +26,12 @@ paths.
    2 bool, 3 string, 4 array, 5 object, 6 null, 7 unit enum variant). A
    variant's payload is the address of its name in the constant pool, which
    interns names by content; it is never counted or freed, compares by
-   payload and prints its name, as `snl run` does. Every value is a 16-byte
+   payload and prints its name, as `moil run` does. Every value is a 16-byte
    slot `(payload, tag)`: operand stack entries, locals, arguments, array
    elements and object fields. Results return in `x0` (payload) and `x1`
    (tag). SnBC is dynamically typed (`ADD` serves both ints and strings,
    `PRINT` serves every type), so the tag has to travel with the value.
-2. **Runtime source.** The runtime is Snova source in `bootstrap/runtime/`,
+2. **Runtime source.** The runtime is Mois source in `bootstrap/runtime/`,
    one type per file (ADR-0007): `Primitive`, `System`, `Heap`, `Runtime`,
    `Text`, `Container`, `Ownership`, `Value` and `Host`. In `native` mode the
    compiler appends these files to the program source (`appendNativeRuntime`
@@ -43,7 +43,7 @@ paths.
    name (role table in `NativeRoles.snl`). Methods of runtime types do not
    count toward the 256-frame program depth limit, and they are not
    instrumented for ownership: they manage raw addresses themselves, like
-   snovac's runtime layer.
+   moisc's runtime layer.
 4. **Assembly boundary.** `Primitive` and `System` declare native methods
    (`@Native`, no body). The backend replaces each one with an aarch64 stub
    (`NativeBoundary.snl`):
@@ -103,11 +103,11 @@ paths.
    jumps, locals, `GET_FIELD`, `SET_FIELD` (non-container values),
    `GET_INDEX`, `ARRAY_LEN`, `ARRAY_POP`, `NEG`, `NOT`, retain and release are inline.
    Value equality, concatenation, type errors, allocation, `ARRAY_PUSH`,
-   container stores, `PRINT`, files, arguments and environment call the Snova
-   runtime. Their semantics and messages copy the Snova SnBC executor, which
+   container stores, `PRINT`, files, arguments and environment call the Mois
+   runtime. Their semantics and messages copy the Mois SnBC executor, which
    acts as the differential oracle.
 9. **Memory evidence.** `Runtime.finish` counts live blocks, live bytes
-   and peak live bytes. With `SNOVA_MEMORY_REPORT` set, it writes them to
+   and peak live bytes. With `MOIS_MEMORY_REPORT` set, it writes them to
    stderr. The gate requires zero live blocks at exit and the same peak for
    20 000 and 160 000 loop iterations.
 
@@ -120,15 +120,15 @@ through `/tmp`. The `vmHostText` fixture, which exercises exactly that case,
 runs natively. Evidence: the generated assembly does not mention `/tmp`, and
 the executable imports only the libSystem symbols listed above.
 
-The Snova SnBC executor keeps the scratch file while it runs on the C VM of
-`snl build`. That host still has no string→bytes primitive. The executor stops
+The Mois SnBC executor keeps the scratch file while it runs on the C VM of
+`moil build`. That host still has no string→bytes primitive. The executor stops
 needing the file once the compiler itself is compiled by the native backend
 (N3).
 
 ## Intentional divergences from the SnBC executor
 
 - Strong cycles are rejected (the executor allows them).
-- `read_bytes` of a missing file returns an empty array. The `snl` host aborts
+- `read_bytes` of a missing file returns an empty array. The `moil` host aborts
   with `error: cannot read`.
 - Out of memory ends the program with `runtime error: out of memory`
   (status 70).
@@ -148,7 +148,7 @@ needing the file once the compiler itself is compiled by the native backend
   adopted yet.
 - Ownership analysis lives in the backend, over SnBC stack slots. The
   frontend does not reject use-after-move or aliasing errors yet. A frontend
-  borrow checker with the snovac rules (SNOVA0240–0251) is a separate
+  borrow checker with the moisc rules (MOISL0240–0251) is a separate
   proposal.
 - Opcodes outside the subset (enum variants, match, async/spawn, doubles,
   globals) still fail with `unsupported opcode for native backend: N`.
@@ -156,10 +156,10 @@ needing the file once the compiler itself is compiled by the native backend
 ## State
 
 Gate `make bootstrap-native`:
-- the numeric fixtures match the exit status of the Snova executor and
-  `snl run-snbc`;
+- the numeric fixtures match the exit status of the Mois executor and
+  `moil run-snbc`;
 - `hello`, `vmCalls`, `vmComposite`, `vmEquality`, `vmStackOverflow`,
-  `nativeHostIo` and `nativeMemory` match the Snova executor's stdout and
+  `nativeHostIo` and `nativeMemory` match the Mois executor's stdout and
   exit status;
 - `vmHostText` matches its fixed expected output and the file it writes;
 - every program that ends normally leaves zero live blocks;

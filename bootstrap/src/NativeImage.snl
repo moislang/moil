@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Read-only view of a validated SnBC image: header, string pool and
 // function table (layout written by Compiler.snl writeImage).

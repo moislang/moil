@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 interface CallingConvention {
     method name(): string

@@ -1,4 +1,4 @@
-package snova.runtime
+package mois.runtime
 
 // Process-level services of the native runtime: output, runtime errors and
 // the exit path that reports live memory. Messages match the SnBC
@@ -96,18 +96,18 @@ class Runtime {
     }
 
     // Called by _main after the program's main returns; exits with status.
-    // With SNOVA_MEMORY_REPORT set (non-empty), writes the live and peak
+    // With MOIS_MEMORY_REPORT set (non-empty), writes the live and peak
     // counters to stderr; the gate requires zero live blocks.
     public static method finish(status: int): unit {
         let state = Primitive.state()
         let liveBlocks = Primitive.load(state + 48)
         let liveBytes = Primitive.load(state + 56)
         let peakBytes = Primitive.load(state + 104)
-        let setting = Host.environment(Runtime.address("SNOVA_MEMORY_REPORT"))
+        let setting = Host.environment(Runtime.address("MOIS_MEMORY_REPORT"))
         let enabled = Text.byteCount(setting) > 0
         Heap.free(setting)
         if enabled {
-            Runtime.outputStringTo(2, "snova memory: live blocks ")
+            Runtime.outputStringTo(2, "mois memory: live blocks ")
             Runtime.outputIntegerTo(2, liveBlocks)
             Runtime.outputStringTo(2, ", live bytes ")
             Runtime.outputIntegerTo(2, liveBytes)

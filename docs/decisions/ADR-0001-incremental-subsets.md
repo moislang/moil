@@ -5,7 +5,7 @@
 
 ## Context
 
-A limited seed that tries to generate a compiler written in a much wider subset creates a capability gap: the seed must implement a complex compiler before it can compile its own implementation language. The real capability of `snl build` also depends on the installed version and has to be measured.
+A limited seed that tries to generate a compiler written in a much wider subset creates a capability gap: the seed must implement a complex compiler before it can compile its own implementation language. The real capability of `moil build` also depends on the installed version and has to be measured.
 
 ## Decision
 
@@ -20,11 +20,11 @@ Use a sequence of cumulative subsets. The seed compiles the smallest measured su
 
 ## Reopen when
 
-A concrete alternative (for example a compatible existing compiler or a trusted external generator) provably shortens the chain without violating the requirement to implement in Snovalang.
+A concrete alternative (for example a compatible existing compiler or a trusted external generator) provably shortens the chain without violating the requirement to implement in Moislang.
 
 ## Initial evidence
 
-The seed in `bootstrap/src/` is a Snova subset and compiled its own source to
+The seed in `bootstrap/src/` is a Mois subset and compiled its own source to
 SnBC; the next image matched byte for byte. The matrix and the limitations are
 in [`docs/roadmap/subset.md`](../roadmap/subset.md) and
 [`docs/roadmap/evidence.md`](../roadmap/evidence.md).

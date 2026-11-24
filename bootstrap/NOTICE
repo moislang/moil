@@ -1,5 +1,5 @@
-This directory contains the initial Snova compiler seed copied from the
-Snovalang reference compiler repository `snovac`, revision
+This directory contains the initial Mois compiler seed copied from the
+Moislang reference compiler repository `moisc`, revision
 2b5048aaf221527e22ea844f858b5d0f33f149c9 (2026-11-21).
 
 The seed source is distributed under Apache License 2.0. See LICENSE.

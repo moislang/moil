@@ -12,7 +12,7 @@ func attach(parent: Node, child: Node): unit {
 }
 
 // A strong cycle could never reach zero owners, so the native runtime
-// rejects the store that would create it (snovac memory-safety policy).
+// rejects the store that would create it (moisc memory-safety policy).
 func main(): int {
     var root = Node { label: "root", children: [] }
     var leaf = Node { label: "leaf", children: [] }

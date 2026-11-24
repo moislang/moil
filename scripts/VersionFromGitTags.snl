@@ -1,4 +1,4 @@
-package snova.tools.version
+package mois.tools.version
 
 import builtin.io.console
 import builtin.runtime
@@ -63,9 +63,9 @@ func nextVersion(version: int[], bump: string): string {
 }
 
 func main(): int {
-    let currentText = Runtime.environment("SNOVA_CURRENT_VERSION")
+    let currentText = Runtime.environment("MOIS_CURRENT_VERSION")
     if currentText == "" {
-        Console.err("set SNOVA_CURRENT_VERSION to the current MAJOR.MINOR.PATCH tag\n")
+        Console.err("set MOIS_CURRENT_VERSION to the current MAJOR.MINOR.PATCH tag\n")
         return 2
     }
     let current = parseSemver(currentText)
@@ -87,26 +87,26 @@ func main(): int {
         index = index + 1
     }
 
-    let bumpValue = Runtime.environment("SNOVA_RELEASE_BUMP")
+    let bumpValue = Runtime.environment("MOIS_RELEASE_BUMP")
     var bump = bumpValue
     if bump == "" { bump = "patch" }
     if bump != "patch" && bump != "minor" && bump != "major" {
-        Console.err("SNOVA_RELEASE_BUMP must be patch, minor, or major\n")
+        Console.err("MOIS_RELEASE_BUMP must be patch, minor, or major\n")
         return 2
     }
 
     if bump == "minor" {
-        if Runtime.environment("SNOVA_MINOR_COMPATIBILITY_REVIEW") != "approved" ||
-            Runtime.environment("SNOVA_MINOR_API_ADDITIONS") == "" ||
-            Runtime.environment("SNOVA_RELEASE_NOTES") == "" {
+        if Runtime.environment("MOIS_MINOR_COMPATIBILITY_REVIEW") != "approved" ||
+            Runtime.environment("MOIS_MINOR_API_ADDITIONS") == "" ||
+            Runtime.environment("MOIS_RELEASE_NOTES") == "" {
             Console.err("MINOR requires approved compatibility review, additive API evidence, and release notes\n")
             return 3
         }
     }
     if bump == "major" {
-        if Runtime.environment("SNOVA_IS_RELEASE") != "1" ||
-            Runtime.environment("SNOVA_BREAKING_CHANGE_REVIEW") != "approved" ||
-            Runtime.environment("SNOVA_RELEASE_NOTES") == "" {
+        if Runtime.environment("MOIS_IS_RELEASE") != "1" ||
+            Runtime.environment("MOIS_BREAKING_CHANGE_REVIEW") != "approved" ||
+            Runtime.environment("MOIS_RELEASE_NOTES") == "" {
             Console.err("MAJOR is allowed only for a release with approved breaking-change review and release notes\n")
             return 3
         }

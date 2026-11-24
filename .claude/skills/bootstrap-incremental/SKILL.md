@@ -3,17 +3,17 @@ name: bootstrap-incremental
 description: Plan or implement a stage of the self-hosted compiler without creating a gap between the seed and the language used by the next stage.
 ---
 
-# Incremental Snovalang bootstrap
+# Incremental Moislang bootstrap
 
 ## When to use
 
-Use when planning `snl` probes, choosing a subset, designing the seed, implementing a compiler feature, adding a bootstrap step or evaluating self-hosting evidence.
+Use when planning `moil` probes, choosing a subset, designing the seed, implementing a compiler feature, adding a bootstrap step or evaluating self-hosting evidence.
 
 Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-frontend`, `semantic-ir`, `backend-runtime`, `conformance-determinism` and `self-hosting-research`.
 
 ## Constraints
 
-- Work only in the current checkout; `../snovac` is a read-only reference.
+- Work only in the current checkout; `../moisc` is a read-only reference.
 - Prefer `.snl`/`.sns`. Use assembly only at justified boundaries, and never C as a parallel implementation without an explicit decision.
 - Do not assume that the installed version, syntax or runtime matches historical documentation. Record the version before the probes.
 - Do not call a build DDC if the second root is not independent.
@@ -22,7 +22,7 @@ Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-fro
 ## Procedure
 
 1. **Identify the stage.** Read `docs/roadmap/stages.md`, `docs/roadmap/evidence.md`, the ADRs and the current subset matrix.
-2. **Measure the required capability.** Run a minimal, isolated probe for each `snl` feature the next stage depends on. Record command, version and output.
+2. **Measure the required capability.** Run a minimal, isolated probe for each `moil` feature the next stage depends on. Record command, version and output.
 3. **Define the subset.** List accepted/rejected constructs, semantics, limits and fixtures. Make sure the sources of stage N+1 only use features that N can compile.
 4. **Choose the smallest vertical path.** Seed → executable artifact → functional test. Postpone features without a direct dependency.
 5. **Define contracts.** Types, ownership, errors/diagnostics, spans, IR/artifact formats, ABI and determinism.
@@ -41,7 +41,7 @@ Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-fro
 - [ ] Do files and APIs keep the size limit and PascalCase file/type naming convention?
 - [ ] Are output and ordering deterministic?
 - [ ] Does the evidence distinguish execution, cross-compilation, fixed point and DDC?
-- [ ] Was `../snovac` left untouched?
+- [ ] Was `../moisc` left untouched?
 
 ## Expected output when planning
 

@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 interface ExecutableFormat {
     method name(): string
@@ -13,7 +13,7 @@ class MachOExecutableFormat implements ExecutableFormat {
     method name(): string { return "Mach-O" }
     method textSection(): string { return ".section __TEXT,__text,regular,pure_instructions" }
     method constSection(): string { return ".section __TEXT,__const" }
-    method bssSection(): string { return ".zerofill __DATA,__bss,_snova_state,256,4" }
+    method bssSection(): string { return ".zerofill __DATA,__bss,_mois_state,256,4" }
     method symbol(name: string): string { return "_" + name }
     method canEmitNative(): bool { return true }
 }

@@ -1,4 +1,4 @@
-package snova.library
+package mois.library
 
 // Binary min-heap of ints (priority queue). Element i has children 2i + 1
 // and 2i + 2. Insert and removal are O(log n); peek is O(1).

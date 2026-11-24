@@ -1,4 +1,4 @@
-package snova.compiler
+package mois.compiler
 
 func scopeCur(bg: CompilerState, which: int): int {
     var n = bg.lp_id.len()

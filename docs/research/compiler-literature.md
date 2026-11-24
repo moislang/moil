@@ -1,6 +1,6 @@
 # Readings on bootstrap and compiler architecture
 
-This bibliography gathers primary sources to guide the project. Follow the suggested order per topic; do not copy an architecture without checking that it fits the confirmed capabilities of `snl` and the requirements of Snovalang.
+This bibliography gathers primary sources to guide the project. Follow the suggested order per topic; do not copy an architecture without checking that it fits the confirmed capabilities of `moil` and the requirements of Moislang.
 
 ## Bootstrap and self-hosted compilers
 

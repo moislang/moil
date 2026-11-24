@@ -1,10 +1,10 @@
-SNL ?= snl
+MOIL ?= moil
 BUILD_DIR ?= build/bootstrap
-SNOVA_RELEASE_VERSION ?= 0.1.0-preview.1
-# `snl build` gera SnBC e empacota a VM C do snl; não é código de máquina.
-COMPILER_BUNDLE := $(BUILD_DIR)/snova-bootstrap
+MOIS_RELEASE_VERSION ?= 0.1.0-preview.1
+# `moil build` gera SnBC e empacota a VM C do snl; não é código de máquina.
+COMPILER_BUNDLE := $(BUILD_DIR)/mois-bootstrap
 ifeq ($(OS),Windows_NT)
-COMPILER_BUNDLE := $(BUILD_DIR)/snova-bootstrap.exe
+COMPILER_BUNDLE := $(BUILD_DIR)/mois-bootstrap.exe
 endif
 VM_STAGE_IMAGE := $(BUILD_DIR)/vm-stage.snbc
 VM_DIFF_FIXTURES := NumericVm NumericFlow Hello VmCalls VmComposite StaticMethods VmEnumMatch
@@ -17,19 +17,19 @@ SDK_VERSION = $(shell xcrun --show-sdk-version)
 STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
 STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
 SMOKE_SOURCE := bootstrap/fixtures/Hello.snl
-# Committed SnBC seed (ADR-0009): the first stage runs it with `snl run-snbc`
-# instead of `snl check`/`snl build`.
+# Committed SnBC seed (ADR-0009): the first stage runs it with `moil run-snbc`
+# instead of `moil check`/`moil build`.
 SEED_IMAGE := bootstrap/seed/compiler.snbc
 SEED_HASH_FILE := bootstrap/seed/compiler.snbc.sha256
 SEED_STAGE1_IMAGE := $(BUILD_DIR)/seed-stage1.snbc
 SEED_STAGE2_IMAGE := $(BUILD_DIR)/seed-stage2.snbc
 SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256')
 
-# First-stage project (SPEC-0001, decision 2): `snl build --project` sees one
+# First-stage project (SPEC-0001, decision 2): `moil build --project` sees one
 # directory, so the root project is staged under build/ from bootstrap/src
 # plus the library modules migrated to an instance API, in dependency order
 # (the order `ownSource()` in SourceJoin.snl will use once the compiler calls
-# them). `snl` v0.3.0 lowers every visible module, so only migrated modules
+# them). `moil` v0.3.0 lowers every visible module, so only migrated modules
 # may be listed.
 LIBRARY_ROOT_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting
 LIBRARY_ROOT_FIXTURES := LibrarySearch LibrarySorting LibraryIntArray
@@ -44,36 +44,36 @@ bootstrap-root-project:
 	@for name in $(LIBRARY_ROOT_SOURCES); do cp bootstrap/library/$$name.snl $(ROOT_PROJECT)/library/ || exit 1; done
 
 bootstrap-check: bootstrap-root-project
-	$(SNL) check --project $(ROOT_PROJECT)
+	$(MOIL) check --project $(ROOT_PROJECT)
 
 bootstrap-build: bootstrap-check
 	mkdir -p $(BUILD_DIR)
-	$(SNL) build --project $(ROOT_PROJECT) -o $(COMPILER_BUNDLE)
+	$(MOIL) build --project $(ROOT_PROJECT) -o $(COMPILER_BUNDLE)
 
 bootstrap-self-host: bootstrap-build
 	SNL_OUTPUT=$(STAGE1_IMAGE) $(COMPILER_BUNDLE)
 
 bootstrap-fixed-point: bootstrap-self-host
-	SNL_OUTPUT=$(STAGE2_IMAGE) $(SNL) run-snbc $(STAGE1_IMAGE)
+	SNL_OUTPUT=$(STAGE2_IMAGE) $(MOIL) run-snbc $(STAGE1_IMAGE)
 	cmp $(STAGE1_IMAGE) $(STAGE2_IMAGE)
 
-# ADR-0009 slice 1: the committed seed image, run by `snl run-snbc` only,
+# ADR-0009 slice 1: the committed seed image, run by `moil run-snbc` only,
 # compiles the current sources (stage 1); stage 1 compiles them again
-# (stage 2). Neither `snl check` nor `snl build` is involved in this chain.
+# (stage 2). Neither `moil check` nor `moil build` is involved in this chain.
 bootstrap-seed-stage:
 	mkdir -p $(BUILD_DIR)
 	$(SHA256) -c $(SEED_HASH_FILE)
-	SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(SNL) run-snbc $(SEED_IMAGE)
-	SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(SNL) run-snbc $(SEED_STAGE1_IMAGE)
+	SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(MOIL) run-snbc $(SEED_IMAGE)
+	SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(MOIL) run-snbc $(SEED_STAGE1_IMAGE)
 
 # Fixed point of the seed chain, plus a differential against the transitional
-# `snl build` path: both roots must produce the same stage-1 image.
+# `moil build` path: both roots must produce the same stage-1 image.
 bootstrap-seed-fixed-point: bootstrap-seed-stage bootstrap-self-host
 	cmp $(SEED_STAGE1_IMAGE) $(SEED_STAGE2_IMAGE)
 	cmp $(SEED_STAGE1_IMAGE) $(STAGE1_IMAGE)
 	@echo "seed fixed point ok: $$($(SHA256) $(SEED_STAGE1_IMAGE))"
 
-# Replace the seed with the fixed-point image of the transitional `snl build`
+# Replace the seed with the fixed-point image of the transitional `moil build`
 # path and record its hash. Needed only when the current seed can no longer
 # compile the sources (growth rule, ADR-0001); record the refresh in
 # docs/roadmap/evidence.md and bootstrap/seed/README.md.
@@ -84,10 +84,10 @@ bootstrap-seed-refresh: bootstrap-fixed-point
 
 bootstrap-smoke: bootstrap-build
 	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $(BUILD_DIR)/hello.snbc
-	test "$$( $(SNL) run-snbc $(BUILD_DIR)/hello.snbc)" = "snova bootstrap ok"
+	test "$$( $(MOIL) run-snbc $(BUILD_DIR)/hello.snbc)" = "mois bootstrap ok"
 
 # OOP contracts: interface implementations are checked statically and calls
-# through interface values dispatch to the concrete method in the Snova VM.
+# through interface values dispatch to the concrete method in the Mois VM.
 bootstrap-oop: bootstrap-build
 	$(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceDispatch.snl $(BUILD_DIR)/InterfaceDispatch.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/InterfaceDispatch.snbc run; test "$$?" -eq 86
@@ -132,7 +132,7 @@ bootstrap-diagnostics: bootstrap-build
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/field-assignment-error.txt | grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/MatchExhaustive.snl $(BUILD_DIR)/matchExhaustive.snbc
-	@$(SNL) run-snbc $(BUILD_DIR)/matchExhaustive.snbc; test "$$?" -eq 42
+	@$(MOIL) run-snbc $(BUILD_DIR)/matchExhaustive.snbc; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchExpression.snl $(BUILD_DIR)/invalidMatchExpression.snbc > $(BUILD_DIR)/match-expression-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/match-expression-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135'
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchStatement.snl $(BUILD_DIR)/invalidMatchStatement.snbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
@@ -230,13 +230,13 @@ bootstrap-image-check: bootstrap-self-host
 	@if $(COMPILER_BUNDLE) $(BUILD_DIR)/truncated.snbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/image-error.txt | grep -Fqx "invalid SnBC image"
 
-# Diferencial: stdout e código de saída da VM Snova contra `snl run-snbc`.
+# Diferencial: stdout e código de saída da VM Mois contra `moil run-snbc`.
 # vmEquality e vmHostText têm saída esperada fixa porque o run-snbc v0.3.0
 # compara strings por identidade e não repassa argumentos (ver evidence.md).
 bootstrap-vm: bootstrap-build
 	@for fixture in $(VM_DIFF_FIXTURES); do \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
 		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
 		test "$$referenceExit" -eq "$$vmExit" || { echo "$$fixture: exit $$vmExit != $$referenceExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.ref.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
@@ -245,9 +245,9 @@ bootstrap-vm: bootstrap-build
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmEquality.snl $(BUILD_DIR)/vmEquality.snbc
 	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.snl $(BUILD_DIR)/vmHostText.snbc
-	@SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
+	@MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
 		if [ "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
-			echo "VmHostText: exit $$status, SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
+			echo "VmHostText: exit $$status, MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
 			echo "stdout:"; cat $(BUILD_DIR)/vmHostText.vm.txt; echo "stderr:"; cat $(BUILD_DIR)/vmHostText.vm.err; \
 			ls -la $(BUILD_DIR) | head -5; exit 1; \
 		fi
@@ -262,18 +262,18 @@ bootstrap-vm: bootstrap-build
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
 	tr '\r' '\n' < $(BUILD_DIR)/vmMatchNoArm.vm.txt | grep -Fqx "runtime error: bodyless routine trapped"
 
-# A VM Snova executa a imagem do compilador, que compila as próprias fontes;
+# A VM Mois executa a imagem do compilador, que compila as próprias fontes;
 # a imagem resultante deve ser igual à stage1. Leva alguns minutos porque a
-# VM Snova roda sobre a VM C embutida pelo `snl build`.
+# VM Mois roda sobre a VM C embutida pelo `moil build`.
 bootstrap-vm-self: bootstrap-self-host
 	SNL_OUTPUT=$(VM_STAGE_IMAGE) $(COMPILER_BUNDLE) $(STAGE1_IMAGE) run
 	cmp $(STAGE1_IMAGE) $(VM_STAGE_IMAGE)
 
-# Native backend (ADR-0005, ADR-0006): the Snova compiler emits aarch64
-# assembly for the program plus the Snova runtime in bootstrap/runtime; the
+# Native backend (ADR-0005, ADR-0006): the Mois compiler emits aarch64
+# assembly for the program plus the Mois runtime in bootstrap/runtime; the
 # system `as`/`ld` only assemble and link. Numeric fixtures must match the
-# exit status of the Snova executor and of `snl run-snbc`; runtime fixtures
-# must match the Snova executor's stdout and exit status.
+# exit status of the Mois executor and of `moil run-snbc`; runtime fixtures
+# must match the Mois executor's stdout and exit status.
 NATIVE_LINK = as -arch arm64 $(BUILD_DIR)/$$fixture.s -o $(BUILD_DIR)/$$fixture.o && \
 	ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(BUILD_DIR)/$$fixture.o -o $(BUILD_DIR)/$$fixture.native
 
@@ -284,7 +284,7 @@ bootstrap-native: bootstrap-build
 		$(BUILD_DIR)/$$fixture.native; nativeExit=$$?; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.snbc || exit 1; \
 		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > /dev/null; vmExit=$$?; \
-		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.snbc > /dev/null; referenceExit=$$?; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > /dev/null; referenceExit=$$?; \
 		test "$$nativeExit" -eq "$$vmExit" -a "$$nativeExit" -eq "$$referenceExit" || { echo "$$fixture: native $$nativeExit vm $$vmExit ref $$referenceExit"; exit 1; }; \
 		echo "native differential ok: $$fixture (exit $$nativeExit)"; \
 	done
@@ -300,16 +300,16 @@ bootstrap-native: bootstrap-build
 	done
 	@fixture=VmHostText; printf stale > $(BUILD_DIR)/vmHostText.txt; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
-		SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
+		MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
 		test "$$(tr '\r' '\n' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
 		test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
 		echo "native host text ok: $$fixture (exit 1)"
 	@for fixture in $(NATIVE_OWNERSHIP_FIXTURES); do \
-		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native alpha beta 2>&1 > /dev/null | grep -q "live blocks 0, live bytes 0" || { echo "$$fixture: memory still live at exit"; exit 1; }; \
+		MOIS_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native alpha beta 2>&1 > /dev/null | grep -q "live blocks 0, live bytes 0" || { echo "$$fixture: memory still live at exit"; exit 1; }; \
 	done; echo "native ownership ok: zero live blocks at exit"
 	@fixture=NativeMemory; \
-		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native a 2>&1 > /dev/null | grep -o "peak bytes [0-9]*" > $(BUILD_DIR)/$$fixture.peak1.txt; \
-		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native a a a a a a a a 2>&1 > /dev/null | grep -o "peak bytes [0-9]*" > $(BUILD_DIR)/$$fixture.peak8.txt; \
+		MOIS_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native a 2>&1 > /dev/null | grep -o "peak bytes [0-9]*" > $(BUILD_DIR)/$$fixture.peak1.txt; \
+		MOIS_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native a a a a a a a a 2>&1 > /dev/null | grep -o "peak bytes [0-9]*" > $(BUILD_DIR)/$$fixture.peak8.txt; \
 		test -s $(BUILD_DIR)/$$fixture.peak1.txt && cmp $(BUILD_DIR)/$$fixture.peak1.txt $(BUILD_DIR)/$$fixture.peak8.txt || { echo "$$fixture: peak memory grows with iterations"; exit 1; }; \
 		echo "native memory constant: $$(cat $(BUILD_DIR)/$$fixture.peak1.txt) for 20000 and 160000 iterations"
 	@fixture=NativeCycle; \
@@ -335,7 +335,7 @@ NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native
 
 bootstrap-native-self: bootstrap-build
 	mkdir -p $(BUILD_DIR)
-	printf 'package snova.compiler\n\n' > $(NATIVE_COMPILER_SOURCE)
+	printf 'package mois.compiler\n\n' > $(NATIVE_COMPILER_SOURCE)
 	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_COMPILER_SOURCE); done
 	$(COMPILER_BUNDLE) $(NATIVE_COMPILER_SOURCE) $(NATIVE_COMPILER_ASSEMBLY) native
 	as -arch arm64 $(NATIVE_COMPILER_ASSEMBLY) -o $(BUILD_DIR)/compiler-native.o
@@ -347,8 +347,8 @@ bootstrap-native-self: bootstrap-build
 	$(BUILD_DIR)/compiler-native-stage2 $(NATIVE_COMPILER_SOURCE) $(BUILD_DIR)/compiler-native-stage3.s native
 	cmp $(BUILD_DIR)/compiler-native-stage2.s $(BUILD_DIR)/compiler-native-stage3.s
 
-LINUX_ARM64_IMAGE ?= snova-linux-aarch64:ci
-LINUX_AMD64_IMAGE ?= snova-linux-x86_64:ci
+LINUX_ARM64_IMAGE ?= mois-linux-aarch64:ci
+LINUX_AMD64_IMAGE ?= mois-linux-x86_64:ci
 # The x86_64 image uses the official snl binary. The ARM64 image has no snl:
 # the host (which has snl) emits the ELF assembly and VM results, and the
 # container only assembles, links and runs them, as in CI.
@@ -449,7 +449,7 @@ else
 endif
 	$(MAKE) bootstrap-native-self-target NATIVE_TARGET=$(NATIVE_TARGET)
 
-# The snl compiler itself as a native executable for NATIVE_TARGET: stage 1
+# The moil compiler itself as a native executable for NATIVE_TARGET: stage 1
 # is compiled by the SnBC compiler, stages 2 and 3 by the native compiler
 # just built; their assembly must be identical (same rule as N3).
 # The two halves can run on different hosts: -emit needs snl (any host),
@@ -459,7 +459,7 @@ bootstrap-native-self-target: bootstrap-native-self-emit
 
 bootstrap-native-self-emit: bootstrap-build
 	mkdir -p $(NATIVE_TARGET_DIR)
-	printf 'package snova.compiler\n\n' > $(NATIVE_TARGET_DIR)/compiler-joined.snl
+	printf 'package mois.compiler\n\n' > $(NATIVE_TARGET_DIR)/compiler-joined.snl
 	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_TARGET_DIR)/compiler-joined.snl; done
 	$(COMPILER_BUNDLE) $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage1.s --target $(NATIVE_TARGET)
 
@@ -485,7 +485,7 @@ bootstrap-native-self-run:
 # Runs the VM and native self-host gates twice from separate source snapshots
 # and clean output trees, then records source/toolchain/artifact hashes.
 bootstrap-reproducible:
-	SNL=$(SNL) python3 scripts/bootstrap-reproducible.py
+	SNL=$(MOIL) python3 scripts/bootstrap-reproducible.py
 
 # Complete the local release gates serially because they share BUILD_DIR.
 # This assembles a local artifact only; publishing remains a separate action.
@@ -493,13 +493,13 @@ bootstrap-prerelease:
 	@set -e; for gate in bootstrap-check bootstrap-smoke bootstrap-image-check bootstrap-vm bootstrap-diagnostics bootstrap-oop bootstrap-native bootstrap-oop-native bootstrap-library bootstrap-fixed-point bootstrap-vm-self bootstrap-native-self bootstrap-reproducible; do \
 		$(MAKE) -j1 --no-print-directory $$gate; \
 	done
-	python3 scripts/package-prerelease.py $(SNOVA_RELEASE_VERSION)
+	python3 scripts/package-prerelease.py $(MOIS_RELEASE_VERSION)
 
-# Snova data-structure library (bootstrap/library): each fixture is joined
+# Mois data-structure library (bootstrap/library): each fixture is joined
 # with the library in dependency order (the seed resolves a field type only
-# when its class was declared earlier) and must match `snl run-snbc`. Most of
+# when its class was declared earlier) and must match `moil run-snbc`. Most of
 # the library still uses static methods, so it serves programs compiled by the
-# Snova compiler, not the compiler built by `snl build` v0.3.0; the modules
+# Mois compiler, not the compiler built by `moil build` v0.3.0; the modules
 # migrated to an instance API are gated by `bootstrap-library-root`. Each
 # fixture also runs natively and must free every block before exit.
 LIBRARY_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting BinaryHeap TreeNode BinaryTree MapEntry IntMap
@@ -510,40 +510,40 @@ bootstrap-library: bootstrap-build
 		joined=$(BUILD_DIR)/$$fixture.joined.snl; \
 		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
 		for name in $(LIBRARY_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
-		$(SNL) check $$joined > /dev/null || exit 1; \
+		$(MOIL) check $$joined > /dev/null || exit 1; \
 		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
 		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
 		test "$$referenceExit" -eq "$$vmExit" || { echo "$$fixture: exit $$vmExit != $$referenceExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.ref.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		echo "library ok: $$fixture (exit $$vmExit)"; \
 		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.s native || exit 1; \
 		$(NATIVE_LINK) || exit 1; \
-		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt 2> $(BUILD_DIR)/$$fixture.memory.txt; nativeExit=$$?; \
+		MOIS_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt 2> $(BUILD_DIR)/$$fixture.memory.txt; nativeExit=$$?; \
 		test "$$nativeExit" -eq "$$vmExit" || { echo "$$fixture: native exit $$nativeExit != $$vmExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.native.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		grep -q "live blocks 0, live bytes 0" $(BUILD_DIR)/$$fixture.memory.txt || { echo "$$fixture: memory still live at exit"; exit 1; }; \
 		echo "library native ok: $$fixture (exit $$nativeExit, zero live blocks)"; \
 	done
 
-# Library modules with an instance API (ADR-0007), which `snl build` v0.3.0,
+# Library modules with an instance API (ADR-0007), which `moil build` v0.3.0,
 # the current root, can build. Each fixture is joined with these modules only.
-# The `snl build` executable, `snl run-snbc` and the Snova executor must agree
-# on stdout and exit status for the image compiled by the Snova compiler, and
+# The `moil build` executable, `moil run-snbc` and the Mois executor must agree
+# on stdout and exit status for the image compiled by the Mois compiler, and
 # match bootstrap/fixtures/expected/<fixture>.stdout and .status, captured from
 # the fixture before its migration (SPEC-0001). Needs no native toolchain, so
-# it runs on every host with `snl`. LIBRARY_ROOT_SOURCES and
+# it runs on every host with `moil`. LIBRARY_ROOT_SOURCES and
 # LIBRARY_ROOT_FIXTURES are defined at the top, next to the root project.
 bootstrap-library-root: bootstrap-build
 	@for fixture in $(LIBRARY_ROOT_FIXTURES); do \
 		joined=$(BUILD_DIR)/$$fixture.root.snl; \
 		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
 		for name in $(LIBRARY_ROOT_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
-		$(SNL) check $$joined > /dev/null || exit 1; \
-		$(SNL) build $$joined -o $(BUILD_DIR)/$$fixture.root > /dev/null || exit 1; \
+		$(MOIL) check $$joined > /dev/null || exit 1; \
+		$(MOIL) build $$joined -o $(BUILD_DIR)/$$fixture.root > /dev/null || exit 1; \
 		$(BUILD_DIR)/$$fixture.root > $(BUILD_DIR)/$$fixture.root.txt; rootExit=$$?; \
 		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.root.snbc || exit 1; \
-		$(SNL) run-snbc $(BUILD_DIR)/$$fixture.root.snbc > $(BUILD_DIR)/$$fixture.root.ref.txt; referenceExit=$$?; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.root.snbc > $(BUILD_DIR)/$$fixture.root.ref.txt; referenceExit=$$?; \
 		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.root.snbc run > $(BUILD_DIR)/$$fixture.root.vm.txt; vmExit=$$?; \
 		test "$$rootExit" -eq "$$referenceExit" -a "$$rootExit" -eq "$$vmExit" || { echo "$$fixture: root $$rootExit ref $$referenceExit vm $$vmExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.ref.txt || exit 1; \

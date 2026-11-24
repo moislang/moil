@@ -1,4 +1,4 @@
-package snova.compiler.runtime
+package mois.compiler.runtime
 
 // Values of the SnBC executor: each value is a (tag, value) pair.
 // tag 0 unit, 1 int, 2 bool, 3 string (value = handle into strings),

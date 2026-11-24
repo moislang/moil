@@ -1,4 +1,4 @@
-package snova.compiler.backend
+package mois.compiler.backend
 
 // Assembly at the OS/ABI boundary (ADR-0003, ADR-0006): process entry, stubs
 // for the native methods of Primitive and System, the stack overflow
@@ -51,7 +51,7 @@ class NativeBoundary {
             output.line("mov x0, #-100")
             output.line("ldr x1, [x29, #48]")
             output.line("ldr x2, [x29, #32]")
-            // The Snova Host runtime uses Darwin's O_CREAT/O_TRUNC bit values
+            // The Mois Host runtime uses Darwin's O_CREAT/O_TRUNC bit values
             // (1537). Translate its single write mode to Linux O_* values.
             let flagsReady = output.newLabel()
             output.line("cmp x2, #1537")
@@ -171,7 +171,7 @@ class NativeBoundary {
         output.pushInteger("x0")
         output.callRole(output.roleFinish(), 1)
         output.directive(".p2align 2")
-        output.label("Lsnova_stack_overflow")
+        output.label("Lmois_stack_overflow")
         output.callFail(3, 0)
     }
 
@@ -187,7 +187,7 @@ class NativeBoundary {
             output.directive(".p2align 3")
             output.line(".quad -1")
             output.line(".quad 0")
-            output.label("l_snova_pool_" + output.decimal(poolIndex))
+            output.label("l_mois_pool_" + output.decimal(poolIndex))
             output.line(".quad " + output.decimal(size))
             var index = 0
             while index < size {
@@ -206,8 +206,8 @@ class NativeBoundary {
         output.directive(bssSection)
         if targetKind == 3 {
             output.directive(".balign 16")
-            output.directive(".globl snova_state")
-            output.label("snova_state")
+            output.directive(".globl mois_state")
+            output.label("mois_state")
             output.directive(".zero 256")
         }
     }

@@ -6,12 +6,12 @@
 ## Context
 
 The compiler is to be built with object-oriented design: types instead of
-name prefixes, with each former prefix (`snova`, `snovaRuntime`,
-`snovaPrimitive`) becoming a type. The builtin runtime is represented as
+name prefixes, with each former prefix (`mois`, `moisRuntime`,
+`moisPrimitive`) becoming a type. The builtin runtime is represented as
 `class Runtime` with `@Native public static method` declarations.
 
-Compiler source must be accepted by two compilers: the Snova seed (fixed
-point) and `snl build` v0.3.0, the transitional root that produces the
+Compiler source must be accepted by two compilers: the Mois seed (fixed
+point) and `moil build` v0.3.0, the transitional root that produces the
 compiler executable. Probes recorded in `docs/roadmap/evidence.md` showed
 what each one accepts.
 
@@ -19,7 +19,7 @@ The seed already supported classes, fields, instance methods with implicit
 field access, sibling calls and positional constructors `Type(args)`. It did
 not support `static` or annotations.
 
-`snl build` v0.3.0, the root, behaves as follows:
+`moil build` v0.3.0, the root, behaves as follows:
 - **Accepts:** method calls on locals created by a constructor, on typed
   parameters and on siblings, and classes without fields.
 - **Rejects, with `invalid SnBC unit for native compilation`:** any static
@@ -31,7 +31,7 @@ not support `static` or annotations.
   `get`, ...) as array operations (`push expects an array`).
 - **Releases an array** when a field holding it is reassigned, so an array
   shared by two fields leaves the other field dangling. Moving a value out of
-  a field is rejected (SNOVA0251).
+  a field is rejected (MOISL0251).
 
 ## Decision
 
@@ -45,10 +45,10 @@ not support `static` or annotations.
 2. **Native runtime: one type per responsibility, static methods.** The
    types are `Primitive` and `System` (native boundary), `Heap`, `Text`,
    `Container`, `Ownership`, `Value`, `Host` and `Runtime`. The seed and the
-   native backend compile them; `snl build` never does, so static methods
+   native backend compile them; `moil build` never does, so static methods
    are allowed. These type names are reserved in native programs, and the
    backend finds runtime methods by their `Type.method` names (ADR-0006).
-3. **Compiler code: instance-based objects** while `snl build` v0.3.0 is
+3. **Compiler code: instance-based objects** while `moil build` v0.3.0 is
    the root:
    - objects are created with constructors and kept in locals;
    - collaborators travel as typed parameters, never as receivers held in
@@ -59,7 +59,7 @@ not support `static` or annotations.
    The native backend follows this model: `NativeImage`, `NativeRoles`,
    `NativeAssembly`, `NativeSlot`, `NativeOwnership`, `NativeValueEmitter`,
    `NativeInstructionEmitter`, `NativeBoundary` and `NativeBackend`.
-4. **Naming.** Types and source files are PascalCase, as in snovac
+4. **Naming.** Types and source files are PascalCase, as in moisc
    (`Runtime`, `Box`, `Runtime.snl`). Functions, methods and variables stay
    camelCase. Existing
    lowercase frontend type names are legacy names and must be migrated to
@@ -71,24 +71,24 @@ not support `static` or annotations.
   `compilerState`/`compilerContext`. Migrating it to objects follows the
   rules above, in small steps that keep the fixed point.
 - The data-structure library in `bootstrap/library/` uses static methods.
-  It serves programs compiled by the Snova compiler (SnBC and native), but
+  It serves programs compiled by the Mois compiler (SnBC and native), but
   not the compiler itself, until the library has an instance-based API or
   the compiler is built natively (N3). The migration is incremental:
   stateless types become fieldless classes created with `Type()` whose
   methods are instance methods; sibling calls drop the type qualifier.
   `BinarySearch`, `LinearSearch`, `Sorting`, `IntCell` and `IntArray` are
   migrated, and `make bootstrap-library-root` builds their fixtures with
-  `snl build`. Types that hold class elements in arrays (`IntArray`, and
+  `moil build`. Types that hold class elements in arrays (`IntArray`, and
   `IntMap` for its bucket heads) reach an element by passing it to a private
   sibling method with a typed parameter, which then calls the element's
   instance methods; `IntCell` is created with the positional `IntCell(value)`.
   The first stage builds a staged project (`build/bootstrap/root-project/`)
   that holds `bootstrap/src/` plus the migrated modules. The
-  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/snovalang/snl/pull/5)).
+  slices and acceptance criteria are in SPEC-0001 (`docs/specs/SPEC-0001-library-instance-api.md`, proposed in [snl#5](https://github.com/moislang/snl/pull/5)).
 - Once the native backend builds the compiler (N3), the root's restrictions
   stop applying, and the rules can be relaxed through a new ADR.
 
 ## Reopen when
 
-The root changes (another `snl` version, or the native compiler replaces it),
+The root changes (another `moil` version, or the native compiler replaces it),
 or the frontend migration needs a feature that these rules forbid.

@@ -2,8 +2,8 @@ package bootstrap.fixture
 
 import builtin.io.console
 
-// Variant values compare by name and print their name, as `snl run` does.
-// `snl run-snbc` v0.3.0 compares them by identity and prints an empty line,
+// Variant values compare by name and print their name, as `moil run` does.
+// `moil run-snbc` v0.3.0 compares them by identity and prints an empty line,
 // so this fixture has a fixed expected output (see evidence.md).
 enum Light {
     Red,

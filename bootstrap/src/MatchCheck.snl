@@ -1,12 +1,12 @@
-package snova.compiler
+package mois.compiler
 
-import snova.compiler.runtime
+import mois.compiler.runtime
 
-// Match exhaustiveness (SNV4004), the rule of snovac's
+// Match exhaustiveness (SNV4004), the rule of moisc's
 // sn_check_match_exhaustiveness: a match whose subject has a known enum type
 // needs a wildcard or binding arm, or a variant pattern for every variant of
 // the enum. Subjects with another or unknown static type are not checked.
-// Variant patterns are compared by member name, as in snovac. A bare name
+// Variant patterns are compared by member name, as in moisc. A bare name
 // that is not a known variant binds, so it covers every case (the emitter
 // lowers it the same way). The seed has no arm guards.
 func matchArmsCatchAll(src: int[], bg: CompilerState, arms: int): int {
@@ -64,7 +64,7 @@ func reportNonExhaustive(src: int[], bg: CompilerState, cx: CompilerContext): un
 }
 
 // SNV4006: a call's argument count differs from the callee's parameter count
-// (snl check SNOVA0131). `passed` counts the receiver of an instance method,
+// (moil check MOISL0131). `passed` counts the receiver of an instance method,
 // as fn_ar does; `receiver` is 1 then, so messages show source counts.
 // `nameStart` is the byte offset of the called name.
 func arityMismatch(src: int[], bg: CompilerState, cx: CompilerContext, fn: int, passed: int, receiver: int, nameStart: int): int {
@@ -114,8 +114,8 @@ func reportArity(cx: CompilerContext): unit {
 }
 
 // SNV4007: an argument's known type does not match the parameter (or
-// constructor field, or `push` element type). Corresponds to SNOVA0132.
-// The span is the opening `(` of the call, the column `snl check` reports.
+// constructor field, or `push` element type). Corresponds to MOISL0132.
+// The span is the opening `(` of the call, the column `moil check` reports.
 func typeFail(src: int[], cx: CompilerContext, phase: int, start: int): unit {
     if cx.failed != 0 { return }
     cx.failed = 1
@@ -197,8 +197,8 @@ func emitArgsChecked(src: int[], bg: CompilerState, cx: CompilerContext, code: i
     }
 }
 
-// SNV4008 / SNV4009: operator and index operand types (SNOVA0133 / SNOVA0134).
-// The span is the operator or the opening `[`, the column `snl check` reports.
+// SNV4008 / SNV4009: operator and index operand types (MOISL0133 / MOISL0134).
+// The span is the operator or the opening `[`, the column `moil check` reports.
 func isBoolType(ty: int): bool {
     if ty == -2 { return true }
     return false
@@ -365,7 +365,7 @@ func callResultType(bg: CompilerState, fn: int): int {
 }
 
 // SNV4011: a return's known type does not match the function's declared
-// return type (snl check SNOVA0136). A bare `return` has type unit. The
+// return type (moil check MOISL0136). A bare `return` has type unit. The
 // span is the `return` keyword, or the expression of a function shorthand.
 func checkReturnType(src: int[], bg: CompilerState, cx: CompilerContext, nd: int, got: int): int {
     if cx.failed != 0 { return 1 }
