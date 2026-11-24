@@ -41,12 +41,12 @@ jobs:
             runner: windows-2025
             shell: msys2 {0}
             msystem: MINGW64
-            packages: make diffutils mingw-w64-x86_64-gcc zip
+            packages: git make diffutils mingw-w64-x86_64-gcc zip
           - asset_platform: windows-aarch64
             runner: windows-11-arm
             shell: msys2 {0}
             msystem: CLANGARM64
-            packages: make diffutils mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools zip
+            packages: git make diffutils mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-llvm-tools zip
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:
@@ -129,7 +129,7 @@ jobs:
             mv check/bin/snl.exe check/bin/moil.exe
             moil="$PWD/check/bin/moil.exe"
           else
-            mv check/bin/moil check/bin/moil
+            mv check/bin/snl check/bin/moil
             moil="$PWD/check/bin/moil"
           fi
           make -C repo bootstrap-smoke MOIL="$moil"
