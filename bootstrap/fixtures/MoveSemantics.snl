@@ -1,0 +1,23 @@
+package bootstrap.fixture
+
+class Box {
+    public var value: int
+}
+
+func take(xs: int[]): int {
+    return xs.len()
+}
+
+func main(): int {
+    var numbers = [1, 2, 3]
+    take(numbers)
+    var copy = numbers
+    var n = copy.len()
+    var text = "ok"
+    var also = text
+    var count = 7
+    var same = count
+    var box = Box { value: 1 }
+    var other = box
+    return n + same + other.value
+}

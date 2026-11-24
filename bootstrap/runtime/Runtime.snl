@@ -87,7 +87,10 @@ class Runtime {
         if code == 9 { Runtime.outputString("out of memory") }
         if code == 10 { Runtime.outputString("strong reference cycle rejected for opcode ") }
         if code == 11 { Runtime.outputString("pop from empty array") }
-        if code == 2 || code == 4 || code == 8 || code == 10 { Runtime.outputInteger(detail) }
+        if code == 12 { Runtime.outputString("invalid owner count (operation ") }
+        if code == 13 { Runtime.outputString("owner count overflow (operation ") }
+        if code == 2 || code == 4 || code == 8 || code == 10 || code == 12 || code == 13 { Runtime.outputInteger(detail) }
+        if code == 12 || code == 13 { Runtime.outputByte(1, 41) }
         Runtime.outputByte(1, 10)
         System.exit(70)
     }

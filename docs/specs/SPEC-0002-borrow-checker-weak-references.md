@@ -120,11 +120,16 @@ No new syntax in B1–B2.
   `moved` or `maybe moved` local fails with `SNV5001`. At the join of
   `if`/`else` and after a `while` body, a local moved on any path is
   `maybe moved`.
-- **Reassignment:** the reference also rejects assigning to a moved local
-  (fourth probe row). Whether the seed copies this rule is open question 2.
+- **Reassignment:** closed (open question 1, Villa, 2026-11-21). The seed
+  follows `snl check` v0.3.0: after a move, assigning to that `var` local
+  is itself a use of a moved value (`SNOVA0240` at the left-hand name,
+  `SNV5001` in the seed), even when the local is not read afterwards.
+  A later use is a second error. Yuri may revisit.
 - **Field and element moves:** binding a field or an array element of
   movable type to a local fails with `SNV5002`. Passing it as a call
   argument stays allowed (SPEC-0001, rule 4).
+  Assigning a local into a field or array element does not move from that
+  local; only assignment to another local transfers its move state.
 
 ## Slices
 
@@ -147,10 +152,10 @@ No new syntax in B1–B2.
 
 ## Fixtures
 
-- Valid: `moveSemantics.snl` (moves, string and int copies, argument
+- Valid: `MoveSemantics.snl` (moves, string and int copies, argument
   borrow, move then use of the destination).
-- Invalid: `invalidUseAfterMove.snl`, `invalidConditionalMove.snl`,
-  `invalidFieldMove.snl`, with exact lines and spans asserted in
+- Invalid: `InvalidUseAfterMove.snl`, `InvalidConditionalMove.snl`,
+  `InvalidFieldMove.snl`, with exact lines and spans asserted in
   `bootstrap-diagnostics`.
 
 ## Acceptance criteria
@@ -213,12 +218,22 @@ until they are repeated on `aarch64-apple-darwin`.
   looser leaves gaps the backend must still cover dynamically.
 - B4 removes dynamic safety nets; a wrong fact becomes a use after free.
 
+## Closed questions
+
+1. **Reassigning a moved `var` local.** Closed on 2026-11-21 by Villa
+   (spec owner): the seed follows `snl check` v0.3.0, and Yuri may
+   revisit. Probe, `snl` v0.3.0: after `var a = [1, 2, 3]` and
+   `var b = a`, the assignment `a = [4]` is
+   `error[SNOVA0240]: use of a moved value` at the left-hand `a`
+   (column 5), even when `a` is not used afterwards. The same code
+   fires for an object local (`o = Box { value: 2 }` after `var p = o`).
+   If the local is then used (`return a.len()`), `snl check` reports a
+   second `SNOVA0240` at that use. Assigning to a `let` local is already
+   `SNV4005` (snl#7), so this only concerns `var`. The seed reports
+   `SNV5001` at the assignment, matching that rule.
+
 ## Open questions
 
-1. **Reassigning a moved `var` local:** reject it like the reference, or
-   accept it as a re-initialisation? (Yuri) Assigning to a `let` local is
-   already rejected by `SNV4005` (snl#7), so the question only concerns
-   `var`.
 2. **Weak references:** is there a concrete need (a cyclic structure in the
    compiler or the library) that justifies the ADR now? (Yuri)
 3. **Do loops, methods and `return` match the reference?** B0 must probe

@@ -18,7 +18,8 @@ func compilerFiles(): string[] {
         "bootstrap/src/NativeInstructionEmitter.snl", "bootstrap/src/NativeTargetResolver.snl",
         "bootstrap/src/NativeBoundary.snl", "bootstrap/src/NativeBackend.snl", "bootstrap/src/SourceJoin.snl",
         "bootstrap/src/Compiler.snl", "bootstrap/src/ScopeParse.snl", "bootstrap/src/ScopeEmit.snl",
-        "bootstrap/src/ScopeMatch.snl", "bootstrap/src/MatchCheck.snl"
+        "bootstrap/src/ScopeMatch.snl", "bootstrap/src/MatchCheck.snl",
+        "bootstrap/src/BorrowCheck.snl"
     ]
 }
 

@@ -215,7 +215,7 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
                         emitArgsChecked(src, bg, cx, code, fat, fb, args, m, parenStart)
                         if cx.failed != 0 { return 1 }
                         scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
-                        cx.expr_ty = 0
+                        cx.expr_ty = callResultType(bg, m)
                         return 1
                     }
                 }
@@ -244,7 +244,7 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
                             return 1
                         }
                         scopeCallOp(code, m, consCount(bg, args) + 1, bg.fn_async[m])
-                        cx.expr_ty = 0
+                        cx.expr_ty = callResultType(bg, m)
                         return 1
                     }
                 }
@@ -263,7 +263,7 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
         emitArgsChecked(src, bg, cx, code, fat, fb, args, fn, parenStart)
         if cx.failed != 0 { return 1 }
         scopeCallOp(code, fn, consCount(bg, args), 1)
-        cx.expr_ty = 0
+        cx.expr_ty = callResultType(bg, fn)
         return 1
     }
     let st = findStruct(src, bg, ns, nl)
@@ -283,7 +283,7 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
             emitArgsChecked(src, bg, cx, code, fat, fb, args, m, parenStart)
             if cx.failed != 0 { return 1 }
             scopeCallOp(code, m, consCount(bg, args), bg.fn_async[m])
-            cx.expr_ty = 0
+            cx.expr_ty = callResultType(bg, m)
             return 1
         }
         if m >= 0 {
@@ -293,7 +293,7 @@ func scopeEmitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int
             emitArgsChecked(src, bg, cx, code, fat, fb, args, m, parenStart)
             if cx.failed != 0 { return 1 }
             scopeCallOp(code, m, consCount(bg, args) + 1, bg.fn_async[m])
-            cx.expr_ty = 0
+            cx.expr_ty = callResultType(bg, m)
             return 1
         }
     }

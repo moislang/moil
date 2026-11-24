@@ -29,6 +29,7 @@ func parseBinding(src: int[], bg: CompilerState, cx: CompilerContext): int {
 
 func parseReturn(src: int[], bg: CompilerState, cx: CompilerContext): int {
     if cx.failed != 0 { return -1 }
+    let retTok = cx.pos
     let ret_line = bg.tl[cx.pos]
     bump(cx)
     var expr = -1
@@ -48,7 +49,7 @@ func parseReturn(src: int[], bg: CompilerState, cx: CompilerContext): int {
         }
     }
     acceptTok(bg, cx, 24)
-    return node(bg, 23, 0, expr, -1, -1)
+    return node(bg, 23, 0, expr, -1, retTok)
 }
 
 func parseBody(src: int[], bg: CompilerState, cx: CompilerContext): int {

@@ -1,0 +1,11 @@
+package bootstrap.fixture
+
+class Cell {
+    public var value: int
+}
+
+func main(): int {
+    var cells = [Cell { value: 1 }, Cell { value: 2 }]
+    let cell = cells[0]
+    return cell.value
+}

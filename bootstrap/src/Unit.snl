@@ -51,6 +51,8 @@ struct CompilerState {
     public var fn_ns: int[]
     public var fn_nl: int[]
     public var fn_ar: int[]
+    // Declared return type (0 if omitted or unknown). unit is -4.
+    public var fn_ty: int[]
     public var fn_body: int[]
     public var fn_off: int[]
     public var fn_len: int[]
@@ -94,6 +96,7 @@ struct CompilerContext {
     public var locals: int
     public var water: int
     public var expr_ty: int
+    public var ret_ty: int
     public var no_struct: int
     public var loc_base: int
     public var main_idx: int

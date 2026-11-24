@@ -12,6 +12,10 @@ package snova.runtime
 // or freed. Runtime types manage raw addresses themselves and are not
 // instrumented by the backend.
 class Ownership {
+    // Runtime Int is a signed 32-bit value. Keep the refcount below its
+    // maximum so retain cannot wrap into the negative constant sentinel.
+    private static method maxOwnerCount(): int { return 2147483647 }
+
     private static method isHeapTag(tag: int): bool {
         return tag >= 3 && tag <= 5
     }
@@ -20,6 +24,8 @@ class Ownership {
         if Ownership.isHeapTag(tag) == false { return }
         let count = Primitive.load(payload - 16)
         if count < 0 { return }
+        if count == 0 { Runtime.fail(12, 1) }
+        if count >= Ownership.maxOwnerCount() { Runtime.fail(13, 1) }
         Primitive.store(payload - 16, count + 1)
     }
 
@@ -27,6 +33,7 @@ class Ownership {
         if Ownership.isHeapTag(tag) == false { return }
         let count = Primitive.load(payload - 16)
         if count < 0 { return }
+        if count == 0 { Runtime.fail(12, 2) }
         if count > 1 {
             Primitive.store(payload - 16, count - 1)
             return

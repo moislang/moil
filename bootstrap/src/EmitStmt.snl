@@ -195,8 +195,10 @@ func emitStmtAt(src: int[], bg: CompilerState, cx: CompilerContext, code: int[],
     if k == 23 {
         if bg.nb[nd] >= 0 {
             emitExpr(src, bg, cx, code, fat, fb, bg.nb[nd])
+            if checkReturnType(src, bg, cx, nd, cx.expr_ty) != 0 { return }
         } else {
             code.push(5)
+            if checkReturnType(src, bg, cx, nd, -4) != 0 { return }
         }
         code.push(35)
         return
@@ -246,6 +248,7 @@ func emitFunc(src: int[], bg: CompilerState, cx: CompilerContext, fi: int): unit
     cx.water = 0
     cx.loc_base = bg.loc_slot.len()
     cx.expr_ty = 0
+    cx.ret_ty = callResultType(bg, fi)
     cx.owner = bg.fn_own[fi]
     // A static method has no instance: no self local, no implicit fields.
     if bg.fn_static[fi] != 0 { cx.owner = -1 }

@@ -94,13 +94,13 @@ bootstrap-oop: bootstrap-build
 	$(COMPILER_BUNDLE) bootstrap/fixtures/TraitDispatch.snl $(BUILD_DIR)/TraitDispatch.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/TraitDispatch.snbc run; test "$$?" -eq 86
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceMissingMethod.snl $(BUILD_DIR)/InterfaceMissingMethod.snbc > $(BUILD_DIR)/interface-missing.txt; then echo "expected missing interface method"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/interface-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
+	tr '\r' '\n' < $(BUILD_DIR)/interface-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceWrongSignature.snl $(BUILD_DIR)/InterfaceWrongSignature.snbc > $(BUILD_DIR)/interface-signature.txt; then echo "expected interface signature mismatch"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/interface-signature.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
+	tr '\r' '\n' < $(BUILD_DIR)/interface-signature.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitMissingMethod.snl $(BUILD_DIR)/TraitMissingMethod.snbc > $(BUILD_DIR)/trait-missing.txt; then echo "expected missing trait method"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/trait-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
+	tr '\r' '\n' < $(BUILD_DIR)/trait-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitWrongArity.snl $(BUILD_DIR)/TraitWrongArity.snbc > $(BUILD_DIR)/trait-arity.txt; then echo "expected trait arity mismatch"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/trait-arity.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
+	tr '\r' '\n' < $(BUILD_DIR)/trait-arity.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
 
 # Native interface and trait calls use a type-id indexed dispatch table.
 bootstrap-oop-native: bootstrap-build
@@ -114,88 +114,112 @@ bootstrap-oop-native: bootstrap-build
 
 bootstrap-diagnostics: bootstrap-build
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidLex.snl $(BUILD_DIR)/invalidLex.snbc > $(BUILD_DIR)/lexical-error.txt; then echo "expected lexical failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/lexical-error.txt | grep -Fqx "error[SNV1001]: lexical error at line 4, span 46..58"
+	tr '\r' '\n' < $(BUILD_DIR)/lexical-error.txt | grep -Fqx "error[SNV1001]: lexical error at line 4, span 46..58"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidParse.snl $(BUILD_DIR)/invalidParse.snbc > $(BUILD_DIR)/parse-error.txt; then echo "expected parse failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/parse-error.txt | grep -Fqx "error[SNV2001]: parse error at line 5, span 59..59"
+	tr '\r' '\n' < $(BUILD_DIR)/parse-error.txt | grep -Fqx "error[SNV2001]: parse error at line 5, span 59..59"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidRuntimeArity.snl $(BUILD_DIR)/invalidRuntimeArity.snbc > $(BUILD_DIR)/runtime-arity-error.txt; then echo "expected runtime arity failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/runtime-arity-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 6, function #0"
+	tr '\r' '\n' < $(BUILD_DIR)/runtime-arity-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 6, function #0"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStaticCall.snl $(BUILD_DIR)/invalidStaticCall.snbc > $(BUILD_DIR)/static-call-error.txt; then echo "expected static call failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/static-call-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 14, function #1"
+	tr '\r' '\n' < $(BUILD_DIR)/static-call-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 14, function #1"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/TypedLet.snl $(BUILD_DIR)/typedLet.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/typedLet.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedLet.snl $(BUILD_DIR)/invalidTypedLet.snbc > $(BUILD_DIR)/typed-let-error.txt; then echo "expected typed let mismatch"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/typed-let-error.txt | grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 4, span 54..55"
+	tr '\r' '\n' < $(BUILD_DIR)/typed-let-error.txt | grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 4, span 54..55"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedAssignment.snl $(BUILD_DIR)/invalidTypedAssignment.snbc > $(BUILD_DIR)/typed-assignment-error.txt; then echo "expected typed assignment mismatch"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/typed-assignment-error.txt | grep -Fqx "error[SNV4002]: assignment type does not match local binding at line 5, span 70..71"
+	tr '\r' '\n' < $(BUILD_DIR)/typed-assignment-error.txt | grep -Fqx "error[SNV4002]: assignment type does not match local binding at line 5, span 70..71"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/FieldAssignment.snl $(BUILD_DIR)/fieldAssignment.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/field-assignment-error.txt | grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130"
+	tr '\r' '\n' < $(BUILD_DIR)/field-assignment-error.txt | grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/MatchExhaustive.snl $(BUILD_DIR)/matchExhaustive.snbc
 	@$(SNL) run-snbc $(BUILD_DIR)/matchExhaustive.snbc; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchExpression.snl $(BUILD_DIR)/invalidMatchExpression.snbc > $(BUILD_DIR)/match-expression-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/match-expression-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135'
+	tr '\r' '\n' < $(BUILD_DIR)/match-expression-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135'
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchStatement.snl $(BUILD_DIR)/invalidMatchStatement.snbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/match-statement-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Go` at line 12, span 136..141'
+	tr '\r' '\n' < $(BUILD_DIR)/match-statement-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Go` at line 12, span 136..141'
 	$(COMPILER_BUNDLE) bootstrap/fixtures/ImmutableBindings.snl $(BUILD_DIR)/immutableBindings.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/immutableBindings.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableLet.snl $(BUILD_DIR)/invalidImmutableLet.snbc > $(BUILD_DIR)/immutable-let-error.txt; then echo "expected immutable binding failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/immutable-let-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 5, span 68..69"
+	tr '\r' '\n' < $(BUILD_DIR)/immutable-let-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 5, span 68..69"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableParam.snl $(BUILD_DIR)/invalidImmutableParam.snbc > $(BUILD_DIR)/immutable-param-error.txt; then echo "expected immutable parameter failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/immutable-param-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 4, span 60..61"
+	tr '\r' '\n' < $(BUILD_DIR)/immutable-param-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 4, span 60..61"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableFor.snl $(BUILD_DIR)/invalidImmutableFor.snbc > $(BUILD_DIR)/immutable-for-error.txt; then echo "expected immutable for binding failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/immutable-for-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 6, span 97..98"
+	tr '\r' '\n' < $(BUILD_DIR)/immutable-for-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 6, span 97..98"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallArity.snl $(BUILD_DIR)/invalidCallArity.snbc > $(BUILD_DIR)/call-arity-error.txt; then echo "expected arity failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/call-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 1 at line 8, span 123..124"
+	tr '\r' '\n' < $(BUILD_DIR)/call-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 1 at line 8, span 123..124"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArity.snl $(BUILD_DIR)/invalidMethodArity.snbc > $(BUILD_DIR)/method-arity-error.txt; then echo "expected arity failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/method-arity-error.txt | grep -Fqx "error[SNV4006]: expected 1 argument(s), found 2 at line 13, span 232..233"
+	tr '\r' '\n' < $(BUILD_DIR)/method-arity-error.txt | grep -Fqx "error[SNV4006]: expected 1 argument(s), found 2 at line 13, span 232..233"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorArity.snl $(BUILD_DIR)/invalidConstructorArity.snbc > $(BUILD_DIR)/constructor-arity-error.txt; then echo "expected arity failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/constructor-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 3 at line 9, span 109..110"
+	tr '\r' '\n' < $(BUILD_DIR)/constructor-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 3 at line 9, span 109..110"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/ArgTypes.snl $(BUILD_DIR)/argTypes.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/argTypes.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.snl $(BUILD_DIR)/invalidArgType.snbc > $(BUILD_DIR)/arg-type-error.txt; then echo "expected argument type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
+	tr '\r' '\n' < $(BUILD_DIR)/arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorType.snl $(BUILD_DIR)/invalidConstructorType.snbc > $(BUILD_DIR)/constructor-type-error.txt; then echo "expected constructor type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/constructor-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 97..98"
+	tr '\r' '\n' < $(BUILD_DIR)/constructor-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 97..98"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArgType.snl $(BUILD_DIR)/invalidMethodArgType.snbc > $(BUILD_DIR)/method-arg-type-error.txt; then echo "expected method argument type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/method-arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236"
+	tr '\r' '\n' < $(BUILD_DIR)/method-arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidPushType.snl $(BUILD_DIR)/invalidPushType.snbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/push-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81"
+	tr '\r' '\n' < $(BUILD_DIR)/push-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/Hello.snl $(BUILD_DIR)/hello.s native
 	test -s $(BUILD_DIR)/hello.s
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.snl $(BUILD_DIR)/invalidArgType.s native > $(BUILD_DIR)/arg-type-native-error.txt; then echo "expected argument type failure in native mode"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/arg-type-native-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
+	tr '\r' '\n' < $(BUILD_DIR)/arg-type-native-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/OperatorTypes.snl $(BUILD_DIR)/operatorTypes.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/operatorTypes.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBinaryType.snl $(BUILD_DIR)/invalidBinaryType.snbc > $(BUILD_DIR)/binary-type-error.txt; then echo "expected binary operator type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/binary-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 6, span 107..108"
+	tr '\r' '\n' < $(BUILD_DIR)/binary-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 6, span 107..108"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCompareType.snl $(BUILD_DIR)/invalidCompareType.snbc > $(BUILD_DIR)/compare-type-error.txt; then echo "expected comparison type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/compare-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 5, span 79..80"
+	tr '\r' '\n' < $(BUILD_DIR)/compare-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 5, span 79..80"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStringOrder.snl $(BUILD_DIR)/invalidStringOrder.snbc > $(BUILD_DIR)/string-order-error.txt; then echo "expected string ordering type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/string-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 57..58"
+	tr '\r' '\n' < $(BUILD_DIR)/string-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 57..58"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBoolOrder.snl $(BUILD_DIR)/invalidBoolOrder.snbc > $(BUILD_DIR)/bool-order-error.txt; then echo "expected bool ordering type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/bool-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 58..59"
+	tr '\r' '\n' < $(BUILD_DIR)/bool-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 58..59"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNeg.snl $(BUILD_DIR)/invalidUnaryNeg.snbc > $(BUILD_DIR)/unary-neg-error.txt; then echo "expected unary type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/unary-neg-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 81..82"
+	tr '\r' '\n' < $(BUILD_DIR)/unary-neg-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 81..82"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNot.snl $(BUILD_DIR)/invalidUnaryNot.snbc > $(BUILD_DIR)/unary-not-error.txt; then echo "expected unary type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/unary-not-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 72..73"
+	tr '\r' '\n' < $(BUILD_DIR)/unary-not-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 72..73"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIndexType.snl $(BUILD_DIR)/invalidIndexType.snbc > $(BUILD_DIR)/index-type-error.txt; then echo "expected index type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/index-type-error.txt | grep -Fqx "error[SNV4009]: index must be an integer type at line 5, span 79..80"
+	tr '\r' '\n' < $(BUILD_DIR)/index-type-error.txt | grep -Fqx "error[SNV4009]: index must be an integer type at line 5, span 79..80"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/BoolConditions.snl $(BUILD_DIR)/boolConditions.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/boolConditions.snbc run; test "$$?" -eq 42
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIfCondition.snl $(BUILD_DIR)/invalidIfCondition.snbc > $(BUILD_DIR)/if-condition-error.txt; then echo "expected non-bool if condition"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/if-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73"
+	tr '\r' '\n' < $(BUILD_DIR)/if-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidWhileCondition.snl $(BUILD_DIR)/invalidWhileCondition.snbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/while-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76"
+	tr '\r' '\n' < $(BUILD_DIR)/while-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76"
+	$(COMPILER_BUNDLE) bootstrap/fixtures/ReturnTypes.snl $(BUILD_DIR)/returnTypes.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/returnTypes.snbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnType.snl $(BUILD_DIR)/invalidReturnType.snbc > $(BUILD_DIR)/return-type-error.txt; then echo "expected return type failure"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/return-type-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnInUnit.snl $(BUILD_DIR)/invalidReturnInUnit.snbc > $(BUILD_DIR)/return-unit-error.txt; then echo "expected unit return type failure"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/return-unit-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 51..52"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBareReturn.snl $(BUILD_DIR)/invalidBareReturn.snbc > $(BUILD_DIR)/bare-return-error.txt; then echo "expected bare return type failure"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/bare-return-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodReturnType.snl $(BUILD_DIR)/invalidMethodReturnType.snbc > $(BUILD_DIR)/method-return-error.txt; then echo "expected method return type failure"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/method-return-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 5, span 79..80"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallResultType.snl $(BUILD_DIR)/invalidCallResultType.snbc > $(BUILD_DIR)/call-result-error.txt; then echo "expected call result type failure"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/call-result-error.txt | grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 8, span 94..95"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchCall.snl $(BUILD_DIR)/invalidMatchCall.snbc > $(BUILD_DIR)/match-call-error.txt; then echo "expected non-exhaustive match on a call"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/match-call-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 14, span 150..155'
+	$(COMPILER_BUNDLE) bootstrap/fixtures/MoveSemantics.snl $(BUILD_DIR)/moveSemantics.snbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/moveSemantics.snbc run; test "$$?" -eq 11
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUseAfterMove.snl $(BUILD_DIR)/invalidUseAfterMove.snbc > $(BUILD_DIR)/use-after-move-error.txt; then echo "expected use after move"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/use-after-move-error.txt | grep -Fqx "error[SNV5001]: use of a moved value at line 6, span 93..94"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConditionalMove.snl $(BUILD_DIR)/invalidConditionalMove.snbc > $(BUILD_DIR)/conditional-move-error.txt; then echo "expected use after conditional move"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/conditional-move-error.txt | grep -Fqx "error[SNV5001]: use of a moved value at line 8, span 119..120"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldMove.snl $(BUILD_DIR)/invalidFieldMove.snbc > $(BUILD_DIR)/field-move-error.txt; then echo "expected field move"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/field-move-error.txt | grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 156..157"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidElementMove.snl $(BUILD_DIR)/invalidElementMove.snbc > $(BUILD_DIR)/element-move-error.txt; then echo "expected element move"; exit 1; fi
+	tr '\r' '\n' < $(BUILD_DIR)/element-move-error.txt | grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 163..164"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopEmpty.snbc run > $(BUILD_DIR)/vmArrayPopEmpty.txt; test "$$?" -eq 70
-	tr -d '\r' < $(BUILD_DIR)/vmArrayPopEmpty.txt | grep -Fqx "runtime error: pop from empty array"
+	tr '\r' '\n' < $(BUILD_DIR)/vmArrayPopEmpty.txt | grep -Fqx "runtime error: pop from empty array"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopString.snl $(BUILD_DIR)/vmArrayPopString.snbc
 	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopString.snbc run)" = "popped"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/WarnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt; then echo "expected comparison type failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/warn-mismatch.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 10, span 171..172"
+	tr '\r' '\n' < $(BUILD_DIR)/warn-mismatch.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 10, span 171..172"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/WarnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt
 	test ! -s $(BUILD_DIR)/warn-compare.txt
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/warnCompare.snbc run; test "$$?" -eq 7
@@ -204,7 +228,7 @@ bootstrap-image-check: bootstrap-self-host
 	test "$$( $(COMPILER_BUNDLE) $(STAGE1_IMAGE))" = "valid SnBC image"
 	head -c 8 $(STAGE1_IMAGE) > $(BUILD_DIR)/truncated.snbc
 	@if $(COMPILER_BUNDLE) $(BUILD_DIR)/truncated.snbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/image-error.txt | grep -Fqx "invalid SnBC image"
+	tr '\r' '\n' < $(BUILD_DIR)/image-error.txt | grep -Fqx "invalid SnBC image"
 
 # Diferencial: stdout e código de saída da VM Snova contra `snl run-snbc`.
 # vmEquality e vmHostText têm saída esperada fixa porque o run-snbc v0.3.0
@@ -222,21 +246,21 @@ bootstrap-vm: bootstrap-build
 	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.snl $(BUILD_DIR)/vmHostText.snbc
 	@SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
-		if [ "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
+		if [ "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
 			echo "VmHostText: exit $$status, SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
 			echo "stdout:"; cat $(BUILD_DIR)/vmHostText.vm.txt; echo "stderr:"; cat $(BUILD_DIR)/vmHostText.vm.err; \
 			ls -la $(BUILD_DIR) | head -5; exit 1; \
 		fi
-	test "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.txt)" = "probe"
+	test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmStackOverflow.snl $(BUILD_DIR)/vmStackOverflow.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmStackOverflow.snbc run > $(BUILD_DIR)/vmStackOverflow.vm.txt; test "$$?" -eq 70
-	tr -d '\r' < $(BUILD_DIR)/vmStackOverflow.vm.txt | grep -Fqx "runtime error: Stack overflow"
+	tr '\r' '\n' < $(BUILD_DIR)/vmStackOverflow.vm.txt | grep -Fqx "runtime error: Stack overflow"
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmVariantValue.snl $(BUILD_DIR)/vmVariantValue.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.snbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
-	test "$$(tr -d '\r' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
+	test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
 	$(COMPILER_BUNDLE) bootstrap/fixtures/VmMatchNoArm.snl $(BUILD_DIR)/vmMatchNoArm.snbc
 	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
-	tr -d '\r' < $(BUILD_DIR)/vmMatchNoArm.vm.txt | grep -Fqx "runtime error: bodyless routine trapped"
+	tr '\r' '\n' < $(BUILD_DIR)/vmMatchNoArm.vm.txt | grep -Fqx "runtime error: bodyless routine trapped"
 
 # A VM Snova executa a imagem do compilador, que compila as próprias fontes;
 # a imagem resultante deve ser igual à stage1. Leva alguns minutos porque a
@@ -277,8 +301,8 @@ bootstrap-native: bootstrap-build
 	@fixture=VmHostText; printf stale > $(BUILD_DIR)/vmHostText.txt; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		SNOVA_FIXTURE_TEXT=probe SNOVA_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
-		test "$$(tr -d '\r' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
-		test "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
+		test "$$(tr '\r' '\n' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
+		test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
 		echo "native host text ok: $$fixture (exit 1)"
 	@for fixture in $(NATIVE_OWNERSHIP_FIXTURES); do \
 		SNOVA_MEMORY_REPORT=1 $(BUILD_DIR)/$$fixture.native alpha beta 2>&1 > /dev/null | grep -q "live blocks 0, live bytes 0" || { echo "$$fixture: memory still live at exit"; exit 1; }; \
@@ -294,17 +318,17 @@ bootstrap-native: bootstrap-build
 		printf 'tree ok\nruntime error: strong reference cycle rejected for opcode 50\n' | cmp - $(BUILD_DIR)/$$fixture.native.txt || exit 1; \
 		echo "native cycle rejected: $$fixture"
 	@if $(COMPILER_BUNDLE) bootstrap/fixtures/NativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
-	tr -d '\r' < $(BUILD_DIR)/native-error.txt | grep -Fqx "unsupported opcode for native backend: 54"
+	tr '\r' '\n' < $(BUILD_DIR)/native-error.txt | grep -Fqx "unsupported opcode for native backend: 54"
 	@fixture=VmArrayPopEmpty; \
 		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 70 || exit 1; \
-		tr -d '\r' < $(BUILD_DIR)/$$fixture.native.txt | grep -Fqx "runtime error: pop from empty array"
+		tr '\r' '\n' < $(BUILD_DIR)/$$fixture.native.txt | grep -Fqx "runtime error: pop from empty array"
 
 # N3: assemble the compiler's ordered source modules, compile that source to
 # native assembly, then use the generated executable for two further builds.
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
-NATIVE_COMPILER_SOURCES := Unit Lex Parse ParseDecl Emit EmitExpr EmitStmt Runtime ImageReader ImageCode VmValue VmText VmString VmOps VmExec VmDecode VmFast VmFrame VmLoad NativeImage NativeRoles NativeAssembly NativeSlot NativeOwnership ProcessorArchitecture OperatingSystemRuntime CallingConvention ExecutableFormat NativeToolchain NativeValueEmitter NativeInstructionEmitter NativeTargetResolver NativeBoundary NativeBackend SourceJoin Compiler ScopeParse ScopeEmit ScopeMatch MatchCheck
+NATIVE_COMPILER_SOURCES := Unit Lex Parse ParseDecl Emit EmitExpr EmitStmt Runtime ImageReader ImageCode VmValue VmText VmString VmOps VmExec VmDecode VmFast VmFrame VmLoad NativeImage NativeRoles NativeAssembly NativeSlot NativeOwnership ProcessorArchitecture OperatingSystemRuntime CallingConvention ExecutableFormat NativeToolchain NativeValueEmitter NativeInstructionEmitter NativeTargetResolver NativeBoundary NativeBackend SourceJoin Compiler ScopeParse ScopeEmit ScopeMatch MatchCheck BorrowCheck
 NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native

@@ -1,0 +1,18 @@
+package bootstrap.fixture
+
+enum Signal {
+    Stop,
+    Wait,
+    Go
+}
+
+func color(): Signal {
+    return Signal.Wait
+}
+
+func main(): int {
+    return match color() {
+        Signal.Stop -> 1
+        Signal.Go -> 3
+    }
+}

@@ -125,7 +125,7 @@ func emitCall(src: int[], bg: CompilerState, cx: CompilerContext, code: int[], f
         code.push(33)
         pushU32(code, fn)
         pushU32(code, consCount(bg, args))
-        cx.expr_ty = 0
+        cx.expr_ty = callResultType(bg, fn)
     } else {
         emitForward(src, bg, cx, code, fat, fb, args, 0)
         fail(cx)
