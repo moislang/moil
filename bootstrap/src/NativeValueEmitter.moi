@@ -1,9 +1,9 @@
 package mois.compiler.backend
 
 // Composite SnBC operations of the native backend (N2). Field and index
-// access use the object and array layouts of bootstrap/runtime/Container.snl
+// access use the object and array layouts of bootstrap/runtime/Container.moi
 // inline; allocation, printing, I/O and the general binary path call the
-// Mois runtime. Semantics follow the SnBC executor (VmFast.snl, VmOps.snl).
+// Mois runtime. Semantics follow the SnBC executor (VmFast.moi, VmOps.moi).
 //
 // Ownership (NativeOwnership): runtime roles borrow their value arguments,
 // except the elements of NEW_ARRAY/NEW_OBJECT and the element of

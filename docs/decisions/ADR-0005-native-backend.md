@@ -48,12 +48,12 @@ against `libSystem`. Vertical slices, each with its own gate:
 
 ## State
 
-N1, N2 and N3 are implemented in `bootstrap/src/Native*.snl` and
-`bootstrap/runtime/*.snl`. `make bootstrap-native-self` builds the compiler's
+N1, N2 and N3 are implemented in `bootstrap/src/Native*.moi` and
+`bootstrap/runtime/*.moi`. `make bootstrap-native-self` builds the compiler's
 ordered source modules with the transitional seed, links a native compiler,
 and requires two further native compiler generations to emit identical
 assembly. The entry point is
-`moil <input.snl> <output.s> native`: the compiler appends the Mois
+`moil <input.moi> <output.s> native`: the compiler appends the Mois
 runtime to the program, generates the SnBC image in memory, validates it and
 translates it to assembly. The gate is `make bootstrap-native`.
 

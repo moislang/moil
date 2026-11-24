@@ -1,6 +1,6 @@
 # Check out text with LF on every platform. Diagnostics report byte spans,
 # so a CRLF checkout (Git's default on Windows) would shift every span.
 * text=auto eol=lf
-bootstrap/seed/*.snbc binary
+bootstrap/seed/*.mlbc binary
 # Expected fixture output is byte-exact data (for example, trailing spaces).
 bootstrap/fixtures/expected/* -text -whitespace

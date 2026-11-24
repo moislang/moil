@@ -9,36 +9,36 @@ It is the first in-repository compiler source, not a complete replacement for
 Run `make bootstrap-fixed-point` with the installed `moil` toolchain. The target
 builds the multi-file project, asks the Mois compiler to compile its own
 sources, then asks the generated compiler to do the same. Both SnBC images must
-match byte for byte. The compiler's `SourceJoin.snl` handles this internal
+match byte for byte. The compiler's `SourceJoin.moi` handles this internal
 bootstrap operation; there is no separate joiner executable.
 
-`seed/compiler.snbc` is a committed SnBC seed (ADR-0009, proposed). `make
+`seed/compiler.mlbc` is a committed SnBC seed (ADR-0009, proposed). `make
 bootstrap-seed-fixed-point` runs it with `moil run-snbc` only, checks that the
 next two images match, and compares the first one with the `moil build` path.
 See `seed/README.md` for provenance and the update flow.
 
 Run `make bootstrap-build` to produce `build/bootstrap/moil`, then
-invoke it with `<input.snl> <output.snbc>`. With no arguments, it compiles its
-own modules and reads the output path from `SNL_OUTPUT`. One `.snbc` argument
+invoke it with `<input.moi> <output.mlbc>`. With no arguments, it compiles its
+own modules and reads the output path from `SNL_OUTPUT`. One `.mlbc` argument
 validates the canonical image structure, opcodes and instruction references. `make bootstrap-image-check` exercises
 both a valid self-compiled image and a truncated one.
 
-`<image.snbc> run [args...]` executes an SnBC image through the executor
-written in Mois (`src/Vm*.snl`). The mode is recognised by the `SNBC` magic of
+`<image.mlbc> run [args...]` executes an SnBC image through the executor
+written in Mois (`src/Vm*.moi`). The mode is recognised by the `SNBC` magic of
 the first argument; arguments after `run` belong to the program. The executor
 is iterative (256-frame limit), predecodes instructions, and supports typed
 values, calls, arrays, objects, byte-backed strings with value equality, file
 I/O and the runtime API used by the compiler. Run `make bootstrap-vm` for the
 stdout/exit-code differential against `moil run-snbc`, and
 `make bootstrap-vm-self` to have the Mois executor run the compiler image and
-reproduce `stage1.snbc` byte for byte (it takes minutes: the Mois executor
+reproduce `stage1.mlbc` byte for byte (it takes minutes: the Mois executor
 itself runs on the C VM bundled by `moil build`). Design, intentional
 divergences and the provisional string boundary are in
 `docs/decisions/ADR-0004-mois-snbc-executor.md`. This is a development
 command, not the final CLI.
 
-`<input.snl> <output.s> native` runs the native backend (`src/Native*.snl`,
-ADR-0005): the compiler appends the Mois runtime (`runtime/*.snl`,
+`<input.moi> <output.s> native` runs the native backend (`src/Native*.moi`,
+ADR-0005): the compiler appends the Mois runtime (`runtime/*.moi`,
 ADR-0006) to the program. By default the validated image becomes
 aarch64-apple-darwin assembly; passing `aarch64-unknown-linux-gnu` selects the
 Linux ARM64 ELF entry and syscall runtime. The runtime covers strings, arrays,
@@ -63,12 +63,12 @@ compares that executable with `moil run-snbc`, the Mois executor and the
 expected output in `fixtures/expected/` (stdout and exit status captured
 before the migration); it needs no native toolchain. Those modules are also
 copied into the first-stage project: `make bootstrap-build` runs `moil build`
-on `build/bootstrap/root-project/`, staged from `src/*.snl` plus the modules
+on `build/bootstrap/root-project/`, staged from `src/*.moi` plus the modules
 in `LIBRARY_ROOT_SOURCES`, because `moil` v0.3.0 builds one project directory
 and lowers every module it sees.
 
 Run `make bootstrap-smoke` to compile and execute the small program in
-`fixtures/Hello.snl` through the generated SnBC image.
+`fixtures/Hello.moi` through the generated SnBC image.
 
 Run `make bootstrap-diagnostics` to check lexer and parser failures include a
 phase and source line, and that `==`/`!=` between operands whose static types
@@ -80,13 +80,13 @@ do not warn.
 `moil` is the temporary seed and supplies the existing runtime. Its `moil build`
 output bundles SnBC with the C VM of `moil`; it is not machine code (see
 `docs/decisions/ADR-0005-native-backend.md`). The compiler
-and its I/O facade are in `.snl`. The generated SnBC compiler still runs through
+and its I/O facade are in `.moi`. The generated SnBC compiler still runs through
 the previous toolchain, so this is not yet a standalone distribution.
 
 ## Current subset
 
 The compiler modules share the `mois.compiler` package where appropriate;
-`Compiler.snl` imports the `mois.compiler.runtime` and `mois.compiler.backend`
+`Compiler.moi` imports the `mois.compiler.runtime` and `mois.compiler.backend`
 packages, and `make bootstrap-check` validates these cross-file imports. Module
 declarations and source file names use `PascalCase`; types use `PascalCase`, and
 functions, methods and variables use `camelCase`. Every compiler source file

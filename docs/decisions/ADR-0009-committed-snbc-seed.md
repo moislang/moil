@@ -46,12 +46,12 @@ Adopt option 1 as slice 1 and option 2 as slice 2, in that order.
 
 Slice 1:
 
-- `bootstrap/seed/compiler.snbc` is the committed seed, with its SHA-256 in
-  `bootstrap/seed/compiler.snbc.sha256` and provenance in
+- `bootstrap/seed/compiler.mlbc` is the committed seed, with its SHA-256 in
+  `bootstrap/seed/compiler.mlbc.sha256` and provenance in
   `bootstrap/seed/README.md`. It is a generated artifact, never hand-edited.
 - `make bootstrap-seed-stage` checks the seed hash, runs the seed with
-  `moil run-snbc` to produce `seed-stage1.snbc`, and runs that image to produce
-  `seed-stage2.snbc`. It does not call `moil check` or `moil build`.
+  `moil run-snbc` to produce `seed-stage1.mlbc`, and runs that image to produce
+  `seed-stage2.mlbc`. It does not call `moil check` or `moil build`.
 - `make bootstrap-seed-fixed-point` requires `seed-stage1 == seed-stage2`
   (fixed point of the seed chain) and `seed-stage1 == stage1` from the
   `moil build` path (differential between the two first stages).
@@ -84,7 +84,7 @@ from it without `moil`.
   the compiler running on that VM. For the current sources, running the seed
   on the Mois executor produced the same bytes, so the seed is not affected.
   A seed refresh on that host must repeat this check
-  (`moil bootstrap/seed/compiler.snbc run` with `SNL_OUTPUT`)
+  (`moil bootstrap/seed/compiler.mlbc run` with `SNL_OUTPUT`)
   until the executor runs natively.
 
 ## Reopen when

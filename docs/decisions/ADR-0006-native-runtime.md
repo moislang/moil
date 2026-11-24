@@ -35,18 +35,18 @@ paths.
    one type per file (ADR-0007): `Primitive`, `System`, `Heap`, `Runtime`,
    `Text`, `Container`, `Ownership`, `Value` and `Host`. In `native` mode the
    compiler appends these files to the program source (`appendNativeRuntime`
-   in `SourceJoin.snl`) and compiles everything into one SnBC image. The
+   in `SourceJoin.moi`) and compiles everything into one SnBC image. The
    backend then translates the runtime with the same code path it uses for
    the program.
 3. **Reserved types.** The runtime type names are reserved in native
    programs. The backend finds the methods it calls by their `Type.method`
-   name (role table in `NativeRoles.snl`). Methods of runtime types do not
+   name (role table in `NativeRoles.moi`). Methods of runtime types do not
    count toward the 256-frame program depth limit, and they are not
    instrumented for ownership: they manage raw addresses themselves, like
    moisc's runtime layer.
 4. **Assembly boundary.** `Primitive` and `System` declare native methods
    (`@Native`, no body). The backend replaces each one with an aarch64 stub
-   (`NativeBoundary.snl`):
+   (`NativeBoundary.moi`):
    - `Primitive`: `state`, `load`, `store`, `loadByte`, `storeByte`, and
      `tagged`, which retags a payload;
    - `System`: `write`, `read`, `open` (the variadic `mode` goes on the
@@ -57,7 +57,7 @@ paths.
    256-byte state block, calls `main` and hands its int result to
    `Runtime.finish`. These stubs and `_main` are the only generated code
    that calls libSystem.
-5. **Heap with release** (`Heap`, `Heap.snl`). Every block has a 16-byte
+5. **Heap with release** (`Heap`, `Heap.moi`). Every block has a 16-byte
    header `[owner count][size class]`.
    - Small blocks (up to 64 KiB with the header) use 12 power-of-two classes.
      A freed block goes onto its class's free list and is reused by the next
@@ -93,8 +93,8 @@ paths.
      owners.
    - **Constants.** Constants in `__TEXT,__const` have a negative count and
      are never counted or freed.
-7. **Layouts** (a contract shared between `Container.snl` and
-   `NativeValueEmitter.snl`; each payload follows the header):
+7. **Layouts** (a contract shared between `Container.moi` and
+   `NativeValueEmitter.moi`; each payload follows the header):
    - string: `[length:8][bytes]`;
    - array: `[length:8][capacity:8][data:8]`, with 16-byte elements in their
      own block; capacity doubles when full, and the old data block is freed;

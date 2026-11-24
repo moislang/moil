@@ -43,4 +43,8 @@ runs:
         if command -v cygpath > /dev/null; then moil_exe=$(cygpath -m "$moil_exe"); fi
         "$moil_exe" --version
         echo "moil=$moil_exe" >> "$GITHUB_OUTPUT"
+        # The pinned v0.3.0 root compiler predates the .moi extension. Keep its
+        # staging inputs compatible while the self-hosted compiler itself uses
+        # the canonical .moi sources from the checkout.
+        echo "MOIL_SOURCE_EXT=snl" >> "$GITHUB_ENV"
         echo "$(dirname "$moil_exe")" >> "$GITHUB_PATH"

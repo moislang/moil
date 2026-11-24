@@ -14,7 +14,7 @@ Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-fro
 ## Constraints
 
 - Work only in the current checkout; `../moisc` is a read-only reference.
-- Prefer `.snl`/`.sns`. Use assembly only at justified boundaries, and never C as a parallel implementation without an explicit decision.
+- Prefer `.moi`/`.sns`. Use assembly only at justified boundaries, and never C as a parallel implementation without an explicit decision.
 - Do not assume that the installed version, syntax or runtime matches historical documentation. Record the version before the probes.
 - Do not call a build DDC if the second root is not independent.
 - Compiler code must build with both the seed and the current root; follow the object-model rules of ADR-0007.
@@ -26,7 +26,7 @@ Also use the specialized skills for each phase: `bootstrap-stage`, `compiler-fro
 3. **Define the subset.** List accepted/rejected constructs, semantics, limits and fixtures. Make sure the sources of stage N+1 only use features that N can compile.
 4. **Choose the smallest vertical path.** Seed → executable artifact → functional test. Postpone features without a direct dependency.
 5. **Define contracts.** Types, ownership, errors/diagnostics, spans, IR/artifact formats, ABI and determinism.
-6. **Organize the modules.** Use `PascalCase` `.snl` files aligned with their primary type or responsibility, PascalCase types, explicit packages/imports between modules, small public APIs and files under 400 lines when possible.
+6. **Organize the modules.** Use `PascalCase` `.moi` files aligned with their primary type or responsibility, PascalCase types, explicit packages/imports between modules, small public APIs and files under 400 lines when possible.
 7. **Implement in slices.** Each slice includes positive and negative behavior and can be compiled by the existing predecessor.
 8. **Compare with the reference.** When applicable, run a differential corpus and group divergences by phase; do not accept "it compiles" alone.
 9. **Record evidence.** Update `evidence.md` with environment, commands, results, hashes and limitations.

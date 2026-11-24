@@ -129,9 +129,9 @@ jobs:
           if (-not (Test-Path $moil)) { throw "moil.exe not installed at $moil" }
           $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
           if (-not ($machinePath -split ';' | Where-Object { $_.TrimEnd('\') -ieq $bin.TrimEnd('\') })) { throw "PATH does not contain $bin" }
-          & $moil bootstrap\fixtures\Hello.snl "$env:RUNNER_TEMP\hello.snbc"
-          if ($LASTEXITCODE -ne 0) { throw "installed moil failed to compile Hello.snl" }
-          $output = (& $moil "$env:RUNNER_TEMP\hello.snbc" run | Out-String).Trim()
+          & $moil bootstrap\fixtures\Hello.moi "$env:RUNNER_TEMP\hello.mlbc"
+          if ($LASTEXITCODE -ne 0) { throw "installed moil failed to compile Hello.moi" }
+          $output = (& $moil "$env:RUNNER_TEMP\hello.mlbc" run | Out-String).Trim()
           if ($output -ne 'mois bootstrap ok') { throw "unexpected output: '$output'" }
           Write-Host "installed moil ok: $output"
           $remove = Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /qn /l*v dist\uninstall.log" -Wait -PassThru

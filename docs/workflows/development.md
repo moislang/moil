@@ -17,7 +17,7 @@ This workflow organizes the work before each feature and defines how to keep the
 - Use `PascalCase` for class, struct, interface, enum and other type names. Use
   `camelCase` for functions, methods and variables. Use `PascalCase` for source
   file names, matching their primary declaration or responsibility.
-- Compiler/runtime code goes in `.snl`/`.sns`; assembly only at the approved boundary.
+- Compiler/runtime code goes in `.moi`/`.sns`; assembly only at the approved boundary.
 - Do not advance subset features without support in the predecessor compiler.
 - Write documentation and code comments in English.
 - Record observed limitations and update diagrams/ADRs only when the architecture changes.

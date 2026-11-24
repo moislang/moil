@@ -33,7 +33,7 @@ with the seed's C VM (ADR-0005). There is no Windows native backend
    `MajorUpgrade` sets `AllowSameVersionUpgrades` and a newer preview, or the
    final release, replaces an install with the same `X.Y.Z`.
 5. Release gate: the MSI is built only after the same tests as the Windows CI
-   job pass, then installed, run (`Hello.snl` compiled and executed by the
+   job pass, then installed, run (`Hello.moi` compiled and executed by the
    installed `moil`) and uninstalled on the runner. The executable may import
    only DLLs that ship with Windows.
 

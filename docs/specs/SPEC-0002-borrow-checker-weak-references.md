@@ -30,15 +30,15 @@
 ## Current state
 
 - Ownership is analysed only in the backend, over SnBC stack slots
-  (`bootstrap/src/NativeOwnership.snl`, runtime type `Ownership` in
-  `bootstrap/runtime/Ownership.snl`): each local, temporary, field and
+  (`bootstrap/src/NativeOwnership.moi`, runtime type `Ownership` in
+  `bootstrap/runtime/Ownership.moi`): each local, temporary, field and
   element holds a count; `LOAD_LOCAL` produces an uncounted borrow until it
   escapes (ADR-0006, decision 6).
-- Type checks live inside the emitters (`EmitExpr.snl`, `Emit.snl`;
-  `SNV4001`–`SNV4003` printed by `Compiler.snl`). There is no separate
+- Type checks live inside the emitters (`EmitExpr.moi`, `Emit.moi`;
+  `SNV4001`–`SNV4003` printed by `Compiler.moi`). There is no separate
   semantic pass on master. Irineu's open PRs add `SNV4004` (non-exhaustive
   `match`, [snl#4](https://github.com/moislang/moil/pull/4), in its own
-  `MatchCheck.snl` called from lowering), `SNV4005` (assignment to an
+  `MatchCheck.moi` called from lowering), `SNV4005` (assignment to an
   immutable binding, [snl#7](https://github.com/moislang/moil/pull/7)) and
   `SNV4006` (argument count, [snl#9](https://github.com/moislang/moil/pull/9)).
 - The seed's reaction to a move out of an array element is understood
@@ -71,7 +71,7 @@
 Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
 
 1. **Diagnostic namespace.** The seed keeps its own codes, one block per
-   phase. In `bootstrap/src/Compiler.snl` today: `SNV1xxx` lexer
+   phase. In `bootstrap/src/Compiler.moi` today: `SNV1xxx` lexer
    (`SNV1001`), `SNV2xxx` parser (`SNV2001`), `SNV3xxx` lowering
    (`SNV3001`), `SNV4xxx` types (`SNV4001`–`SNV4003` on master;
    `SNV4004`–`SNV4006` are taken by snl#4, #7 and #9), and `SNW0001` for the
@@ -80,8 +80,8 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    Reference codes (`MOISL02xx`) never appear in seed output, so the prefix
    always says which compiler produced an error.
 2. **Placement.** The checker is a separate pass between analysis and
-   emission, in its own module `bootstrap/src/BorrowCheck.snl`. The emitters
-   (`Emit.snl`, `EmitExpr.snl`, `EmitStmt.snl`) do not change, which is what
+   emission, in its own module `bootstrap/src/BorrowCheck.moi`. The emitters
+   (`Emit.moi`, `EmitExpr.moi`, `EmitStmt.moi`) do not change, which is what
    guarantees the "identical SnBC images" criterion below.
 
 ## Proposed surface
@@ -135,8 +135,8 @@ No new syntax in B1–B2.
 
 - **B0 — probes.** Done for the table above; extend to `return`, `while`,
   method receivers and struct fields of struct type before B1 starts.
-- **B1 — use after move** (`SNV5001`): create `BorrowCheck.snl`, add it to
-  `ownSource()` in `SourceJoin.snl`, and call it from the driver after
+- **B1 — use after move** (`SNV5001`): create `BorrowCheck.moi`, add it to
+  `ownSource()` in `SourceJoin.moi`, and call it from the driver after
   parsing and before emission; straight-line code first, then `if`/`while`
   joins. Add the `SNV5001` row to `diagnostics.md`.
 - **B2 — move out of a field or element** (`SNV5002`), in the same pass;
@@ -152,10 +152,10 @@ No new syntax in B1–B2.
 
 ## Fixtures
 
-- Valid: `MoveSemantics.snl` (moves, string and int copies, argument
+- Valid: `MoveSemantics.moi` (moves, string and int copies, argument
   borrow, move then use of the destination).
-- Invalid: `InvalidUseAfterMove.snl`, `InvalidConditionalMove.snl`,
-  `InvalidFieldMove.snl`, with exact lines and spans asserted in
+- Invalid: `InvalidUseAfterMove.moi`, `InvalidConditionalMove.moi`,
+  `InvalidFieldMove.moi`, with exact lines and spans asserted in
   `bootstrap-diagnostics`.
 
 ## Acceptance criteria
@@ -172,7 +172,7 @@ No new syntax in B1–B2.
 - Compiling the compiler's own sources emits no diagnostics;
   `make bootstrap-fixed-point bootstrap-vm-self bootstrap-native-self` pass.
 - B1–B2 are analysis only and the emitters are untouched (decision 2): the
-  SnBC images of the existing fixtures (for example `hello.snbc`) are
+  SnBC images of the existing fixtures (for example `hello.mlbc`) are
   byte-for-byte unchanged.
 - B4 keeps zero live blocks and the constant peak of `nativeMemory`, and
   reports N3 compile time before and after on the same host.
@@ -212,7 +212,7 @@ until they are repeated on `aarch64-apple-darwin`.
 ## Risks
 
 - The separate pass needs the types the emitters compute today
-  (`fieldTypeAt` in `Emit.snl`); it must recompute or share them without
+  (`fieldTypeAt` in `Emit.moi`); it must recompute or share them without
   changing emission.
 - Being stricter than `moil check` would break the compiler build; being
   looser leaves gaps the backend must still cover dynamically.

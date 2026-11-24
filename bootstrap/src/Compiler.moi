@@ -249,7 +249,7 @@ func isImageBytes(data: int[]): bool {
 }
 
 func printUsage(): unit {
-    Console.printline("usage: moil --help | moil <input.snl> <output.snbc> | moil <input.snl> <output.s> native [<target-triple>] | moil <input.snl> <output.s> [native] --target <target-triple> | moil <image.snbc> [run [args...]]")
+    Console.printline("usage: moil --help | moil <input.moi> <output.mlbc> | moil <input.moi> <output.s> native [<target-triple>] | moil <input.moi> <output.s> [native] --target <target-triple> | moil <image.mlbc> [run [args...]]")
     Console.printline("targets: aarch64-apple-darwin (Mach-O, default), aarch64-unknown-linux-gnu (ELF), x86_64-unknown-linux-gnu (ELF, backend pending)")
 }
 

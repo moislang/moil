@@ -7,7 +7,7 @@ Build a compiler that compiles its own source code, keeping Moislang as the impl
 The compiler is the only public product. Its frontend, semantics, backend,
 runtime and driver must be developed in Mois. The installed `moil` root is
 temporary; C/C++ will not be a parallel implementation. The current code is in
-importable `.snl` modules in the `bootstrap/src/` project, with small public
+importable `.moi` modules in the `bootstrap/src/` project, with small public
 APIs, and the native runtime is in `bootstrap/runtime/`. `moil build` uses
 these modules directly and produces an executable that bundles SnBC with the
 `moil` C VM (not machine code of the program; see ADR-0005). The native backend

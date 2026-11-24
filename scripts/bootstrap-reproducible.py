@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_ROOTS = (ROOT / "bootstrap",)
-ARTIFACT_EXTENSIONS = (".snbc", ".s")
+ARTIFACT_EXTENSIONS = (".mlbc", ".s")
 
 
 def run(command: list[str], *, cwd: Path = ROOT, capture_output: bool = True) -> str:
@@ -39,7 +39,7 @@ def source_hashes(root: Path = ROOT) -> dict[str, str]:
     return {
         path.relative_to(root).as_posix(): sha256(path)
         for source_root in SOURCE_ROOTS
-        for path in sorted((root / source_root.relative_to(ROOT)).rglob("*.snl"))
+        for path in sorted((root / source_root.relative_to(ROOT)).rglob("*.moi"))
     }
 
 

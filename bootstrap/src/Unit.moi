@@ -4,7 +4,7 @@ import builtin.io.console
 import builtin.runtime
 
 // Mois compiler for the slice this file is written in.
-// The Mois joiner combines this package source with Compiler.snl for the seed.
+// The Mois joiner combines this package source with Compiler.moi for the seed.
 //
 // It reads a source path and writes canonical SnBC. The lowering matches
 // emit-snbc: source order of functions, local high-water, first-use string

@@ -64,7 +64,7 @@ executor and natively.
 Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
 
 1. **Linking the library into the compiler.** The compiler gets the library
-   through `bootstrap/src/SourceJoin.snl`, the path it already uses to
+   through `bootstrap/src/SourceJoin.moi`, the path it already uses to
    assemble its own sources: `ownSource()` appends each library file with
    `appendFile`, in dependency order (the seed resolves a field type only
    when its class was declared earlier, as noted in the `Makefile`). The
@@ -79,9 +79,9 @@ Recorded on 2026-11-21, decided by Inhegas (Engineering Lead):
    `bootstrap/library/` visible, every route failed (19 × `MOISL0400` on
    calls, plus field and assignment lowering errors). For slices 2–6 the
    first stage therefore builds from a staging directory generated under
-   `build/`, holding `bootstrap/src/*.snl` plus an explicit list of the
+   `build/`, holding `bootstrap/src/*.moi` plus an explicit list of the
    library modules already migrated. The list grows one slice at a time and
-   keeps the same order as `ownSource()` in `SourceJoin.snl`. Until slice 6
+   keeps the same order as `ownSource()` in `SourceJoin.moi`. Until slice 6
   the compiler does not call the library, so no gate (neither the fixed point
   nor `bootstrap-library-root`) detects a divergence between the two lists;
   review keeps them in the same order. Slice 6 must add that guarantee, through
@@ -151,7 +151,7 @@ the fixture's expected stdout and exit status.
    instance methods reached through rule 4; constructors are positional;
    fixtures `libraryBinaryTree` and `libraryIntMap`.
 6. **First compiler use**: the migrated library files are added to
-   `ownSource()` in `SourceJoin.snl` (decision 1) and to the staging list
+   `ownSource()` in `SourceJoin.moi` (decision 1) and to the staging list
    (decision 2), one compiler module uses a migrated type, and the static API is gone (`LIBRARY_ROOT_*` equals
    `LIBRARY_*`).
 
@@ -193,7 +193,7 @@ compares only SnBC images (stage1 against stage2 with `cmp`).
 
 Per slice: revision, host, `moil` version and binary or archive hash, the
 commands above, stdout/exit per engine, the SHA-256 of each
-`<fixture>.root.snbc` and of stage1 (never of an executable), the staging
+`<fixture>.root.mlbc` and of stage1 (never of an executable), the staging
 list used, and what was not run (the native half on Linux).
 Linux results are auxiliary until the Mac run: the `moil v0.3.0` Linux C VM
 miscompares some `x == false` expressions (see `evidence.md`), so the Mois

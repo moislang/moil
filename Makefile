@@ -1,4 +1,5 @@
 MOIL ?= moil
+MOIL_SOURCE_EXT ?= moi
 BUILD_DIR ?= build/bootstrap
 MOIS_RELEASE_VERSION ?= 0.1.0-preview.1
 # `moil build` gera SnBC e empacota a VM C do snl; não é código de máquina.
@@ -6,7 +7,7 @@ COMPILER_BUNDLE := $(BUILD_DIR)/mois-bootstrap
 ifeq ($(OS),Windows_NT)
 COMPILER_BUNDLE := $(BUILD_DIR)/mois-bootstrap.exe
 endif
-VM_STAGE_IMAGE := $(BUILD_DIR)/vm-stage.snbc
+VM_STAGE_IMAGE := $(BUILD_DIR)/vm-stage.mlbc
 VM_DIFF_FIXTURES := NumericVm NumericFlow Hello VmCalls VmComposite StaticMethods VmEnumMatch
 NATIVE_FIXTURES := NumericVm NumericFlow NativeCalls
 NATIVE_RUNTIME_FIXTURES := Hello VmCalls VmComposite VmEquality VmStackOverflow NativeHostIo NativeMemory StaticMethods VmArrayPop VmArrayPopString VmEnumMatch VmVariantValue VmMatchNoArm
@@ -14,21 +15,21 @@ NATIVE_RUNTIME_FIXTURES := Hello VmCalls VmComposite VmEquality VmStackOverflow 
 NATIVE_OWNERSHIP_FIXTURES := Hello VmCalls VmComposite VmEquality NativeHostIo NativeMemory StaticMethods VmArrayPop VmArrayPopString VmEnumMatch VmVariantValue
 SDK_PATH = $(shell xcrun --show-sdk-path)
 SDK_VERSION = $(shell xcrun --show-sdk-version)
-STAGE1_IMAGE := $(BUILD_DIR)/stage1.snbc
-STAGE2_IMAGE := $(BUILD_DIR)/stage2.snbc
-SMOKE_SOURCE := bootstrap/fixtures/Hello.snl
+STAGE1_IMAGE := $(BUILD_DIR)/stage1.mlbc
+STAGE2_IMAGE := $(BUILD_DIR)/stage2.mlbc
+SMOKE_SOURCE := bootstrap/fixtures/Hello.moi
 # Committed SnBC seed (ADR-0009): the first stage runs it with `moil run-snbc`
 # instead of `moil check`/`moil build`.
-SEED_IMAGE := bootstrap/seed/compiler.snbc
-SEED_HASH_FILE := bootstrap/seed/compiler.snbc.sha256
-SEED_STAGE1_IMAGE := $(BUILD_DIR)/seed-stage1.snbc
-SEED_STAGE2_IMAGE := $(BUILD_DIR)/seed-stage2.snbc
+SEED_IMAGE := bootstrap/seed/compiler.mlbc
+SEED_HASH_FILE := bootstrap/seed/compiler.mlbc.sha256
+SEED_STAGE1_IMAGE := $(BUILD_DIR)/seed-stage1.mlbc
+SEED_STAGE2_IMAGE := $(BUILD_DIR)/seed-stage2.mlbc
 SHA256 = $(shell command -v sha256sum > /dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256')
 
 # First-stage project (SPEC-0001, decision 2): `moil build --project` sees one
 # directory, so the root project is staged under build/ from bootstrap/src
 # plus the library modules migrated to an instance API, in dependency order
-# (the order `ownSource()` in SourceJoin.snl will use once the compiler calls
+# (the order `ownSource()` in SourceJoin.moi will use once the compiler calls
 # them). `moil` v0.3.0 lowers every visible module, so only migrated modules
 # may be listed.
 LIBRARY_ROOT_SOURCES := IntCell IntArray BinarySearch LinearSearch Sorting
@@ -40,8 +41,8 @@ ROOT_PROJECT := $(BUILD_DIR)/root-project
 bootstrap-root-project:
 	rm -rf $(ROOT_PROJECT)
 	mkdir -p $(ROOT_PROJECT)/library
-	cp bootstrap/src/*.snl $(ROOT_PROJECT)/
-	@for name in $(LIBRARY_ROOT_SOURCES); do cp bootstrap/library/$$name.snl $(ROOT_PROJECT)/library/ || exit 1; done
+	@for source in bootstrap/src/*.moi; do name=$${source##*/}; name=$${name%.moi}; cp $$source $(ROOT_PROJECT)/$$name.$(MOIL_SOURCE_EXT) || exit 1; done
+	@for name in $(LIBRARY_ROOT_SOURCES); do cp bootstrap/library/$$name.moi $(ROOT_PROJECT)/library/$$name.$(MOIL_SOURCE_EXT) || exit 1; done
 
 bootstrap-check: bootstrap-root-project
 	$(MOIL) check --project $(ROOT_PROJECT)
@@ -63,7 +64,7 @@ bootstrap-fixed-point: bootstrap-self-host
 bootstrap-seed-stage:
 	mkdir -p $(BUILD_DIR)
 	$(SHA256) -c $(SEED_HASH_FILE)
-	SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(MOIL) run-snbc $(SEED_IMAGE)
+	MOIL_SELF_BUILD=1 SNL_OUTPUT=$(SEED_STAGE1_IMAGE) $(MOIL) run-snbc $(SEED_IMAGE)
 	MOIL_SELF_BUILD=1 SNL_OUTPUT=$(SEED_STAGE2_IMAGE) $(MOIL) run-snbc $(SEED_STAGE1_IMAGE)
 
 # Fixed point of the seed chain, plus a differential against the transitional
@@ -83,29 +84,29 @@ bootstrap-seed-refresh: bootstrap-fixed-point
 	cat $(SEED_HASH_FILE)
 
 bootstrap-smoke: bootstrap-build
-	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $(BUILD_DIR)/hello.snbc
-	test "$$( $(MOIL) run-snbc $(BUILD_DIR)/hello.snbc)" = "mois bootstrap ok"
+	$(COMPILER_BUNDLE) $(SMOKE_SOURCE) $(BUILD_DIR)/hello.mlbc
+	test "$$( $(MOIL) run-snbc $(BUILD_DIR)/hello.mlbc)" = "mois bootstrap ok"
 
 # OOP contracts: interface implementations are checked statically and calls
 # through interface values dispatch to the concrete method in the Mois VM.
 bootstrap-oop: bootstrap-build
-	$(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceDispatch.snl $(BUILD_DIR)/InterfaceDispatch.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/InterfaceDispatch.snbc run; test "$$?" -eq 86
-	$(COMPILER_BUNDLE) bootstrap/fixtures/TraitDispatch.snl $(BUILD_DIR)/TraitDispatch.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/TraitDispatch.snbc run; test "$$?" -eq 86
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceMissingMethod.snl $(BUILD_DIR)/InterfaceMissingMethod.snbc > $(BUILD_DIR)/interface-missing.txt; then echo "expected missing interface method"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceDispatch.moi $(BUILD_DIR)/InterfaceDispatch.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/InterfaceDispatch.mlbc run; test "$$?" -eq 86
+	$(COMPILER_BUNDLE) bootstrap/fixtures/TraitDispatch.moi $(BUILD_DIR)/TraitDispatch.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/TraitDispatch.mlbc run; test "$$?" -eq 86
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceMissingMethod.moi $(BUILD_DIR)/InterfaceMissingMethod.mlbc > $(BUILD_DIR)/interface-missing.txt; then echo "expected missing interface method"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/interface-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceWrongSignature.snl $(BUILD_DIR)/InterfaceWrongSignature.snbc > $(BUILD_DIR)/interface-signature.txt; then echo "expected interface signature mismatch"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InterfaceWrongSignature.moi $(BUILD_DIR)/InterfaceWrongSignature.mlbc > $(BUILD_DIR)/interface-signature.txt; then echo "expected interface signature mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/interface-signature.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 72..76"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitMissingMethod.snl $(BUILD_DIR)/TraitMissingMethod.snbc > $(BUILD_DIR)/trait-missing.txt; then echo "expected missing trait method"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitMissingMethod.moi $(BUILD_DIR)/TraitMissingMethod.mlbc > $(BUILD_DIR)/trait-missing.txt; then echo "expected missing trait method"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/trait-missing.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitWrongArity.snl $(BUILD_DIR)/TraitWrongArity.snbc > $(BUILD_DIR)/trait-arity.txt; then echo "expected trait arity mismatch"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/TraitWrongArity.moi $(BUILD_DIR)/TraitWrongArity.mlbc > $(BUILD_DIR)/trait-arity.txt; then echo "expected trait arity mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/trait-arity.txt | grep -Fqx "error[SNV4012]: type does not satisfy declared contract at line 4, span 68..72"
 
 # Native interface and trait calls use a type-id indexed dispatch table.
 bootstrap-oop-native: bootstrap-build
 	@for fixture in InterfaceDispatch TraitDispatch; do \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native || exit 1; \
 		as -arch arm64 $(BUILD_DIR)/$$fixture.s -o $(BUILD_DIR)/$$fixture.o || exit 1; \
 		ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(BUILD_DIR)/$$fixture.o -o $(BUILD_DIR)/$$fixture.native || exit 1; \
 		$(BUILD_DIR)/$$fixture.native; status=$$?; test "$$status" -eq 86 || { echo "$$fixture: expected exit 86, got $$status"; exit 1; }; \
@@ -113,121 +114,121 @@ bootstrap-oop-native: bootstrap-build
 	done
 
 bootstrap-diagnostics: bootstrap-build
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidLex.snl $(BUILD_DIR)/invalidLex.snbc > $(BUILD_DIR)/lexical-error.txt; then echo "expected lexical failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidLex.moi $(BUILD_DIR)/invalidLex.mlbc > $(BUILD_DIR)/lexical-error.txt; then echo "expected lexical failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/lexical-error.txt | grep -Fqx "error[SNV1001]: lexical error at line 4, span 46..58"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidParse.snl $(BUILD_DIR)/invalidParse.snbc > $(BUILD_DIR)/parse-error.txt; then echo "expected parse failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidParse.moi $(BUILD_DIR)/invalidParse.mlbc > $(BUILD_DIR)/parse-error.txt; then echo "expected parse failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/parse-error.txt | grep -Fqx "error[SNV2001]: parse error at line 5, span 59..59"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidRuntimeArity.snl $(BUILD_DIR)/invalidRuntimeArity.snbc > $(BUILD_DIR)/runtime-arity-error.txt; then echo "expected runtime arity failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidRuntimeArity.moi $(BUILD_DIR)/invalidRuntimeArity.mlbc > $(BUILD_DIR)/runtime-arity-error.txt; then echo "expected runtime arity failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/runtime-arity-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 6, function #0"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStaticCall.snl $(BUILD_DIR)/invalidStaticCall.snbc > $(BUILD_DIR)/static-call-error.txt; then echo "expected static call failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStaticCall.moi $(BUILD_DIR)/invalidStaticCall.mlbc > $(BUILD_DIR)/static-call-error.txt; then echo "expected static call failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/static-call-error.txt | grep -Fqx "error[SNV3001]: unsupported construct or invalid lowering at line 14, function #1"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/TypedLet.snl $(BUILD_DIR)/typedLet.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/typedLet.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedLet.snl $(BUILD_DIR)/invalidTypedLet.snbc > $(BUILD_DIR)/typed-let-error.txt; then echo "expected typed let mismatch"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/TypedLet.moi $(BUILD_DIR)/typedLet.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/typedLet.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedLet.moi $(BUILD_DIR)/invalidTypedLet.mlbc > $(BUILD_DIR)/typed-let-error.txt; then echo "expected typed let mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/typed-let-error.txt | grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 4, span 54..55"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedAssignment.snl $(BUILD_DIR)/invalidTypedAssignment.snbc > $(BUILD_DIR)/typed-assignment-error.txt; then echo "expected typed assignment mismatch"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidTypedAssignment.moi $(BUILD_DIR)/invalidTypedAssignment.mlbc > $(BUILD_DIR)/typed-assignment-error.txt; then echo "expected typed assignment mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/typed-assignment-error.txt | grep -Fqx "error[SNV4002]: assignment type does not match local binding at line 5, span 70..71"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/FieldAssignment.snl $(BUILD_DIR)/fieldAssignment.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldAssignment.snl $(BUILD_DIR)/invalidFieldAssignment.snbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/FieldAssignment.moi $(BUILD_DIR)/fieldAssignment.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/fieldAssignment.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldAssignment.moi $(BUILD_DIR)/invalidFieldAssignment.mlbc > $(BUILD_DIR)/field-assignment-error.txt; then echo "expected field assignment mismatch"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/field-assignment-error.txt | grep -Fqx "error[SNV4003]: assignment type does not match field at line 9, span 129..130"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/MatchExhaustive.snl $(BUILD_DIR)/matchExhaustive.snbc
-	@$(MOIL) run-snbc $(BUILD_DIR)/matchExhaustive.snbc; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchExpression.snl $(BUILD_DIR)/invalidMatchExpression.snbc > $(BUILD_DIR)/match-expression-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/MatchExhaustive.moi $(BUILD_DIR)/matchExhaustive.mlbc
+	@$(MOIL) run-snbc $(BUILD_DIR)/matchExhaustive.mlbc; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchExpression.moi $(BUILD_DIR)/invalidMatchExpression.mlbc > $(BUILD_DIR)/match-expression-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/match-expression-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 11, span 130..135'
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchStatement.snl $(BUILD_DIR)/invalidMatchStatement.snbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchStatement.moi $(BUILD_DIR)/invalidMatchStatement.mlbc > $(BUILD_DIR)/match-statement-error.txt; then echo "expected non-exhaustive match"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/match-statement-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Go` at line 12, span 136..141'
-	$(COMPILER_BUNDLE) bootstrap/fixtures/ImmutableBindings.snl $(BUILD_DIR)/immutableBindings.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/immutableBindings.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableLet.snl $(BUILD_DIR)/invalidImmutableLet.snbc > $(BUILD_DIR)/immutable-let-error.txt; then echo "expected immutable binding failure"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/ImmutableBindings.moi $(BUILD_DIR)/immutableBindings.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/immutableBindings.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableLet.moi $(BUILD_DIR)/invalidImmutableLet.mlbc > $(BUILD_DIR)/immutable-let-error.txt; then echo "expected immutable binding failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/immutable-let-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 5, span 68..69"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableParam.snl $(BUILD_DIR)/invalidImmutableParam.snbc > $(BUILD_DIR)/immutable-param-error.txt; then echo "expected immutable parameter failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableParam.moi $(BUILD_DIR)/invalidImmutableParam.mlbc > $(BUILD_DIR)/immutable-param-error.txt; then echo "expected immutable parameter failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/immutable-param-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 4, span 60..61"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableFor.snl $(BUILD_DIR)/invalidImmutableFor.snbc > $(BUILD_DIR)/immutable-for-error.txt; then echo "expected immutable for binding failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidImmutableFor.moi $(BUILD_DIR)/invalidImmutableFor.mlbc > $(BUILD_DIR)/immutable-for-error.txt; then echo "expected immutable for binding failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/immutable-for-error.txt | grep -Fqx "error[SNV4005]: cannot assign to immutable binding at line 6, span 97..98"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallArity.snl $(BUILD_DIR)/invalidCallArity.snbc > $(BUILD_DIR)/call-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallArity.moi $(BUILD_DIR)/invalidCallArity.mlbc > $(BUILD_DIR)/call-arity-error.txt; then echo "expected arity failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/call-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 1 at line 8, span 123..124"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArity.snl $(BUILD_DIR)/invalidMethodArity.snbc > $(BUILD_DIR)/method-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArity.moi $(BUILD_DIR)/invalidMethodArity.mlbc > $(BUILD_DIR)/method-arity-error.txt; then echo "expected arity failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/method-arity-error.txt | grep -Fqx "error[SNV4006]: expected 1 argument(s), found 2 at line 13, span 232..233"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorArity.snl $(BUILD_DIR)/invalidConstructorArity.snbc > $(BUILD_DIR)/constructor-arity-error.txt; then echo "expected arity failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorArity.moi $(BUILD_DIR)/invalidConstructorArity.mlbc > $(BUILD_DIR)/constructor-arity-error.txt; then echo "expected arity failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/constructor-arity-error.txt | grep -Fqx "error[SNV4006]: expected 2 argument(s), found 3 at line 9, span 109..110"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/ArgTypes.snl $(BUILD_DIR)/argTypes.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/argTypes.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.snl $(BUILD_DIR)/invalidArgType.snbc > $(BUILD_DIR)/arg-type-error.txt; then echo "expected argument type failure"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/ArgTypes.moi $(BUILD_DIR)/argTypes.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/argTypes.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.moi $(BUILD_DIR)/invalidArgType.mlbc > $(BUILD_DIR)/arg-type-error.txt; then echo "expected argument type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorType.snl $(BUILD_DIR)/invalidConstructorType.snbc > $(BUILD_DIR)/constructor-type-error.txt; then echo "expected constructor type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConstructorType.moi $(BUILD_DIR)/invalidConstructorType.mlbc > $(BUILD_DIR)/constructor-type-error.txt; then echo "expected constructor type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/constructor-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 97..98"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArgType.snl $(BUILD_DIR)/invalidMethodArgType.snbc > $(BUILD_DIR)/method-arg-type-error.txt; then echo "expected method argument type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodArgType.moi $(BUILD_DIR)/invalidMethodArgType.mlbc > $(BUILD_DIR)/method-arg-type-error.txt; then echo "expected method argument type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/method-arg-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 13, span 235..236"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidPushType.snl $(BUILD_DIR)/invalidPushType.snbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidPushType.moi $(BUILD_DIR)/invalidPushType.mlbc > $(BUILD_DIR)/push-type-error.txt; then echo "expected push type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/push-type-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 5, span 80..81"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/Hello.snl $(BUILD_DIR)/hello.s native
+	$(COMPILER_BUNDLE) bootstrap/fixtures/Hello.moi $(BUILD_DIR)/hello.s native
 	test -s $(BUILD_DIR)/hello.s
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.snl $(BUILD_DIR)/invalidArgType.s native > $(BUILD_DIR)/arg-type-native-error.txt; then echo "expected argument type failure in native mode"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidArgType.moi $(BUILD_DIR)/invalidArgType.s native > $(BUILD_DIR)/arg-type-native-error.txt; then echo "expected argument type failure in native mode"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/arg-type-native-error.txt | grep -Fqx "error[SNV4007]: argument type does not match parameter at line 8, span 118..119"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/OperatorTypes.snl $(BUILD_DIR)/operatorTypes.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/operatorTypes.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBinaryType.snl $(BUILD_DIR)/invalidBinaryType.snbc > $(BUILD_DIR)/binary-type-error.txt; then echo "expected binary operator type failure"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/OperatorTypes.moi $(BUILD_DIR)/operatorTypes.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/operatorTypes.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBinaryType.moi $(BUILD_DIR)/invalidBinaryType.mlbc > $(BUILD_DIR)/binary-type-error.txt; then echo "expected binary operator type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/binary-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 6, span 107..108"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCompareType.snl $(BUILD_DIR)/invalidCompareType.snbc > $(BUILD_DIR)/compare-type-error.txt; then echo "expected comparison type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCompareType.moi $(BUILD_DIR)/invalidCompareType.mlbc > $(BUILD_DIR)/compare-type-error.txt; then echo "expected comparison type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/compare-type-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 5, span 79..80"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStringOrder.snl $(BUILD_DIR)/invalidStringOrder.snbc > $(BUILD_DIR)/string-order-error.txt; then echo "expected string ordering type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidStringOrder.moi $(BUILD_DIR)/invalidStringOrder.mlbc > $(BUILD_DIR)/string-order-error.txt; then echo "expected string ordering type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/string-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 57..58"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBoolOrder.snl $(BUILD_DIR)/invalidBoolOrder.snbc > $(BUILD_DIR)/bool-order-error.txt; then echo "expected bool ordering type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBoolOrder.moi $(BUILD_DIR)/invalidBoolOrder.mlbc > $(BUILD_DIR)/bool-order-error.txt; then echo "expected bool ordering type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/bool-order-error.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 4, span 58..59"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNeg.snl $(BUILD_DIR)/invalidUnaryNeg.snbc > $(BUILD_DIR)/unary-neg-error.txt; then echo "expected unary type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNeg.moi $(BUILD_DIR)/invalidUnaryNeg.mlbc > $(BUILD_DIR)/unary-neg-error.txt; then echo "expected unary type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/unary-neg-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 81..82"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNot.snl $(BUILD_DIR)/invalidUnaryNot.snbc > $(BUILD_DIR)/unary-not-error.txt; then echo "expected unary type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUnaryNot.moi $(BUILD_DIR)/invalidUnaryNot.mlbc > $(BUILD_DIR)/unary-not-error.txt; then echo "expected unary type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/unary-not-error.txt | grep -Fqx "error[SNV4009]: invalid operand type for unary operator at line 5, span 72..73"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIndexType.snl $(BUILD_DIR)/invalidIndexType.snbc > $(BUILD_DIR)/index-type-error.txt; then echo "expected index type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIndexType.moi $(BUILD_DIR)/invalidIndexType.mlbc > $(BUILD_DIR)/index-type-error.txt; then echo "expected index type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/index-type-error.txt | grep -Fqx "error[SNV4009]: index must be an integer type at line 5, span 79..80"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/BoolConditions.snl $(BUILD_DIR)/boolConditions.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/boolConditions.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIfCondition.snl $(BUILD_DIR)/invalidIfCondition.snbc > $(BUILD_DIR)/if-condition-error.txt; then echo "expected non-bool if condition"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/BoolConditions.moi $(BUILD_DIR)/boolConditions.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/boolConditions.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidIfCondition.moi $(BUILD_DIR)/invalidIfCondition.mlbc > $(BUILD_DIR)/if-condition-error.txt; then echo "expected non-bool if condition"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/if-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 72..73"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidWhileCondition.snl $(BUILD_DIR)/invalidWhileCondition.snbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidWhileCondition.moi $(BUILD_DIR)/invalidWhileCondition.mlbc > $(BUILD_DIR)/while-condition-error.txt; then echo "expected non-bool while condition"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/while-condition-error.txt | grep -Fqx "error[SNV4010]: condition must be bool at line 5, span 75..76"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/ReturnTypes.snl $(BUILD_DIR)/returnTypes.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/returnTypes.snbc run; test "$$?" -eq 42
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnType.snl $(BUILD_DIR)/invalidReturnType.snbc > $(BUILD_DIR)/return-type-error.txt; then echo "expected return type failure"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/ReturnTypes.moi $(BUILD_DIR)/returnTypes.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/returnTypes.mlbc run; test "$$?" -eq 42
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnType.moi $(BUILD_DIR)/invalidReturnType.mlbc > $(BUILD_DIR)/return-type-error.txt; then echo "expected return type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/return-type-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnInUnit.snl $(BUILD_DIR)/invalidReturnInUnit.snbc > $(BUILD_DIR)/return-unit-error.txt; then echo "expected unit return type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidReturnInUnit.moi $(BUILD_DIR)/invalidReturnInUnit.mlbc > $(BUILD_DIR)/return-unit-error.txt; then echo "expected unit return type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/return-unit-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 51..52"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBareReturn.snl $(BUILD_DIR)/invalidBareReturn.snbc > $(BUILD_DIR)/bare-return-error.txt; then echo "expected bare return type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidBareReturn.moi $(BUILD_DIR)/invalidBareReturn.mlbc > $(BUILD_DIR)/bare-return-error.txt; then echo "expected bare return type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/bare-return-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 4, span 50..51"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodReturnType.snl $(BUILD_DIR)/invalidMethodReturnType.snbc > $(BUILD_DIR)/method-return-error.txt; then echo "expected method return type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMethodReturnType.moi $(BUILD_DIR)/invalidMethodReturnType.mlbc > $(BUILD_DIR)/method-return-error.txt; then echo "expected method return type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/method-return-error.txt | grep -Fqx "error[SNV4011]: returned type does not match the function's declared return type at line 5, span 79..80"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallResultType.snl $(BUILD_DIR)/invalidCallResultType.snbc > $(BUILD_DIR)/call-result-error.txt; then echo "expected call result type failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidCallResultType.moi $(BUILD_DIR)/invalidCallResultType.mlbc > $(BUILD_DIR)/call-result-error.txt; then echo "expected call result type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/call-result-error.txt | grep -Fqx "error[SNV4001]: annotation type does not match initializer at line 8, span 94..95"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchCall.snl $(BUILD_DIR)/invalidMatchCall.snbc > $(BUILD_DIR)/match-call-error.txt; then echo "expected non-exhaustive match on a call"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidMatchCall.moi $(BUILD_DIR)/invalidMatchCall.mlbc > $(BUILD_DIR)/match-call-error.txt; then echo "expected non-exhaustive match on a call"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/match-call-error.txt | grep -Fqx 'error[SNV4004]: non-exhaustive match on `Signal`: missing variant `Wait` at line 14, span 150..155'
-	$(COMPILER_BUNDLE) bootstrap/fixtures/MoveSemantics.snl $(BUILD_DIR)/moveSemantics.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/moveSemantics.snbc run; test "$$?" -eq 11
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUseAfterMove.snl $(BUILD_DIR)/invalidUseAfterMove.snbc > $(BUILD_DIR)/use-after-move-error.txt; then echo "expected use after move"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/MoveSemantics.moi $(BUILD_DIR)/moveSemantics.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/moveSemantics.mlbc run; test "$$?" -eq 11
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidUseAfterMove.moi $(BUILD_DIR)/invalidUseAfterMove.mlbc > $(BUILD_DIR)/use-after-move-error.txt; then echo "expected use after move"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/use-after-move-error.txt | grep -Fqx "error[SNV5001]: use of a moved value at line 6, span 93..94"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConditionalMove.snl $(BUILD_DIR)/invalidConditionalMove.snbc > $(BUILD_DIR)/conditional-move-error.txt; then echo "expected use after conditional move"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidConditionalMove.moi $(BUILD_DIR)/invalidConditionalMove.mlbc > $(BUILD_DIR)/conditional-move-error.txt; then echo "expected use after conditional move"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/conditional-move-error.txt | grep -Fqx "error[SNV5001]: use of a moved value at line 8, span 119..120"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldMove.snl $(BUILD_DIR)/invalidFieldMove.snbc > $(BUILD_DIR)/field-move-error.txt; then echo "expected field move"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidFieldMove.moi $(BUILD_DIR)/invalidFieldMove.mlbc > $(BUILD_DIR)/field-move-error.txt; then echo "expected field move"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/field-move-error.txt | grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 156..157"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidElementMove.snl $(BUILD_DIR)/invalidElementMove.snbc > $(BUILD_DIR)/element-move-error.txt; then echo "expected element move"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/InvalidElementMove.moi $(BUILD_DIR)/invalidElementMove.mlbc > $(BUILD_DIR)/element-move-error.txt; then echo "expected element move"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/element-move-error.txt | grep -Fqx "error[SNV5002]: cannot move a value out of a field or array element at line 9, span 163..164"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPop.snl $(BUILD_DIR)/vmArrayPop.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.snbc run; test "$$?" -eq 42
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopEmpty.snl $(BUILD_DIR)/vmArrayPopEmpty.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopEmpty.snbc run > $(BUILD_DIR)/vmArrayPopEmpty.txt; test "$$?" -eq 70
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPop.moi $(BUILD_DIR)/vmArrayPop.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPop.mlbc run; test "$$?" -eq 42
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopEmpty.moi $(BUILD_DIR)/vmArrayPopEmpty.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopEmpty.mlbc run > $(BUILD_DIR)/vmArrayPopEmpty.txt; test "$$?" -eq 70
 	tr '\r' '\n' < $(BUILD_DIR)/vmArrayPopEmpty.txt | grep -Fqx "runtime error: pop from empty array"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopString.snl $(BUILD_DIR)/vmArrayPopString.snbc
-	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopString.snbc run)" = "popped"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/WarnMismatch.snl $(BUILD_DIR)/warnMismatch.snbc > $(BUILD_DIR)/warn-mismatch.txt; then echo "expected comparison type failure"; exit 1; fi
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmArrayPopString.moi $(BUILD_DIR)/vmArrayPopString.mlbc
+	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmArrayPopString.mlbc run)" = "popped"
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/WarnMismatch.moi $(BUILD_DIR)/warnMismatch.mlbc > $(BUILD_DIR)/warn-mismatch.txt; then echo "expected comparison type failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/warn-mismatch.txt | grep -Fqx "error[SNV4008]: operator cannot be applied to these operand types at line 10, span 171..172"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/WarnCompare.snl $(BUILD_DIR)/warnCompare.snbc > $(BUILD_DIR)/warn-compare.txt
+	$(COMPILER_BUNDLE) bootstrap/fixtures/WarnCompare.moi $(BUILD_DIR)/warnCompare.mlbc > $(BUILD_DIR)/warn-compare.txt
 	test ! -s $(BUILD_DIR)/warn-compare.txt
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/warnCompare.snbc run; test "$$?" -eq 7
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/warnCompare.mlbc run; test "$$?" -eq 7
 
 bootstrap-image-check: bootstrap-self-host
 	test "$$( $(COMPILER_BUNDLE) $(STAGE1_IMAGE))" = "valid SnBC image"
-	head -c 8 $(STAGE1_IMAGE) > $(BUILD_DIR)/truncated.snbc
-	@if $(COMPILER_BUNDLE) $(BUILD_DIR)/truncated.snbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
+	head -c 8 $(STAGE1_IMAGE) > $(BUILD_DIR)/truncated.mlbc
+	@if $(COMPILER_BUNDLE) $(BUILD_DIR)/truncated.mlbc > $(BUILD_DIR)/image-error.txt; then echo "expected image failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/image-error.txt | grep -Fqx "invalid SnBC image"
 
 # Diferencial: stdout e código de saída da VM Mois contra `moil run-snbc`.
@@ -235,31 +236,31 @@ bootstrap-image-check: bootstrap-self-host
 # compara strings por identidade e não repassa argumentos (ver evidence.md).
 bootstrap-vm: bootstrap-build
 	@for fixture in $(VM_DIFF_FIXTURES); do \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
-		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.mlbc || exit 1; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.mlbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.mlbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
 		test "$$referenceExit" -eq "$$vmExit" || { echo "$$fixture: exit $$vmExit != $$referenceExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.ref.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		echo "vm differential ok: $$fixture (exit $$vmExit)"; \
 	done
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmEquality.snl $(BUILD_DIR)/vmEquality.snbc
-	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.snbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.snl $(BUILD_DIR)/vmHostText.snbc
-	@MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.snbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmEquality.moi $(BUILD_DIR)/vmEquality.mlbc
+	test "$$( $(COMPILER_BUNDLE) $(BUILD_DIR)/vmEquality.mlbc run | tr -d '\r' | tr '\n' ' ')" = "true true true true true "
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmHostText.moi $(BUILD_DIR)/vmHostText.mlbc
+	@MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(COMPILER_BUNDLE) $(BUILD_DIR)/vmHostText.mlbc run extra > $(BUILD_DIR)/vmHostText.vm.txt 2> $(BUILD_DIR)/vmHostText.vm.err; status=$$?; \
 		if [ "$$(tr -d '\r' < $(BUILD_DIR)/vmHostText.vm.txt | tr '\n' ' ')" != "true true true " ]; then \
 			echo "VmHostText: exit $$status, MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt"; \
 			echo "stdout:"; cat $(BUILD_DIR)/vmHostText.vm.txt; echo "stderr:"; cat $(BUILD_DIR)/vmHostText.vm.err; \
 			ls -la $(BUILD_DIR) | head -5; exit 1; \
 		fi
 	test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmStackOverflow.snl $(BUILD_DIR)/vmStackOverflow.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmStackOverflow.snbc run > $(BUILD_DIR)/vmStackOverflow.vm.txt; test "$$?" -eq 70
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmStackOverflow.moi $(BUILD_DIR)/vmStackOverflow.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmStackOverflow.mlbc run > $(BUILD_DIR)/vmStackOverflow.vm.txt; test "$$?" -eq 70
 	tr '\r' '\n' < $(BUILD_DIR)/vmStackOverflow.vm.txt | grep -Fqx "runtime error: Stack overflow"
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmVariantValue.snl $(BUILD_DIR)/vmVariantValue.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.snbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmVariantValue.moi $(BUILD_DIR)/vmVariantValue.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmVariantValue.mlbc run > $(BUILD_DIR)/vmVariantValue.vm.txt; test "$$?" -eq 3
 	test "$$(tr -d '\r' < $(BUILD_DIR)/vmVariantValue.vm.txt | tr '\n' ' ')" = "true false true Red Amber "
-	$(COMPILER_BUNDLE) bootstrap/fixtures/VmMatchNoArm.snl $(BUILD_DIR)/vmMatchNoArm.snbc
-	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.snbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
+	$(COMPILER_BUNDLE) bootstrap/fixtures/VmMatchNoArm.moi $(BUILD_DIR)/vmMatchNoArm.mlbc
+	@$(COMPILER_BUNDLE) $(BUILD_DIR)/vmMatchNoArm.mlbc run > $(BUILD_DIR)/vmMatchNoArm.vm.txt; test "$$?" -eq 70
 	tr '\r' '\n' < $(BUILD_DIR)/vmMatchNoArm.vm.txt | grep -Fqx "runtime error: bodyless routine trapped"
 
 # A VM Mois executa a imagem do compilador, que compila as próprias fontes;
@@ -279,27 +280,27 @@ NATIVE_LINK = as -arch arm64 $(BUILD_DIR)/$$fixture.s -o $(BUILD_DIR)/$$fixture.
 
 bootstrap-native: bootstrap-build
 	@for fixture in $(NATIVE_FIXTURES); do \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native || exit 1; \
 		$(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native; nativeExit=$$?; \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > /dev/null; vmExit=$$?; \
-		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > /dev/null; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.mlbc || exit 1; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.mlbc run > /dev/null; vmExit=$$?; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.mlbc > /dev/null; referenceExit=$$?; \
 		test "$$nativeExit" -eq "$$vmExit" -a "$$nativeExit" -eq "$$referenceExit" || { echo "$$fixture: native $$nativeExit vm $$vmExit ref $$referenceExit"; exit 1; }; \
 		echo "native differential ok: $$fixture (exit $$nativeExit)"; \
 	done
 	@for fixture in $(NATIVE_RUNTIME_FIXTURES); do \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native || exit 1; \
 		$(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native alpha beta > $(BUILD_DIR)/$$fixture.native.txt; nativeExit=$$?; \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run alpha beta > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.mlbc || exit 1; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.mlbc run alpha beta > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
 		test "$$nativeExit" -eq "$$vmExit" || { echo "$$fixture: native exit $$nativeExit != vm $$vmExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.native.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		echo "native runtime differential ok: $$fixture (exit $$nativeExit)"; \
 	done
 	@fixture=VmHostText; printf stale > $(BUILD_DIR)/vmHostText.txt; \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		MOIS_FIXTURE_TEXT=probe MOIS_FIXTURE_OUTPUT=$(BUILD_DIR)/vmHostText.txt $(BUILD_DIR)/$$fixture.native extra > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 1 || exit 1; \
 		test "$$(tr -d '\r' < $(BUILD_DIR)/$$fixture.native.txt | tr '\n' ' ')" = "true true true " || exit 1; \
 		test "$$(tr '\r' '\n' < $(BUILD_DIR)/vmHostText.txt)" = "probe" || exit 1; \
@@ -313,14 +314,14 @@ bootstrap-native: bootstrap-build
 		test -s $(BUILD_DIR)/$$fixture.peak1.txt && cmp $(BUILD_DIR)/$$fixture.peak1.txt $(BUILD_DIR)/$$fixture.peak8.txt || { echo "$$fixture: peak memory grows with iterations"; exit 1; }; \
 		echo "native memory constant: $$(cat $(BUILD_DIR)/$$fixture.peak1.txt) for 20000 and 160000 iterations"
 	@fixture=NativeCycle; \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 70 || exit 1; \
 		printf 'tree ok\nruntime error: strong reference cycle rejected for opcode 50\n' | cmp - $(BUILD_DIR)/$$fixture.native.txt || exit 1; \
 		echo "native cycle rejected: $$fixture"
-	@if $(COMPILER_BUNDLE) bootstrap/fixtures/NativeUnsupported.snl $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
+	@if $(COMPILER_BUNDLE) bootstrap/fixtures/NativeUnsupported.moi $(BUILD_DIR)/nativeUnsupported.s native > $(BUILD_DIR)/native-error.txt; then echo "expected native failure"; exit 1; fi
 	tr '\r' '\n' < $(BUILD_DIR)/native-error.txt | grep -Fqx "unsupported opcode for native backend: 54"
 	@fixture=VmArrayPopEmpty; \
-		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.snl $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
+		$(COMPILER_BUNDLE) bootstrap/fixtures/$$fixture.moi $(BUILD_DIR)/$$fixture.s native && $(NATIVE_LINK) || exit 1; \
 		$(BUILD_DIR)/$$fixture.native > $(BUILD_DIR)/$$fixture.native.txt; test "$$?" -eq 70 || exit 1; \
 		tr '\r' '\n' < $(BUILD_DIR)/$$fixture.native.txt | grep -Fqx "runtime error: pop from empty array"
 
@@ -329,14 +330,14 @@ bootstrap-native: bootstrap-build
 # The assembly is the fixed-point artifact; Mach-O UUID/signature are not
 # compared. `as` and `ld` remain host toolchain dependencies (N4 is separate).
 NATIVE_COMPILER_SOURCES := Unit Lex Parse ParseDecl Emit EmitExpr EmitStmt Runtime ImageReader ImageCode VmValue VmText VmString VmOps VmExec VmDecode VmFast VmFrame VmLoad NativeImage NativeRoles NativeAssembly NativeSlot NativeOwnership ProcessorArchitecture OperatingSystemRuntime CallingConvention ExecutableFormat NativeToolchain NativeValueEmitter NativeInstructionEmitter NativeTargetResolver NativeBoundary NativeBackend SourceJoin Compiler ScopeParse ScopeEmit ScopeMatch MatchCheck BorrowCheck
-NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.snl
+NATIVE_COMPILER_SOURCE := $(BUILD_DIR)/compiler-joined.moi
 NATIVE_COMPILER_ASSEMBLY := $(BUILD_DIR)/compiler-native.s
 NATIVE_COMPILER_BINARY := $(BUILD_DIR)/compiler-native
 
 bootstrap-native-self: bootstrap-build
 	mkdir -p $(BUILD_DIR)
 	printf 'package mois.compiler\n\n' > $(NATIVE_COMPILER_SOURCE)
-	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_COMPILER_SOURCE); done
+	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.moi >> $(NATIVE_COMPILER_SOURCE); done
 	$(COMPILER_BUNDLE) $(NATIVE_COMPILER_SOURCE) $(NATIVE_COMPILER_ASSEMBLY) native
 	as -arch arm64 $(NATIVE_COMPILER_ASSEMBLY) -o $(BUILD_DIR)/compiler-native.o
 	ld -arch arm64 -platform_version macos $(SDK_VERSION) $(SDK_VERSION) -syslibroot $(SDK_PATH) -lSystem -e _main $(BUILD_DIR)/compiler-native.o -o $(NATIVE_COMPILER_BINARY)
@@ -382,7 +383,7 @@ bootstrap-native-linux-aarch64-run:
 	$(MAKE) bootstrap-native-self-run NATIVE_TARGET=aarch64-unknown-linux-gnu
 
 # Native target selection. The compiler takes the target on its command line
-# (`<in.snl> <out.s> --target <triple>`, or the older `native [<triple>]`);
+# (`<in.moi> <out.s> --target <triple>`, or the older `native [<triple>]`);
 # the triple fixes the executable format: Mach-O for aarch64-apple-darwin,
 # ELF for the Linux triples. Choose it here with NATIVE_TARGET, for example
 #   make bootstrap-native-target NATIVE_TARGET=aarch64-unknown-linux-gnu
@@ -464,16 +465,16 @@ bootstrap-native-self-target: bootstrap-native-self-emit
 
 bootstrap-native-self-emit: bootstrap-build
 	mkdir -p $(NATIVE_TARGET_DIR)
-	printf 'package mois.compiler\n\n' > $(NATIVE_TARGET_DIR)/compiler-joined.snl
-	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.snl >> $(NATIVE_TARGET_DIR)/compiler-joined.snl; done
-	$(COMPILER_BUNDLE) $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage1.s --target $(NATIVE_TARGET)
+	printf 'package mois.compiler\n\n' > $(NATIVE_TARGET_DIR)/compiler-joined.moi
+	@for module in $(NATIVE_COMPILER_SOURCES); do sed '/^package /d; /^import /d' bootstrap/src/$$module.moi >> $(NATIVE_TARGET_DIR)/compiler-joined.moi; done
+	$(COMPILER_BUNDLE) $(NATIVE_TARGET_DIR)/compiler-joined.moi $(NATIVE_TARGET_DIR)/stage1.s --target $(NATIVE_TARGET)
 
 bootstrap-native-self-run:
 	@test -n '$(call native_link,in,out)' || { echo "native compiler build for $(NATIVE_TARGET) is not available"; exit 1; }
 	@test -f $(NATIVE_TARGET_DIR)/stage1.s || { echo "missing $(NATIVE_TARGET_DIR)/stage1.s; run bootstrap-native-self-emit first"; exit 1; }
 	$(call native_assemble,$(NATIVE_TARGET_DIR)/stage1.s,$(NATIVE_TARGET_DIR)/stage1.o)
 	$(call native_link,$(NATIVE_TARGET_DIR)/stage1.o,$(NATIVE_TARGET_DIR)/snl-stage1)
-	$(NATIVE_TARGET_DIR)/snl-stage1 $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage2.s --target $(NATIVE_TARGET)
+	$(NATIVE_TARGET_DIR)/snl-stage1 $(NATIVE_TARGET_DIR)/compiler-joined.moi $(NATIVE_TARGET_DIR)/stage2.s --target $(NATIVE_TARGET)
 	@if cmp -s $(NATIVE_TARGET_DIR)/stage1.s $(NATIVE_TARGET_DIR)/stage2.s; then \
 		echo "stage1.s == stage2.s"; \
 	elif [ "$(NATIVE_STAGE1_CHECK)" = report ]; then \
@@ -483,7 +484,7 @@ bootstrap-native-self-run:
 	fi
 	$(call native_assemble,$(NATIVE_TARGET_DIR)/stage2.s,$(NATIVE_TARGET_DIR)/stage2.o)
 	$(call native_link,$(NATIVE_TARGET_DIR)/stage2.o,$(NATIVE_TARGET_DIR)/snl)
-	$(NATIVE_TARGET_DIR)/snl $(NATIVE_TARGET_DIR)/compiler-joined.snl $(NATIVE_TARGET_DIR)/stage3.s --target $(NATIVE_TARGET)
+	$(NATIVE_TARGET_DIR)/snl $(NATIVE_TARGET_DIR)/compiler-joined.moi $(NATIVE_TARGET_DIR)/stage3.s --target $(NATIVE_TARGET)
 	cmp $(NATIVE_TARGET_DIR)/stage2.s $(NATIVE_TARGET_DIR)/stage3.s
 	@echo "native snl ok for $(NATIVE_TARGET): $(NATIVE_TARGET_DIR)/snl"
 
@@ -512,13 +513,13 @@ LIBRARY_FIXTURES := LibrarySearch LibraryBinaryHeap LibraryBinaryTree LibrarySor
 
 bootstrap-library: bootstrap-build
 	@for fixture in $(LIBRARY_FIXTURES); do \
-		joined=$(BUILD_DIR)/$$fixture.joined.snl; \
-		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
-		for name in $(LIBRARY_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
+		joined=$(BUILD_DIR)/$$fixture.joined.moi; \
+		cat bootstrap/fixtures/$$fixture.moi > $$joined; \
+		for name in $(LIBRARY_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.moi >> $$joined; done; \
 		$(MOIL) check $$joined > /dev/null || exit 1; \
-		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.snbc || exit 1; \
-		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.snbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
-		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.snbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
+		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.mlbc || exit 1; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.mlbc > $(BUILD_DIR)/$$fixture.ref.txt; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.mlbc run > $(BUILD_DIR)/$$fixture.vm.txt; vmExit=$$?; \
 		test "$$referenceExit" -eq "$$vmExit" || { echo "$$fixture: exit $$vmExit != $$referenceExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.ref.txt $(BUILD_DIR)/$$fixture.vm.txt || exit 1; \
 		echo "library ok: $$fixture (exit $$vmExit)"; \
@@ -541,15 +542,15 @@ bootstrap-library: bootstrap-build
 # LIBRARY_ROOT_FIXTURES are defined at the top, next to the root project.
 bootstrap-library-root: bootstrap-build
 	@for fixture in $(LIBRARY_ROOT_FIXTURES); do \
-		joined=$(BUILD_DIR)/$$fixture.root.snl; \
-		cat bootstrap/fixtures/$$fixture.snl > $$joined; \
-		for name in $(LIBRARY_ROOT_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.snl >> $$joined; done; \
+		joined=$(BUILD_DIR)/$$fixture.root.moi; \
+		cat bootstrap/fixtures/$$fixture.moi > $$joined; \
+		for name in $(LIBRARY_ROOT_SOURCES); do printf '\n' >> $$joined; grep -v '^package ' bootstrap/library/$$name.moi >> $$joined; done; \
 		$(MOIL) check $$joined > /dev/null || exit 1; \
 		$(MOIL) build $$joined -o $(BUILD_DIR)/$$fixture.root > /dev/null || exit 1; \
 		$(BUILD_DIR)/$$fixture.root > $(BUILD_DIR)/$$fixture.root.txt; rootExit=$$?; \
-		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.root.snbc || exit 1; \
-		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.root.snbc > $(BUILD_DIR)/$$fixture.root.ref.txt; referenceExit=$$?; \
-		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.root.snbc run > $(BUILD_DIR)/$$fixture.root.vm.txt; vmExit=$$?; \
+		$(COMPILER_BUNDLE) $$joined $(BUILD_DIR)/$$fixture.root.mlbc || exit 1; \
+		$(MOIL) run-snbc $(BUILD_DIR)/$$fixture.root.mlbc > $(BUILD_DIR)/$$fixture.root.ref.txt; referenceExit=$$?; \
+		$(COMPILER_BUNDLE) $(BUILD_DIR)/$$fixture.root.mlbc run > $(BUILD_DIR)/$$fixture.root.vm.txt; vmExit=$$?; \
 		test "$$rootExit" -eq "$$referenceExit" -a "$$rootExit" -eq "$$vmExit" || { echo "$$fixture: root $$rootExit ref $$referenceExit vm $$vmExit"; exit 1; }; \
 		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.ref.txt || exit 1; \
 		cmp $(BUILD_DIR)/$$fixture.root.txt $(BUILD_DIR)/$$fixture.root.vm.txt || exit 1; \

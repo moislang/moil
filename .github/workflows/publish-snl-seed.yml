@@ -100,7 +100,7 @@ jobs:
           mkdir -p dist/stage/bin
           cp "snl-src/build/$exe" "dist/stage/bin/$exe"
           cp -R snl-src/builtin dist/stage/builtin
-          test -f dist/stage/builtin/io/console/Console.snl
+          test -f dist/stage/builtin/io/console/Console.moi
           "dist/stage/bin/$exe" --version
           if [ "$RUNNER_OS" = Windows ]; then
             # zip writes '/' separators; Windows PowerShell's Compress-Archive writes '\\'.

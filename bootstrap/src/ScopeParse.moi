@@ -1,6 +1,6 @@
 package mois.compiler
 
-// Scope lowering for the self-hosted compiler. Concatenated after Compiler.snl.
+// Scope lowering for the self-hosted compiler. Concatenated after Compiler.moi.
 // Token kinds: 47 break, 48 continue, 49 null, 50 class, 51 enum, 52 trait,
 // 53 match, 54 async, 55 await, 56 pulsar, 57 for, 58 defer, 59 in,
 // 60 method, 61 private, 62 arrow, 63 question, 64 static.

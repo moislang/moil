@@ -24,23 +24,23 @@ compilable by the seed. The probes recorded in `evidence.md` showed that:
 1. Guest values are `(tag, value)` pairs kept in cells (`vmCell`), mutated
    through typed parameters. Guest arrays are `vmArray` structs whose tags are
    materialized only when a non-integer element appears.
-2. Instructions are predecoded at load time (`VmDecode.snl`): opcode,
+2. Instructions are predecoded at load time (`VmDecode.moi`): opcode,
    operands and jump targets are already resolved to instruction indexes.
-3. The loop (`VmFrame.snl`) is iterative: CALL saves the frame in `vm.frames`
+3. The loop (`VmFrame.moi`) is iterative: CALL saves the frame in `vm.frames`
    and RETURN restores it. The 256-frame limit follows the reference's
    `SN_VM_FRAMES_MAX` and does not depend on the host stack.
 4. `==`/`!=` compare values: strings by bytes, and arrays/objects field by
    field, with visited pairs to end cycles. Address comparison (`&T == &E`)
    has no SnBC representation yet and is outside this ADR.
 5. The execution mode is recognized by the `SNBC` magic of the first
-   argument: `moil <image.snbc> run [args...]`. The arguments after
+   argument: `moil <image.mlbc> run [args...]`. The arguments after
    `run` belong to the program. The seed does not compare the word `run` yet.
 
 ## Provisional boundary
 
 Host strings (`Runtime.environment`, `Runtime.argument`) carry no bytes, and
 the seed subset cannot convert a string into bytes. When one of them takes
-part in equality or concatenation, `VmString.snl` writes the text with
+part in equality or concatenation, `VmString.moi` writes the text with
 `Runtime.writeText` to `/tmp/mois-vm-string.bin` and reads the bytes back
 with `read_bytes`. Risks: concurrent runs share the file, and the VM depends
 on a writable `/tmp`. Running the compiler image never takes this path.

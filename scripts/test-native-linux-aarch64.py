@@ -45,8 +45,8 @@ def emit(compiler: Path, build_dir: Path, target: str) -> None:
     build_dir.mkdir(parents=True, exist_ok=True)
     expected = {}
     for name in FIXTURES:
-        source = fixture_dir / f"{name}.snl"
-        image = build_dir / f"{name}-linux.snbc"
+        source = fixture_dir / f"{name}.moi"
+        image = build_dir / f"{name}-linux.mlbc"
         assembly = build_dir / f"{name}-linux.s"
         run([str(compiler), str(source), str(image)])
         vm_result = run([str(compiler), str(image), "run", "alpha", "beta"], expected_status=None)

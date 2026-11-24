@@ -104,10 +104,10 @@ through an O(1) type-indexed table. `make bootstrap-oop` and
 Generic bounds, inheritance and qualification on other native targets remain
 absent.
 
-The `bootstrap/fixtures/InterfaceDispatch.snl` fixture verifies that the
+The `bootstrap/fixtures/InterfaceDispatch.moi` fixture verifies that the
 bootstrap compiler, Mois VM and native executable select
 `X64Architecture.code()` through an `Architecture` interface at runtime.
-`TraitDispatch.snl` exercises equivalent dispatch through `impl`; negative
+`TraitDispatch.moi` exercises equivalent dispatch through `impl`; negative
 fixtures reject missing and mismatched contracts. The reference SnBC build
 still rejects these calls, so these are bootstrap-specific gates.
 

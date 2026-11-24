@@ -4,32 +4,32 @@ import builtin.io.console
 
 func compilerFiles(): string[] {
     return [
-        "bootstrap/src/Unit.snl", "bootstrap/src/Lex.snl", "bootstrap/src/Parse.snl",
-        "bootstrap/src/ParseDecl.snl", "bootstrap/src/Emit.snl", "bootstrap/src/EmitExpr.snl",
-        "bootstrap/src/EmitStmt.snl", "bootstrap/src/Runtime.snl", "bootstrap/src/ImageReader.snl",
-        "bootstrap/src/ImageCode.snl", "bootstrap/src/VmValue.snl", "bootstrap/src/VmText.snl",
-        "bootstrap/src/VmString.snl", "bootstrap/src/VmOps.snl", "bootstrap/src/VmExec.snl",
-        "bootstrap/src/VmDecode.snl", "bootstrap/src/VmFast.snl", "bootstrap/src/VmFrame.snl",
-        "bootstrap/src/VmLoad.snl", "bootstrap/src/NativeImage.snl", "bootstrap/src/NativeRoles.snl",
-        "bootstrap/src/NativeAssembly.snl", "bootstrap/src/NativeSlot.snl", "bootstrap/src/NativeOwnership.snl",
-        "bootstrap/src/ProcessorArchitecture.snl", "bootstrap/src/OperatingSystemRuntime.snl",
-        "bootstrap/src/CallingConvention.snl", "bootstrap/src/ExecutableFormat.snl",
-        "bootstrap/src/NativeToolchain.snl", "bootstrap/src/NativeValueEmitter.snl",
-        "bootstrap/src/NativeInstructionEmitter.snl", "bootstrap/src/NativeTargetResolver.snl",
-        "bootstrap/src/NativeBoundary.snl", "bootstrap/src/NativeBackend.snl", "bootstrap/src/SourceJoin.snl",
-        "bootstrap/src/Compiler.snl", "bootstrap/src/ScopeParse.snl", "bootstrap/src/ScopeEmit.snl",
-        "bootstrap/src/ScopeMatch.snl", "bootstrap/src/MatchCheck.snl",
-        "bootstrap/src/BorrowCheck.snl"
+        "bootstrap/src/Unit.moi", "bootstrap/src/Lex.moi", "bootstrap/src/Parse.moi",
+        "bootstrap/src/ParseDecl.moi", "bootstrap/src/Emit.moi", "bootstrap/src/EmitExpr.moi",
+        "bootstrap/src/EmitStmt.moi", "bootstrap/src/Runtime.moi", "bootstrap/src/ImageReader.moi",
+        "bootstrap/src/ImageCode.moi", "bootstrap/src/VmValue.moi", "bootstrap/src/VmText.moi",
+        "bootstrap/src/VmString.moi", "bootstrap/src/VmOps.moi", "bootstrap/src/VmExec.moi",
+        "bootstrap/src/VmDecode.moi", "bootstrap/src/VmFast.moi", "bootstrap/src/VmFrame.moi",
+        "bootstrap/src/VmLoad.moi", "bootstrap/src/NativeImage.moi", "bootstrap/src/NativeRoles.moi",
+        "bootstrap/src/NativeAssembly.moi", "bootstrap/src/NativeSlot.moi", "bootstrap/src/NativeOwnership.moi",
+        "bootstrap/src/ProcessorArchitecture.moi", "bootstrap/src/OperatingSystemRuntime.moi",
+        "bootstrap/src/CallingConvention.moi", "bootstrap/src/ExecutableFormat.moi",
+        "bootstrap/src/NativeToolchain.moi", "bootstrap/src/NativeValueEmitter.moi",
+        "bootstrap/src/NativeInstructionEmitter.moi", "bootstrap/src/NativeTargetResolver.moi",
+        "bootstrap/src/NativeBoundary.moi", "bootstrap/src/NativeBackend.moi", "bootstrap/src/SourceJoin.moi",
+        "bootstrap/src/Compiler.moi", "bootstrap/src/ScopeParse.moi", "bootstrap/src/ScopeEmit.moi",
+        "bootstrap/src/ScopeMatch.moi", "bootstrap/src/MatchCheck.moi",
+        "bootstrap/src/BorrowCheck.moi"
     ]
 }
 
 func runtimeFiles(): string[] {
     return [
-        "bootstrap/runtime/Primitive.snl", "bootstrap/runtime/System.snl",
-        "bootstrap/runtime/Heap.snl", "bootstrap/runtime/Runtime.snl",
-        "bootstrap/runtime/Text.snl", "bootstrap/runtime/Container.snl",
-        "bootstrap/runtime/Ownership.snl", "bootstrap/runtime/Value.snl",
-        "bootstrap/runtime/Host.snl"
+        "bootstrap/runtime/Primitive.moi", "bootstrap/runtime/System.moi",
+        "bootstrap/runtime/Heap.moi", "bootstrap/runtime/Runtime.moi",
+        "bootstrap/runtime/Text.moi", "bootstrap/runtime/Container.moi",
+        "bootstrap/runtime/Ownership.moi", "bootstrap/runtime/Value.moi",
+        "bootstrap/runtime/Host.moi"
     ]
 }
 

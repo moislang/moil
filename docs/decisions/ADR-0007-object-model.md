@@ -60,7 +60,7 @@ not support `static` or annotations.
    `NativeAssembly`, `NativeSlot`, `NativeOwnership`, `NativeValueEmitter`,
    `NativeInstructionEmitter`, `NativeBoundary` and `NativeBackend`.
 4. **Naming.** Types and source files are PascalCase, as in moisc
-   (`Runtime`, `Box`, `Runtime.snl`). Functions, methods and variables stay
+   (`Runtime`, `Box`, `Runtime.moi`). Functions, methods and variables stay
    camelCase. Existing
    lowercase frontend type names are legacy names and must be migrated to
    PascalCase as their modules are touched.
